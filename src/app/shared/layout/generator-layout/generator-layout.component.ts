@@ -1,17 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import { AiSidebarHistoryComponent } from '../../components/ai/ai-sidebar-history/ai-sidebar-history.component';
 
 @Component({
   selector: 'app-generator-layout',
-  imports: [CommonModule, AiSidebarHistoryComponent],
+  standalone: true,
+  imports: [CommonModule], // Removed AiSidebarHistoryComponent
   templateUrl: './generator-layout.component.html',
-  styles: ``,
 })
 export class GeneratorLayoutComponent {
-  sidebarOpen = true;
-
-  closeSidebar = () => {
-    this.sidebarOpen = false;
-  };
+  // Logic for the sidebar is gone. 
+  // You only need variables here for the chat state or text input.
 }
