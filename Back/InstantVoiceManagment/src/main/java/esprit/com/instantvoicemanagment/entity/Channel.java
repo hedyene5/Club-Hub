@@ -1,5 +1,6 @@
 package esprit.com.instantvoicemanagment.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -16,6 +17,7 @@ public class Channel {
     private String id;
 
     private String name;
+    @JsonProperty("isPrivate")
     private boolean isPrivate;
     private LocalDateTime createdAt = LocalDateTime.now();
 
