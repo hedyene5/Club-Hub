@@ -1,0 +1,303 @@
+<div class="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+
+  <!-- ───────────────────────────── LIST VIEW ───────────────────────────── -->
+  <ng-container *ngIf="view === 'list'">
+
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h2 class="text-title-md2 font-semibold text-black dark:text-white">Voice Channels</h2>
+        <p class="text-sm text-body dark:text-bodydark">Select a channel to open it</p>
+      </div>
+    </div>
+
+    <div *ngIf="error" class="mb-4 rounded border border-danger bg-red-50 px-4 py-3 text-sm text-danger dark:bg-meta-4">
+      {{ error }}
+    </div>
+
+    <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+      <div *ngIf="loading" class="flex items-center justify-center py-20">
+        <svg class="h-8 w-8 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+      </div>
+      <div *ngIf="!loading && channels.length === 0" class="flex flex-col items-center justify-center py-20">
+        <svg class="mb-4 h-12 w-12 text-bodydark2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M9 4.5a3 3 0 116 0A3 3 0 019 4.5z"/>
+        </svg>
+        <p class="text-base font-medium text-black dark:text-white">No channels yet</p>
+        <p class="mt-1 text-sm text-body dark:text-bodydark">Create your first voice channel below.</p>
+      </div>
+
+      <ul *ngIf="!loading" class="divide-y divide-stroke dark:divide-strokedark">
+        <li
+          *ngFor="let channel of channels"
+          (click)="openChannel(channel)"
+          class="group flex cursor-pointer items-center justify-between px-6 py-4 transition hover:bg-gray-2 dark:hover:bg-meta-4"
+        >
+          <div class="flex items-center gap-3">
+            <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
+              [class.bg-meta-1]="!channel.isPrivate"
+              [class.bg-primary]="channel.isPrivate"
+            >
+              <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M9 4.5a3 3 0 116 0A3 3 0 019 4.5z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="font-medium text-black dark:text-white">{{ channel.name }}</p>
+              <p class="text-xs text-bodydark2">
+                {{ channel.isPrivate ? 'Private' : 'Public' }}
+                <span *ngIf="channel.subChannels.length > 0"> · {{ channel.subChannels.length }} sub-channel(s)</span>
+              </p>
+            </div>
+          </div>
+          <button
+            (click)="deleteChannel(channel.id, $event)"
+            class="rounded p-1.5 text-bodydark2 opacity-0 transition hover:bg-red-50 hover:text-danger group-hover:opacity-100 dark:hover:bg-meta-4"
+            title="Delete channel"
+          >
+            <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </button>
+        </li>
+      </ul>
+
+      <div class="flex justify-end border-t border-stroke px-6 py-4 dark:border-strokedark">
+        <button
+          (click)="goToCreate()"
+          class="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-blue shadow-sm transition hover:bg-opacity-90"
+        >
+          <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+            <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+          </svg>
+          New Channel
+        </button>
+      </div>
+    </div>
+  </ng-container>
+
+
+  <!-- ──────────────────────────── DETAIL VIEW ──────────────────────────── -->
+  <ng-container *ngIf="view === 'detail' && selectedChannel">
+
+    <div *ngIf="error" class="mb-4 rounded border border-danger bg-red-50 px-4 py-3 text-sm text-danger dark:bg-meta-4">
+      {{ error }}
+    </div>
+
+    <div class="mb-6 flex items-center gap-3">
+      <button
+        (click)="goBack()"
+        class="flex h-9 w-9 items-center justify-center rounded-md border border-stroke text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+      >
+        <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+      <div>
+        <h2 class="text-title-md2 font-semibold text-black dark:text-white">{{ selectedChannel.name }}</h2>
+        <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
+          [class.bg-meta-3]="!selectedChannel.isPrivate"
+          [class.text-white]="!selectedChannel.isPrivate"
+          [class.bg-primary]="selectedChannel.isPrivate"
+          [class.text-white]="selectedChannel.isPrivate"
+        >{{ selectedChannel.isPrivate ? 'Private' : 'Public' }}</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+
+      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark">
+          <h4 class="text-base font-semibold text-black dark:text-white">Sub Channels</h4>
+        </div>
+        <ul class="divide-y divide-stroke dark:divide-strokedark">
+          <li *ngIf="selectedChannel.subChannels.length === 0"
+            class="px-6 py-5 text-sm text-bodydark2">No sub-channels yet.</li>
+          <li
+            *ngFor="let sub of selectedChannel.subChannels"
+            class="flex items-center justify-between px-6 py-3"
+          >
+            <div class="flex items-center gap-2.5">
+              <svg class="h-4 w-4 text-bodydark2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+              </svg>
+              <span class="text-sm font-medium text-black dark:text-white">{{ sub.name }}</span>
+            </div>
+            <button
+              (click)="deleteSubChannel(sub.id)"
+              class="rounded p-1 text-bodydark2 transition hover:bg-red-50 hover:text-danger dark:hover:bg-meta-4"
+            >
+              <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+              </svg>
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark">
+          <h4 class="text-base font-semibold text-black dark:text-white">Audio Channel History</h4>
+        </div>
+        <ul class="divide-y divide-stroke dark:divide-strokedark">
+          <li *ngIf="!selectedChannel.audioHistory || selectedChannel.audioHistory.length === 0"
+            class="px-6 py-5 text-sm text-bodydark2">No audio messages yet.</li>
+          <li
+            *ngFor="let audio of selectedChannel.audioHistory || []; let i = index"
+            class="flex items-center gap-4 px-6 py-4"
+          >
+            <button class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-stroke text-bodydark2 transition hover:border-primary hover:text-primary dark:border-strokedark">
+              <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 20 20">
+                <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+              </svg>
+            </button>
+            <div class="flex flex-1 items-center gap-1">
+              <ng-container *ngFor="let bar of [3,5,7,4,6,8,5,3,6,4,7,5,3,6,4]">
+                <div class="w-1 rounded-full bg-stroke dark:bg-strokedark" [style.height.px]="bar * 3"></div>
+              </ng-container>
+            </div>
+            <div class="text-right">
+              <p class="text-xs font-medium text-black dark:text-white">Audio {{ i + 1 }}</p>
+              <p class="text-xs text-bodydark2">from <span class="text-primary">{{ audio.memberName }}</span></p>
+              <p class="mt-0.5 text-xs text-bodydark2">{{ audio.preview }}</p>
+            </div>
+          </li>
+        </ul>
+        <div class="border-t border-stroke px-6 py-3 dark:border-strokedark">
+          <p class="text-xs text-bodydark2">Hold the mic button below to send a message to this channel</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 flex justify-center">
+      <button
+        (click)="toggleRecording()"
+        [class.bg-danger]="isRecording"
+        [class.bg-primary]="!isRecording"
+        class="flex h-16 w-16 items-center justify-center rounded-full text-blue shadow-lg transition hover:opacity-90 active:scale-95"
+        [title]="isRecording ? 'Stop recording' : 'Start recording'"
+      >
+        <svg *ngIf="!isRecording" class="h-7 w-7 fill-current" viewBox="0 0 24 24">
+          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2a1 1 0 012 0v2a5 5 0 0010 0v-2a1 1 0 012 0zM11 19.93V22h2v-2.07A8.001 8.001 0 0019.93 13H18a6 6 0 01-12 0H4.07A8.001 8.001 0 0011 19.93z"/>
+        </svg>
+        <svg *ngIf="isRecording" class="h-7 w-7 fill-current" viewBox="0 0 24 24">
+          <path d="M6 6h12v12H6z"/>
+        </svg>
+      </button>
+    </div>
+    <p class="mt-2 text-center text-xs text-bodydark2">
+      {{ isRecording ? 'Recording... tap to stop' : 'Tap to start recording' }}
+    </p>
+
+  </ng-container>
+
+
+  <!-- ──────────────────────────── CREATE VIEW ──────────────────────────── -->
+  <ng-container *ngIf="view === 'create'">
+
+    <div class="mb-6 flex items-center gap-3">
+      <button
+        (click)="goBack()"
+        class="flex h-9 w-9 items-center justify-center rounded-md border border-stroke text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+      >
+        <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+      <h2 class="text-title-md2 font-semibold text-black dark:text-white">Create an Instant Voice Channel</h2>
+    </div>
+
+    <div class="mx-auto max-w-xl rounded-sm border border-stroke bg-white p-8 shadow-default dark:border-strokedark dark:bg-boxdark">
+
+      <div class="mb-5">
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">
+          Channel Name <span class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          [(ngModel)]="newChannelName"
+          placeholder="Enter channel name..."
+          class="w-full rounded border border-stroke bg-transparent px-4 py-3 text-black outline-none transition focus:border-primary dark:border-strokedark dark:text-white dark:focus:border-primary"
+        />
+      </div>
+
+      <div class="mb-5">
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Privacy</label>
+        <label class="flex cursor-pointer items-center gap-3">
+          <div class="relative">
+            <input type="checkbox" [(ngModel)]="newChannelPrivate" class="sr-only"/>
+            <div class="h-6 w-11 rounded-full transition"
+              [class.bg-primary]="newChannelPrivate"
+              [class.bg-stroke]="!newChannelPrivate"
+            ></div>
+            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition"
+              [class.translate-x-5]="newChannelPrivate"
+            ></div>
+          </div>
+          <span class="text-sm text-body dark:text-bodydark">
+            {{ newChannelPrivate ? 'Private — only invited members can join' : 'Public — anyone in the organisation can join' }}
+          </span>
+        </label>
+      </div>
+
+      <div class="mb-5">
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Add Default Subscribers</label>
+        <div class="flex flex-wrap gap-2">
+          <span class="inline-flex items-center gap-1 rounded-full bg-meta-2 px-3 py-1 text-xs font-medium text-black dark:bg-meta-4 dark:text-white">
+            Admin (you)
+          </span>
+          <button class="inline-flex items-center gap-1 rounded-full border border-dashed border-stroke px-3 py-1 text-xs text-bodydark2 transition hover:border-primary hover:text-primary dark:border-strokedark">
+            <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
+            Add member
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <label class="flex cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            [(ngModel)]="newChannelHasSubChannel"
+            class="h-4 w-4 rounded border-stroke accent-primary dark:border-strokedark"
+          />
+          <span class="text-sm text-body dark:text-bodydark">Add a sub-channel</span>
+        </label>
+
+        <div *ngIf="newChannelHasSubChannel" class="mt-3">
+          <input
+            type="text"
+            [(ngModel)]="newSubChannelName"
+            placeholder="Sub-channel name..."
+            class="w-full rounded border border-stroke bg-transparent px-4 py-2.5 text-sm text-black outline-none transition focus:border-primary dark:border-strokedark dark:text-white dark:focus:border-primary"
+          />
+        </div>
+      </div>
+
+      <!-- Actions — Cancel is red, Create is blue -->
+      <div class="flex items-center justify-between">
+        <button
+          (click)="goBack()"
+          class="rounded border border-danger px-5 py-2.5 text-sm font-medium text-danger transition hover:bg-danger hover:text-white"
+        >
+          Cancel
+        </button>
+        <button
+          (click)="createChannel()"
+          [disabled]="!newChannelName.trim()"
+          class="inline-flex items-center gap-2 rounded-full bg-[#3C50E0] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+          </svg>
+          Create Channel
+        </button>
+      </div>
+
+    </div>
+  </ng-container>
+
+</div>
