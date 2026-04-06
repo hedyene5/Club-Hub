@@ -105,6 +105,12 @@ export class InstantVoiceComponent implements OnInit {
     this.view = 'create';
   }
 
+  onPrivacyChange() {
+    if (!this.newChannelPrivate) {
+      this.selectedMemberIds = [];
+    }
+  }
+
   toggleMember(userId: string) {
     const idx = this.selectedMemberIds.indexOf(userId);
     if (idx === -1) {

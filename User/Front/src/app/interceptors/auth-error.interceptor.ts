@@ -12,6 +12,7 @@ export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401) {
         localStorage.removeItem('user');
+        localStorage.removeItem('sessionExpiry');
         router.navigate(['/signin']);
       }
       return throwError(() => error);

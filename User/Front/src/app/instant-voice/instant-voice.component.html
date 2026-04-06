@@ -232,7 +232,7 @@
         <label class="mb-2 block text-sm font-medium text-black dark:text-white">Privacy</label>
         <label class="flex cursor-pointer items-center gap-3">
           <div class="relative">
-            <input type="checkbox" [(ngModel)]="newChannelPrivate" class="sr-only"/>
+            <input type="checkbox" [(ngModel)]="newChannelPrivate" (change)="onPrivacyChange()" class="sr-only"/>
             <div class="h-6 w-11 rounded-full transition"
               [class.bg-primary]="newChannelPrivate"
               [class.bg-stroke]="!newChannelPrivate"
@@ -247,7 +247,7 @@
         </label>
       </div>
 
-      <div class="mb-5">
+      <div class="mb-5" *ngIf="newChannelPrivate">
         <label class="mb-2 block text-sm font-medium text-black dark:text-white">Assign Members</label>
         <p class="mb-2 text-xs text-bodydark2">You are automatically added. Select additional members who can see this channel.</p>
 

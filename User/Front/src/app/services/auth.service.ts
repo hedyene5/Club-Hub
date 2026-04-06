@@ -52,7 +52,10 @@ export class AuthService {
   logout(): Observable<any> {
     return this.http.post(`${this.api}/logout`, {}, {
       withCredentials: true
-    }).pipe(tap(() => localStorage.removeItem('user')));
+    }).pipe(tap(() => {
+      localStorage.removeItem('user');
+      localStorage.removeItem('sessionExpiry');
+    }));
   }
 
   checkSession(): Observable<any> {
@@ -82,16 +85,28 @@ export class AuthService {
     );
   }
 
+  private static readonly SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24h
+
   isLoggedIn(): boolean {
-    return !!localStorage.getItem('user');
+    const user = localStorage.getItem('user');
+    if (!user) return false;
+    const expiry = localStorage.getItem('sessionExpiry');
+    if (!expiry || Date.now() > parseInt(expiry, 10)) {
+      localStorage.removeItem('user');
+      localStorage.removeItem('sessionExpiry');
+      return false;
+    }
+    return true;
   }
 
   getCurrentUser(): AuthResponse | null {
+    if (!this.isLoggedIn()) return null;
     const u = localStorage.getItem('user');
     return u ? JSON.parse(u) : null;
   }
 
   private saveUser(res: AuthResponse): void {
     localStorage.setItem('user', JSON.stringify(res));
+    localStorage.setItem('sessionExpiry', String(Date.now() + AuthService.SESSION_DURATION_MS));
   }
 }
