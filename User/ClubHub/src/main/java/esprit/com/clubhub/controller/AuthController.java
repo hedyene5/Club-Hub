@@ -3,12 +3,10 @@ package esprit.com.clubhub.controller;
 import esprit.com.clubhub.dto.AuthResponse;
 import esprit.com.clubhub.dto.LoginRequest;
 import esprit.com.clubhub.dto.RegisterRequest;
-import esprit.com.clubhub.dto.AuthResponse;
-import esprit.com.clubhub.dto.LoginRequest;
-import esprit.com.clubhub.dto.RegisterRequest;
 import esprit.com.clubhub.service.AuthService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,21 +51,26 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie("jwt", "");
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0); // supprime le cookie
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from("jwt", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return ResponseEntity.ok("Logged out");
     }
 
     private void setJwtCookie(HttpServletResponse response, String token) {
-        Cookie cookie = new Cookie("jwt", token);
-        cookie.setHttpOnly(true);   // ← non accessible par JS
-        cookie.setSecure(false);    // ← true en production (HTTPS)
-        cookie.setPath("/");
-        cookie.setMaxAge(86400);    // 24h
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from("jwt", token)
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(86400)
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
     @GetMapping("/check")
     public ResponseEntity<?> checkSession() {

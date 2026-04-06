@@ -12,6 +12,8 @@ export interface Channel {
   name: string;
   isPrivate: boolean;
   createdAt?: string;
+  createdBy?: string;
+  memberIds?: string[];
   subChannels: SubChannel[];
   audioHistory?: any[];
 }
@@ -22,16 +24,31 @@ export class ChannelService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(): Observable<Channel[]> {
-    return this.http.get<Channel[]>(this.apiUrl);
+  getAll(userId: string): Observable<Channel[]> {
+    return this.http.get<Channel[]>(`${this.apiUrl}?userId=${userId}`);
   }
 
-  create(channel: { name: string; isPrivate: boolean }): Observable<Channel> {
-    return this.http.post<Channel>(this.apiUrl, channel);
+  create(
+    channel: { name: string; isPrivate: boolean; memberIds: string[] },
+    userId: string,
+    role: string
+  ): Observable<Channel> {
+    return this.http.post<Channel>(
+      `${this.apiUrl}?userId=${userId}&role=${role}`,
+      channel
+    );
   }
 
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  addMember(channelId: string, memberId: string): Observable<Channel> {
+    return this.http.post<Channel>(`${this.apiUrl}/${channelId}/members/${memberId}`, {});
+  }
+
+  removeMember(channelId: string, memberId: string): Observable<Channel> {
+    return this.http.delete<Channel>(`${this.apiUrl}/${channelId}/members/${memberId}`);
   }
 
   addSubChannel(channelId: string, subChannel: { name: string }): Observable<Channel> {

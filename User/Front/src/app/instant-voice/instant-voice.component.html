@@ -55,6 +55,7 @@
             </div>
           </div>
           <button
+            *ngIf="!isMembreSimple"
             (click)="deleteChannel(channel.id, $event)"
             class="rounded p-1.5 text-bodydark2 opacity-0 transition hover:bg-red-50 hover:text-danger group-hover:opacity-100 dark:hover:bg-meta-4"
             title="Delete channel"
@@ -68,6 +69,7 @@
 
       <div class="flex justify-end border-t border-stroke px-6 py-4 dark:border-strokedark">
         <button
+          *ngIf="!isMembreSimple"
           (click)="goToCreate()"
           class="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-blue shadow-sm transition hover:bg-opacity-90"
         >
@@ -76,6 +78,7 @@
           </svg>
           New Channel
         </button>
+        <p *ngIf="isMembreSimple" class="text-sm text-bodydark2 italic">Only admins can create channels</p>
       </div>
     </div>
   </ng-container>
@@ -245,15 +248,40 @@
       </div>
 
       <div class="mb-5">
-        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Add Default Subscribers</label>
-        <div class="flex flex-wrap gap-2">
-          <span class="inline-flex items-center gap-1 rounded-full bg-meta-2 px-3 py-1 text-xs font-medium text-black dark:bg-meta-4 dark:text-white">
-            Admin (you)
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Assign Members</label>
+        <p class="mb-2 text-xs text-bodydark2">You are automatically added. Select additional members who can see this channel.</p>
+
+        <div *ngIf="usersLoading" class="text-xs text-bodydark2">Loading members...</div>
+
+        <div *ngIf="!usersLoading && allUsers.length === 0" class="text-xs text-bodydark2 italic">No other members found.</div>
+
+        <div *ngIf="!usersLoading && allUsers.length > 0"
+          class="max-h-48 overflow-y-auto rounded border border-stroke divide-y divide-stroke dark:border-strokedark dark:divide-strokedark">
+          <label
+            *ngFor="let user of allUsers"
+            class="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition hover:bg-gray-2 dark:hover:bg-meta-4"
+          >
+            <input
+              type="checkbox"
+              [checked]="isMemberSelected(user.id)"
+              (change)="toggleMember(user.id)"
+              class="h-4 w-4 rounded border-stroke accent-primary dark:border-strokedark"
+            />
+            <div class="flex-1">
+              <p class="text-sm font-medium text-black dark:text-white">{{ user.firstName }} {{ user.lastName }}</p>
+              <p class="text-xs text-bodydark2">{{ user.role }}</p>
+            </div>
+          </label>
+        </div>
+
+        <div *ngIf="selectedMemberIds.length > 0" class="mt-2 flex flex-wrap gap-1.5">
+          <span
+            *ngFor="let user of selectedUsers"
+            class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+          >
+            {{ user.firstName }} {{ user.lastName }}
+            <button type="button" (click)="toggleMember(user.id)" class="ml-0.5 hover:text-danger">×</button>
           </span>
-          <button class="inline-flex items-center gap-1 rounded-full border border-dashed border-stroke px-3 py-1 text-xs text-bodydark2 transition hover:border-primary hover:text-primary dark:border-strokedark">
-            <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/></svg>
-            Add member
-          </button>
         </div>
       </div>
 
