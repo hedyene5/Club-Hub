@@ -9,6 +9,7 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.properties.BaseDirection;
 import com.itextpdf.layout.properties.TextAlignment;
 import org.springframework.stereotype.Service;
+import tn.esprit.virtual_event_management.entity.VirtualEvent;
 
 import java.io.ByteArrayOutputStream;
 
@@ -51,5 +52,38 @@ public class PdfService {
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de la génération du PDF", e);
         }
+    }
+    public byte[] generateEventPdf(VirtualEvent event) {
+
+        StringBuilder content = new StringBuilder();
+
+        content.append("📄 Rapport de l'événement\n\n");
+
+        content.append("Titre : ").append(event.getTitle()).append("\n");
+        content.append("Catégorie : ").append(event.getCategory()).append("\n");
+        content.append("Date début : ").append(event.getScheduledAt()).append("\n");
+        content.append("Date fin : ").append(event.getEndAt()).append("\n");
+        content.append("Statut : ").append(event.getStatus()).append("\n\n");
+
+        content.append("Participants : ")
+                .append(event.getCurrentParticipants())
+                .append(" / ")
+                .append(event.getMaxParticipants())
+                .append("\n\n");
+
+        // 🔥 liste participants
+        if (event.getParticipants() != null && !event.getParticipants().isEmpty()) {
+            content.append("Liste des participants :\n");
+
+            for (int i = 0; i < event.getParticipants().size(); i++) {
+                content.append(i + 1)
+                        .append(". ")
+                        .append(event.getParticipants().get(i).getFullName())
+                        .append("\n");
+            }
+        }
+
+        // 🔥 on réutilise TA méthode existante
+        return generatePdf(content.toString());
     }
 }

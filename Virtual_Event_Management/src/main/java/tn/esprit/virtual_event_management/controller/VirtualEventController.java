@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import tn.esprit.virtual_event_management.entity.VirtualEvent;
 import tn.esprit.virtual_event_management.service.IVirtualEventService;
 import tn.esprit.virtual_event_management.service.VirtualEventService;
-
+import tn.esprit.virtual_event_management.service.PdfService;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,6 +17,7 @@ import java.util.List;
 @RequestMapping("/api/virtual-events")
 public class VirtualEventController {
     private final IVirtualEventService virtualEventService;
+    private PdfService pdfService;
 
     public VirtualEventController(IVirtualEventService virtualEventService) {
         this.virtualEventService = virtualEventService;
@@ -39,11 +40,19 @@ public class VirtualEventController {
     }
 
     // 🔥 JOIN EVENT
-    @PostMapping("/{id}/join")
-    public ResponseEntity<VirtualEvent> joinEvent(@PathVariable String id) {
-        return ResponseEntity.ok(
-                ((VirtualEventService) virtualEventService).joinEvent(id)
-        );
+    @PutMapping("/{id}/join")
+    public VirtualEvent joinEvent(@PathVariable String id) {
+
+        VirtualEvent event = virtualEventService.getEventById(id)
+                .orElseThrow(() -> new RuntimeException("Event introuvable"));
+
+        if (event.getCurrentParticipants() >= event.getMaxParticipants()) {
+            throw new RuntimeException("Event complet");
+        }
+
+        event.setCurrentParticipants(event.getCurrentParticipants() + 1);
+
+        return virtualEventService.updateEvent(id, event);
     }
 
     // 🔥 GET LINK DIRECT
@@ -64,5 +73,19 @@ public class VirtualEventController {
     @GetMapping
     public ResponseEntity<List<VirtualEvent>> getAllEvents() {
         return ResponseEntity.ok(virtualEventService.getAllEvents());
+    }
+
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> getPdf(@PathVariable String id) {
+
+        VirtualEvent event = virtualEventService.getEventById(id)
+                .orElseThrow(() -> new RuntimeException("Event introuvable"));
+
+        byte[] pdf = pdfService.generateEventPdf(event);
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=event.pdf")
+                .header("Content-Type", "application/pdf")
+                .body(pdf);
     }
 }
