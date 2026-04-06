@@ -15,10 +15,13 @@ public class ChannelService {
 
     private final ChannelRepo channelRepo;
 
-    // Get channels visible to a specific user
+    // Get channels visible to a specific user:
+    // - public channels are visible to everyone
+    // - private channels are visible only to assigned members
     public List<Channel> getChannelsForUser(String userId) {
         return channelRepo.findAll().stream()
-                .filter(c -> c.getMemberIds() == null
+                .filter(c -> !c.isPrivate()
+                        || c.getMemberIds() == null
                         || c.getMemberIds().isEmpty()
                         || c.getMemberIds().contains(userId))
                 .collect(java.util.stream.Collectors.toList());
