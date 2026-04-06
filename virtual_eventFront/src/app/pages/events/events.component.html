@@ -1,0 +1,187 @@
+<div class="p-6 max-w-screen-2xl mx-auto">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Événements & Formations</h1>
+      <p class="text-gray-500 dark:text-gray-400 mt-1">Découvrez et rejoignez les événements du Club Hub</p>
+    </div>
+
+    <a routerLink="/calendar" 
+       class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-medium transition-all">
+      <i class="lucide lucide-plus w-5 h-5" aria-hidden="true" title="Ajouter"></i>
+      Créer un nouvel événement
+    </a>
+  </div>
+
+  <!-- Liste des événements -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    @for (event of events; track event.id) {
+      <div (click)="openEventDetails(event)"
+           class="group bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-gray-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-2xl transition-all duration-300 cursor-pointer">
+
+        <!-- Header -->
+        <div class="h-52 bg-gradient-to-br from-indigo-500 via-purple-600 to-violet-600 relative flex items-center justify-center overflow-hidden">
+          
+          @if (event.imageUrl) {
+            <img 
+                [src]="event.imageUrl"
+                alt="{{ event.title ? event.title : 'Image de l’événement' }}"
+                title="{{ event.title ? event.title : 'Image de l’événement' }}"
+                loading="lazy"
+                class="w-full h-full object-cover">
+          } @else {
+            <div class="text-white text-center">
+              <span class="text-6xl">🎥</span>
+              <p class="mt-3 text-sm opacity-90">
+                {{ event.category || 'Formation Virtuelle' }}
+              </p>
+            </div>
+          }
+
+          <!-- Badge Prix -->
+          @if (event.price && event.price > 0) {
+            <div class="absolute top-4 right-4 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-bold px-4 py-1.5 rounded-2xl shadow-lg text-sm">
+              {{ event.price }} TND
+            </div>
+          } @else {
+            <div class="absolute top-4 right-4 bg-green-500 text-white font-medium px-4 py-1.5 rounded-2xl text-sm">
+              Gratuit
+            </div>
+          }
+        </div>
+
+        <div class="p-6">
+          <h3 class="font-semibold text-xl leading-tight line-clamp-2 group-hover:text-indigo-600 transition-colors mb-3">
+            {{ event.title }}
+          </h3>
+
+          <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-5">
+            <div class="flex items-center gap-2">
+              <i class="lucide lucide-calendar w-4 h-4" aria-hidden="true" title="Date"></i>
+              <span>{{ formatDate(event.scheduledAt) }}</span>
+            </div>
+
+            @if (event.endAt) {
+              <div class="flex items-center gap-2">
+                <i class="lucide lucide-clock w-4 h-4" aria-hidden="true" title="Heure de fin"></i>
+                <span>Fin : {{ formatDate(event.endAt) }}</span>
+              </div>
+            }
+          </div>
+
+          <p class="text-gray-600 dark:text-gray-400 line-clamp-3 text-sm mb-6 min-h-[60px]">
+            {{ event.description || 'Aucune description disponible pour le moment.' }}
+          </p>
+
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              {{ event.category || 'Événement' }}
+            </span>
+
+            <button (click)="openEventDetails(event); $event.stopImmediatePropagation()"
+                    class="text-indigo-600 hover:text-indigo-700 font-medium text-sm"
+                    title="Voir les détails de l’événement">
+              Voir détails →
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ====================== MODAL DÉTAILS ====================== -->
+@if (isModalOpen && selectedEvent) {
+  <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-[999] p-4">
+    <div class="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col">
+
+      <!-- Header du modal -->
+      <div class="px-8 py-6 border-b dark:border-gray-800 flex justify-between items-center">
+        <div>
+          <span class="px-4 py-1 text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full">
+            {{ selectedEvent.category }}
+          </span>
+          <h2 class="text-2xl font-bold mt-2">{{ selectedEvent.title }}</h2>
+        </div>
+
+        <button (click)="closeModal()" 
+                class="text-4xl leading-none text-gray-400 hover:text-gray-600"
+                title="Fermer la fenêtre">
+          ×
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-8 space-y-8">
+        <p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+          {{ selectedEvent.description }}
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+          <div>
+            <span class="text-gray-500">Date de début</span>
+            <p class="font-medium">{{ formatDate(selectedEvent.scheduledAt) }}</p>
+          </div>
+
+          @if (selectedEvent.endAt) {
+            <div>
+              <span class="text-gray-500">Date de fin</span>
+              <p class="font-medium">{{ formatDate(selectedEvent.endAt) }}</p>
+            </div>
+          }
+
+          <div>
+            <span class="text-gray-500">Participants</span>
+            <p class="font-medium">
+              {{ selectedEvent.currentParticipants || 0 }} / {{ selectedEvent.maxParticipants || 'Illimité' }}
+            </p>
+          </div>
+
+          <div>
+            <span class="text-gray-500">Prix</span>
+            <p class="font-medium text-lg">
+              @if (selectedEvent.price && selectedEvent.price > 0) {
+                {{ selectedEvent.price }} TND
+              } @else {
+                <span class="text-green-600 font-semibold">Gratuit</span>
+              }
+            </p>
+          </div>
+        </div>
+
+        @if (selectedEvent.meetingLink) {
+          <div class="mt-4">
+            <span class="text-gray-500 block text-sm mb-3">Réunion en ligne</span>
+
+            <button (click)="joinMeeting(selectedEvent); $event.stopPropagation()"
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-2xl font-semibold transition-all">
+              🎥 Rejoindre la réunion
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="p-8 border-t dark:border-gray-800 flex flex-col sm:flex-row gap-4">
+        <button (click)="closeModal()" 
+                class="flex-1 py-4 border border-gray-300 dark:border-gray-700 rounded-2xl font-medium"
+                title="Fermer">
+          Fermer
+        </button>
+
+        <button (click)="registerToEvent(selectedEvent)"
+                class="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-medium"
+                title="S'inscrire à cet événement">
+          S'inscrire
+        </button>
+
+        @if (selectedEvent.price && selectedEvent.price > 0) {
+          <button (click)="payForEvent(selectedEvent)"
+                  class="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-medium"
+                  title="Payer l’événement">
+            Payer {{ selectedEvent.price }} TND
+          </button>
+        }
+      </div>
+
+    </div>
+  </div>
+}

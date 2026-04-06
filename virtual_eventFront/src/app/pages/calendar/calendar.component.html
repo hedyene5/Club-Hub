@@ -1,0 +1,125 @@
+<div class="p-6 max-w-screen-2xl mx-auto">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Calendrier des Formations</h1>
+      <p class="text-gray-500 dark:text-gray-400">Clique sur une date pour planifier une nouvelle formation virtuelle</p>
+    </div>
+    <button (click)="openCreateModal()" 
+            class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-medium transition-all shadow-lg">
+      <i class="lucide lucide-plus w-5 h-5"></i>
+      Nouvelle Formation
+    </button>
+  </div>
+
+  <!-- Calendrier -->
+  <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-theme p-6 border border-gray-200 dark:border-gray-800">
+    <full-calendar #calendar [options]="calendarOptions"></full-calendar>
+  </div>
+</div>
+
+<!-- Modal -->
+<div *ngIf="isModalOpen" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[999] p-4">
+
+  <!-- 🔥 MODAL FIX -->
+  <div class="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
+
+    <!-- HEADER FIXE -->
+    <div class="px-8 py-6 border-b dark:border-gray-800 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div [class]="isEditMode 
+          ? 'w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center'
+          : 'w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center'">
+          <i [class]="isEditMode ? 'lucide lucide-pencil w-4 h-4 text-amber-600' : 'lucide lucide-calendar-plus w-4 h-4 text-indigo-600'"></i>
+        </div>
+        <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+          {{ isEditMode ? 'Modifier la Formation' : 'Nouvelle Formation Virtuelle' }}
+        </h2>
+      </div>
+      <button (click)="closeModal()" class="text-3xl leading-none text-gray-400 hover:text-gray-600">×</button>
+    </div>
+
+    <!-- 🔥 FORM SCROLLABLE -->
+    <form [formGroup]="eventForm" (ngSubmit)="onSubmit()" 
+          class="p-8 space-y-6 overflow-y-auto flex-1">
+
+      <!-- Titre -->
+      <div>
+        <label class="block text-sm font-medium mb-2">Titre *</label>
+        <input formControlName="title" type="text"
+               class="w-full px-5 py-3.5 rounded-2xl border border-gray-300 focus:border-indigo-500"
+               placeholder="Ex: AI Conference">
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label class="block text-sm font-medium mb-2">Description</label>
+        <textarea formControlName="description"
+                  class="w-full px-5 py-3.5 rounded-2xl border border-gray-300 focus:border-indigo-500"
+                  placeholder="Description de l'événement"></textarea>
+      </div>
+
+      <!-- Date -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">Date début *</label>
+          <input formControlName="scheduledAt" type="datetime-local"
+                 class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-2">Date fin</label>
+          <input formControlName="endAt" type="datetime-local"
+                 class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+        </div>
+      </div>
+
+      <!-- Prix -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">Prix (€)</label>
+          <input formControlName="price" type="number"
+                 class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+        </div>
+
+        <div class="flex items-center gap-3 mt-8">
+          <input formControlName="isPaid" type="checkbox" class="w-5 h-5 accent-indigo-600">
+          <label class="text-sm font-medium">Événement payant</label>
+        </div>
+      </div>
+
+      <!-- Participants -->
+      <div>
+        <label class="block text-sm font-medium mb-2">Nombre max participants</label>
+        <input formControlName="maxParticipants" type="number"
+               class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+      </div>
+
+      <!-- Image -->
+      <div>
+        <label class="block text-sm font-medium mb-2">Image URL</label>
+        <input formControlName="imageUrl" type="text"
+               class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+      </div>
+
+      <!-- Recording -->
+      <div class="flex items-center gap-3">
+        <input formControlName="isRecording" type="checkbox" class="w-5 h-5 accent-indigo-600">
+        <label class="text-sm font-medium">Enregistrement automatique</label>
+      </div>
+
+      <!-- Boutons -->
+      <div class="flex gap-4 pt-6">
+        <button type="button" (click)="closeModal()"
+                class="flex-1 py-4 rounded-2xl border border-gray-300">
+          Annuler
+        </button>
+
+        <button type="submit" [disabled]="eventForm.invalid"
+                class="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl">
+          {{ isEditMode ? 'Modifier' : 'Créer' }}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>

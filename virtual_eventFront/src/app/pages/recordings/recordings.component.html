@@ -1,0 +1,54 @@
+<div class="p-6">
+
+  <!-- HEADER -->
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">🎤 Transcriptions</h1>
+
+    <input type="file" hidden #fileInput accept="audio/*"
+           (change)="onFileSelected($event)" />
+
+    <button (click)="fileInput.click()"
+            class="bg-blue-600 text-white px-4 py-2 rounded">
+      Upload Audio
+    </button>
+  </div>
+
+  <!-- LOADING -->
+  <div *ngIf="isLoading" class="mb-4 text-blue-600">
+    ⏳ Transcription en cours...
+  </div>
+
+  <!-- LIST -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <div *ngFor="let r of records" class="bg-white shadow p-4 rounded">
+
+      <h3 class="font-bold mb-2">Record ID: {{ r.id }}</h3>
+
+      <div class="flex gap-2 mb-3 flex-wrap">
+
+        <button (click)="play(r)" class="bg-gray-200 px-3 py-1 rounded">
+          ▶️ Play
+        </button>
+
+        <button (click)="delete(r.id)" class="bg-red-300 px-3 py-1 rounded">
+          🗑
+        </button>
+
+        <button (click)="downloadPdf(r.id)" class="bg-green-600 text-white px-3 py-1 rounded">
+          📄 PDF
+        </button>
+
+      </div>
+
+      <!-- TRANSCRIPTION -->
+      <div *ngIf="r.transcription" class="bg-gray-100 p-3 rounded">
+        <p class="text-sm text-gray-500 mb-1">🧠 Transcription</p>
+        <p>{{ r.transcription.content }}</p>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
