@@ -66,7 +66,7 @@ public class AuthController {
         cookie.setHttpOnly(true);   // ← non accessible par JS
         cookie.setSecure(false);    // ← true en production (HTTPS)
         cookie.setPath("/");
-        cookie.setMaxAge(500);    // 24h
+        cookie.setMaxAge(86400);    // 24h
         response.addCookie(cookie);
     }
     @GetMapping("/check")
