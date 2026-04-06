@@ -29,12 +29,8 @@ export class EventsComponent implements OnInit {
 
   loadEvents() {
     this.virtualEventService.getAllEvents().subscribe({
-      next: (data) => {
-        this.events = data;
-      },
-      error: (err) => {
-        console.error('Erreur lors du chargement des événements', err);
-      }
+      next: (data) => this.events = data,
+      error: (err) => console.error(err)
     });
   }
 
@@ -48,13 +44,30 @@ export class EventsComponent implements OnInit {
     this.selectedEvent = null;
   }
 
+  // 🔥 INSCRIPTION CORRIGÉE
   registerToEvent(event: VirtualEvent) {
+
+    if (!event.id) return;
+
     if (event.currentParticipants! >= event.maxParticipants!) {
-      alert("Désolé, cet événement a atteint sa capacité maximale.");
+      alert("❌ Événement complet");
       return;
     }
-    alert(`✅ Inscription confirmée pour : ${event.title}`);
-    this.closeModal();
+
+    this.virtualEventService.joinEvent(event.id).subscribe({
+      next: (updatedEvent) => {
+
+        event.currentParticipants = updatedEvent.currentParticipants;
+
+        alert(`✅ Inscription confirmée pour : ${event.title}`);
+
+        this.loadEvents();
+        this.closeModal();
+      },
+      error: (err) => {
+        alert(err.error?.message || "Erreur inscription");
+      }
+    });
   }
 
   payForEvent(event: VirtualEvent) {
@@ -66,23 +79,18 @@ export class EventsComponent implements OnInit {
     this.closeModal();
   }
 
-  // 🔥 NOUVELLE FONCTION
   joinMeeting(event: VirtualEvent) {
 
-    if (!event.id) {
-      alert("Lien invalide");
-      return;
-    }
+    if (!event.id) return;
 
     const now = new Date();
     const eventDate = new Date(event.scheduledAt);
 
     if (now < eventDate) {
-      const confirmJoin = confirm("⏳ L'événement n'a pas encore commencé. Continuer ?");
-      if (!confirmJoin) return;
+      if (!confirm("⏳ L'événement n'a pas encore commencé. Continuer ?")) return;
     }
 
-    if (event.status === 'COMPLETED') {
+    if (event.status === 'FINISHED') {
       alert("Cet événement est terminé.");
       return;
     }
@@ -92,9 +100,7 @@ export class EventsComponent implements OnInit {
       return;
     }
 
-    // 🔥 REDIRECTION PAGE CUSTOM
     this.router.navigate(['/meeting', event.id]);
-
     this.closeModal();
   }
 
@@ -106,7 +112,7 @@ export class EventsComponent implements OnInit {
     switch (status?.toLowerCase()) {
       case 'upcoming': return 'bg-green-100 text-green-700';
       case 'ongoing': return 'bg-orange-100 text-orange-700';
-      case 'completed': return 'bg-gray-100 text-gray-700';
+      case 'finished': return 'bg-gray-100 text-gray-700';
       default: return 'bg-blue-100 text-blue-700';
     }
   }

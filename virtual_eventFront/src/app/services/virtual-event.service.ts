@@ -12,27 +12,24 @@ export class VirtualEventService {
 
   constructor(private http: HttpClient) {}
 
-  // Créer un nouvel événement
   createEvent(event: Omit<VirtualEvent, 'id'>): Observable<VirtualEvent> {
     return this.http.post<VirtualEvent>(this.apiUrl, event);
   }
 
-  // Récupérer tous les événements
   getAllEvents(): Observable<VirtualEvent[]> {
     return this.http.get<VirtualEvent[]>(this.apiUrl);
   }
 
-  // Récupérer les événements entre deux dates (utile pour le calendrier)
-  getEventsBetween(start: string, end: string): Observable<VirtualEvent[]> {
-    return this.http.get<VirtualEvent[]>(`${this.apiUrl}/between?start=${start}&end=${end}`);
-  }
-
-  // Modifier un événement
   updateEvent(id: string, event: Partial<VirtualEvent>): Observable<VirtualEvent> {
     return this.http.put<VirtualEvent>(`${this.apiUrl}/${id}`, event);
   }
-  // Supprimer un événement
+
   deleteEvent(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  // 🔥 inscription
+  joinEvent(id: string): Observable<VirtualEvent> {
+    return this.http.put<VirtualEvent>(`${this.apiUrl}/${id}/join`, {});
   }
 }
