@@ -46,7 +46,7 @@ export class SigninFormComponent {
     this.authService.login({ email: this.email, password: this.password }).subscribe({
       next: () => {
         this.loading = false;
-        this.router.navigate(['/']);
+        this.router.navigate(['/instant-voice']);
       },
       error: (err) => {
         this.loading = false;

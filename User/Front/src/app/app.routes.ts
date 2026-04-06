@@ -18,18 +18,30 @@ import { VideosComponent } from './pages/ui-elements/videos/videos.component';
 import { SignInComponent } from './pages/auth-pages/sign-in/sign-in.component';
 import { SignUpComponent } from './pages/auth-pages/sign-up/sign-up.component';
 import { CalenderComponent } from './pages/calender/calender.component';
+import { InstantVoiceComponent } from './instant-voice/instant-voice.component';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   {
+    path: '',
+    redirectTo: 'signin',
+    pathMatch: 'full',
+  },
+  {
     path:'',
     component:AppLayoutComponent,
+    canActivate: [authGuard],
     children:[
       {
-        path: '',
+        path: 'dashboard',
         component: EcommerceComponent,
-        pathMatch: 'full',
         title:
           'Angular Ecommerce Dashboard | TailAdmin - Angular Admin Dashboard Template',
+      },
+      {
+        path: 'instant-voice',
+        component: InstantVoiceComponent,
+        title: 'Instant Voice | Club Hub',
       },
       {
         path:'calendar',

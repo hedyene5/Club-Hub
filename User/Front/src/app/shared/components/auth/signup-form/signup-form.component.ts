@@ -42,10 +42,20 @@ export class SignupFormComponent {
     { value: 'MEMBRE_SIMPLE',       label: 'Membre Simple' },
   ];
 
+  profilePhoto: string | null = null;
+
   loading = false;
   error = '';
 
   constructor(private authService: AuthService, private router: Router) {}
+
+  onPhotoSelected(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { this.profilePhoto = reader.result as string; };
+    reader.readAsDataURL(file);
+  }
 
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;

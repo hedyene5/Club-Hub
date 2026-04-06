@@ -18,7 +18,7 @@ export interface Channel {
 
 @Injectable({ providedIn: 'root' })
 export class ChannelService {
-  private apiUrl = 'http://localhost:8080/api/channels';
+  private apiUrl = 'http://localhost:8082/api/channels';
 
   constructor(private http: HttpClient) {}
 

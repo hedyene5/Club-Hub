@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ChannelService, Channel } from '../../shared/services/channel.service';
+import { ChannelService, Channel } from '../shared/services/channel.service';
 
 @Component({
   selector: 'app-instant-voice',
@@ -35,7 +35,7 @@ export class InstantVoiceComponent implements OnInit {
     this.loading = true;
     this.error = '';
     this.channelService.getAll().subscribe({
-      next: (data) => { this.channels = data; this.loading = false; },
+      next: (data: Channel[]) => { this.channels = data; this.loading = false; },
       error: () => { this.error = 'Could not load channels. Is the backend running?'; this.loading = false; }
     });
   }
@@ -56,7 +56,7 @@ export class InstantVoiceComponent implements OnInit {
   deleteSubChannel(subId: string) {
     if (!this.selectedChannel) return;
     this.channelService.deleteSubChannel(this.selectedChannel.id, subId).subscribe({
-      next: (updated) => { this.selectedChannel = updated; },
+      next: (updated: Channel) => { this.selectedChannel = updated; },
       error: () => { this.error = 'Failed to delete sub-channel.'; }
     });
   }
@@ -79,10 +79,10 @@ export class InstantVoiceComponent implements OnInit {
     if (!this.newChannelName.trim()) return;
     this.loading = true;
     this.channelService.create({ name: this.newChannelName.trim(), isPrivate: this.newChannelPrivate }).subscribe({
-      next: (channel) => {
+      next: (channel: Channel) => {
         if (this.newChannelHasSubChannel && this.newSubChannelName.trim()) {
           this.channelService.addSubChannel(channel.id, { name: this.newSubChannelName.trim() }).subscribe({
-            next: (updated) => { this.channels.push(updated); this.resetForm(); },
+            next: (updated: Channel) => { this.channels.push(updated); this.resetForm(); },
             error: () => { this.channels.push(channel); this.resetForm(); }
           });
         } else {
