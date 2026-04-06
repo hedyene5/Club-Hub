@@ -10,7 +10,7 @@ export interface RegisterPayload {
   password: string;
   role: string;
   clubId: string;
-  profilePhoto: string;
+  profilePhoto?: string; // ← ajoute cette ligne
 }
 
 export interface LoginPayload {
@@ -19,15 +19,15 @@ export interface LoginPayload {
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string;
   userId: string;
   email: string;
   firstName: string;
   lastName: string;
-  phoneNumber: string;
   role: string;
   clubId: string;
-  profilePhoto: string;
+  phoneNumber?: string;
+  profilePhoto?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -36,33 +36,32 @@ export class AuthService {
 
   constructor(private http: HttpClient) {}
 
-  getMe(): Observable<AuthResponse> {
-    return this.http.get<AuthResponse>('http://localhost:8080/api/users/me');
-  }
-
   register(payload: RegisterPayload): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.api}/register`, payload).pipe(
-      tap(res => this.saveSession(res))
+    return this.http.post<AuthResponse>(`${this.api}/register`, payload, {
+      withCredentials: true  // ← envoie/reçoit les cookies
+    }).pipe(
+      tap(res => this.saveUser(res))
     );
   }
 
   login(payload: LoginPayload): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.api}/login`, payload).pipe(
-      tap(res => this.saveSession(res))
+    return this.http.post<AuthResponse>(`${this.api}/login`, payload, {
+      withCredentials: true  // ← envoie/reçoit les cookies
+    }).pipe(
+      tap(res => this.saveUser(res))
     );
   }
 
-  logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  logout(): Observable<any> {
+    return this.http.post(`${this.api}/logout`, {}, {
+      withCredentials: true
+    }).pipe(
+      tap(() => localStorage.removeItem('user'))
+    );
   }
 
   isLoggedIn(): boolean {
-    return !!localStorage.getItem('token');
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem('token');
+    return !!localStorage.getItem('user');
   }
 
   getCurrentUser(): AuthResponse | null {
@@ -70,8 +69,19 @@ export class AuthService {
     return u ? JSON.parse(u) : null;
   }
 
-  private saveSession(res: AuthResponse): void {
-    localStorage.setItem('token', res.token);
+  getMe(): Observable<any> {
+    return this.http.get('http://localhost:8080/api/users/me', {
+      withCredentials: true
+    });
+  }
+
+  // On garde juste les infos user dans localStorage (pas le token !)
+  private saveUser(res: AuthResponse): void {
     localStorage.setItem('user', JSON.stringify(res));
   }
+  checkSession(): Observable<any> {
+  return this.http.get('http://localhost:8080/api/auth/check', {
+    withCredentials: true
+  });
+}
 }

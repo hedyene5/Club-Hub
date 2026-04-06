@@ -10,6 +10,7 @@ public class AuthResponse {
     private String role;
     private String clubId;
     private String profilePhoto;
+    public void setToken(String token) { this.token = null; }
 
     public AuthResponse(String token, String userId, String email,
                         String firstName, String lastName, String phoneNumber,
