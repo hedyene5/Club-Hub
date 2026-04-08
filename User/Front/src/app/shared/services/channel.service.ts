@@ -2,11 +2,6 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export interface SubChannel {
-  id: string;
-  name: string;
-}
-
 export interface Channel {
   id: string;
   name: string;
@@ -15,7 +10,6 @@ export interface Channel {
   createdAt?: string;
   createdBy?: string;
   memberIds?: string[];
-  subChannels: SubChannel[];
   audioHistory?: any[];
 }
 
@@ -35,6 +29,19 @@ export class ChannelService {
   ensurePostChannel(postName: string, memberId: string): Observable<Channel> {
     return this.http.post<Channel>(
       `${this.apiUrl}/post-channel/${encodeURIComponent(postName)}/${memberId}`,
+      {}
+    );
+  }
+
+  removeFromPostChannel(postName: string, memberId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.apiUrl}/post-channel/${encodeURIComponent(postName)}/${memberId}`
+    );
+  }
+
+  syncMemberPostChannel(memberId: string, currentPost: string): Observable<Channel> {
+    return this.http.post<Channel>(
+      `${this.apiUrl}/post-channel/sync/${memberId}/${encodeURIComponent(currentPost)}`,
       {}
     );
   }
@@ -62,11 +69,4 @@ export class ChannelService {
     return this.http.delete<Channel>(`${this.apiUrl}/${channelId}/members/${memberId}`);
   }
 
-  addSubChannel(channelId: string, subChannel: { name: string }): Observable<Channel> {
-    return this.http.post<Channel>(`${this.apiUrl}/${channelId}/sub-channels`, subChannel);
-  }
-
-  deleteSubChannel(channelId: string, subChannelId: string): Observable<Channel> {
-    return this.http.delete<Channel>(`${this.apiUrl}/${channelId}/sub-channels/${subChannelId}`);
-  }
 }

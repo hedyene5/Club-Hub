@@ -70,27 +70,28 @@ public class ChannelController {
         return ResponseEntity.ok(channelService.removeMember(id, memberId));
     }
 
-    // POST add sub-channel
-    @PostMapping("/{id}/sub-channels")
-    public ResponseEntity<Channel> addSubChannel(
-            @PathVariable String id,
-            @RequestBody Channel.SubChannel subChannel) {
-        return ResponseEntity.ok(channelService.addSubChannel(id, subChannel));
-    }
-
-    // DELETE sub-channel
-    @DeleteMapping("/{id}/sub-channels/{subId}")
-    public ResponseEntity<Channel> deleteSubChannel(
-            @PathVariable String id,
-            @PathVariable String subId) {
-        return ResponseEntity.ok(channelService.deleteSubChannel(id, subId));
-    }
-
     // POST ensure a post channel exists and add a member to it
     @PostMapping("/post-channel/{postName}/{memberId}")
     public ResponseEntity<Channel> ensurePostChannel(
             @PathVariable String postName,
             @PathVariable String memberId) {
         return ResponseEntity.ok(channelService.ensurePostChannel(postName, memberId));
+    }
+
+    // DELETE remove a member from their old post channel
+    @DeleteMapping("/post-channel/{postName}/{memberId}")
+    public ResponseEntity<Void> removeFromPostChannel(
+            @PathVariable String postName,
+            @PathVariable String memberId) {
+        channelService.removeFromPostChannel(postName, memberId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // POST sync member: remove from all wrong post channels, add to correct one
+    @PostMapping("/post-channel/sync/{memberId}/{currentPost}")
+    public ResponseEntity<Channel> syncMemberPostChannel(
+            @PathVariable String memberId,
+            @PathVariable String currentPost) {
+        return ResponseEntity.ok(channelService.syncMemberPostChannel(memberId, currentPost));
     }
 }

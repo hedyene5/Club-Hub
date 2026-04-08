@@ -43,10 +43,10 @@ export class MembersComponent implements OnInit {
           saved: false,
         }));
         this.loading = false;
-        // Sync channels for members who already have a post assigned
+        // Sync every member: remove from wrong post channels, add to correct one
         this.members
           .filter(m => m.post)
-          .forEach(m => this.channelService.ensurePostChannel(m.post, m.id).subscribe());
+          .forEach(m => this.channelService.syncMemberPostChannel(m.id, m.post).subscribe());
       },
       error: () => {
         this.error = 'Failed to load members.';
@@ -59,11 +59,13 @@ export class MembersComponent implements OnInit {
     if (!member.postInput.trim()) return;
     member.saving = true;
     member.saved = false;
-    this.authService.assignPost(member.id, member.postInput.trim()).subscribe({
+    const oldPost = member.post;
+    const newPost = member.postInput.trim();
+    this.authService.assignPost(member.id, newPost).subscribe({
       next: (updated: any) => {
-        member.post = updated.post ?? member.postInput;
-        // Ensure the post channel exists and add this member to it
-        this.channelService.ensurePostChannel(member.post, member.id).subscribe();
+        member.post = updated.post ?? newPost;
+        // Sync: removes from all wrong post channels, adds to new one
+        this.channelService.syncMemberPostChannel(member.id, member.post).subscribe();
         member.saving = false;
         member.saved = true;
         setTimeout(() => (member.saved = false), 2000);

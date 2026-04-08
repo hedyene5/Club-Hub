@@ -14,21 +14,16 @@ export class SessionGuardService {
   ) {}
 
   startWatching(): void {
+    // Check every 5 minutes using only the local expiry timestamp — no server call
     this.intervalId = setInterval(() => {
-      this.authService.checkSession().subscribe({
-        next: () => {
-          console.log('✅ Session still valid');
-        },
-        error: () => {
-          this.ngZone.run(() => {
-            clearInterval(this.intervalId);
-            localStorage.removeItem('user');
-            alert('⚠️ Session expirée ! Veuillez vous reconnecter.');
-            this.router.navigate(['/signin']);
-          });
-        }
-      });
-    }, 30000); // vérifie toutes les 30 secondes
+      if (!this.authService.isLoggedIn()) {
+        this.ngZone.run(() => {
+          clearInterval(this.intervalId);
+          alert('⚠️ Session expirée ! Veuillez vous reconnecter.');
+          this.router.navigate(['/signin']);
+        });
+      }
+    }, 5 * 60 * 1000);
   }
 
   stopWatching(): void {

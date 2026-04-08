@@ -55,7 +55,6 @@
               <p class="text-xs text-bodydark2">
                 <span *ngIf="channel.isPostChannel" class="text-warning">Post channel</span>
                 <span *ngIf="!channel.isPostChannel">{{ channel.isPrivate ? 'Private' : 'Public' }}</span>
-                <span *ngIf="channel.subChannels.length > 0"> · {{ channel.subChannels.length }} sub-channel(s)</span>
               </p>
             </div>
           </div>
@@ -116,9 +115,10 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
-      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+      <!-- Audio history (wider) -->
+      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-2">
         <div class="border-b border-stroke px-6 py-4 dark:border-strokedark">
           <h4 class="text-base font-semibold text-black dark:text-white">Audio Channel History</h4>
         </div>
@@ -150,6 +150,41 @@
           <p class="text-xs text-bodydark2">Hold the mic button below to send a message to this channel</p>
         </div>
       </div>
+
+      <!-- Members list (narrower) -->
+      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark">
+          <h4 class="text-base font-semibold text-black dark:text-white">Members</h4>
+        </div>
+        <div *ngIf="membersLoading" class="px-6 py-5 text-sm text-bodydark2">Loading...</div>
+        <ul *ngIf="!membersLoading" class="divide-y divide-stroke dark:divide-strokedark">
+          <li *ngIf="channelMembers.length === 0" class="px-6 py-5 text-sm text-bodydark2">No members.</li>
+          <li
+            *ngFor="let member of channelMembers"
+            class="flex items-center gap-3 px-4 py-3"
+          >
+            <div class="h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-gray-2 dark:bg-meta-4">
+              <img
+                *ngIf="member.profilePhoto"
+                [src]="member.profilePhoto"
+                [alt]="member.firstName"
+                class="h-full w-full object-cover"
+              />
+              <div
+                *ngIf="!member.profilePhoto"
+                class="flex h-full w-full items-center justify-center text-xs font-semibold text-bodydark2"
+              >
+                {{ member.firstName.charAt(0) }}{{ member.lastName.charAt(0) }}
+              </div>
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-black dark:text-white">{{ member.firstName }} {{ member.lastName }}</p>
+              <p class="truncate text-xs text-bodydark2">{{ member.role.replace('_', ' ') }}</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+
     </div>
 
     <div class="mt-8 flex justify-center">

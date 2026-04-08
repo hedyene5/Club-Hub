@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -78,19 +77,25 @@ public class ChannelService {
         return channelRepo.save(channel);
     }
 
-    // Add sub-channel
-    public Channel addSubChannel(String channelId, Channel.SubChannel subChannel) {
-        Channel channel = getChannelById(channelId);
-        subChannel.setId(UUID.randomUUID().toString());
-        channel.getSubChannels().add(subChannel);
-        return channelRepo.save(channel);
+    // Remove a member from a post channel
+    public void removeFromPostChannel(String postName, String memberId) {
+        channelRepo.findByNameAndPostChannel(postName, true).ifPresent(channel -> {
+            channel.getMemberIds().remove(memberId);
+            channelRepo.save(channel);
+        });
     }
 
-    // Delete sub-channel
-    public Channel deleteSubChannel(String channelId, String subChannelId) {
-        Channel channel = getChannelById(channelId);
-        channel.getSubChannels().removeIf(s -> s.getId().equals(subChannelId));
-        return channelRepo.save(channel);
+    // Sync: remove member from every post channel except their current one, then add to current one
+    public Channel syncMemberPostChannel(String memberId, String currentPost) {
+        channelRepo.findAll().stream()
+                .filter(c -> c.isPostChannel()
+                        && !c.getName().equals(currentPost)
+                        && c.getMemberIds().contains(memberId))
+                .forEach(c -> {
+                    c.getMemberIds().remove(memberId);
+                    channelRepo.save(c);
+                });
+        return ensurePostChannel(currentPost, memberId);
     }
 
     // Ensure a post channel exists for the given post name, and add the member to it

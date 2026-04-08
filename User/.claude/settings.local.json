@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mongosh --eval 'db.channels.updateMany\\({}, { $unset: { subChannels: '\\\\'''\\\\'' } }\\)' --quiet)",
+      "Bash(mongo --eval 'db.channels.updateMany\\({}, { $unset: { subChannels: '\\\\'''\\\\'' } }\\)' --quiet)"
+    ]
+  }
+}

@@ -11,6 +11,7 @@ interface AppUser {
   lastName: string;
   email: string;
   role: string;
+  profilePhoto?: string;
 }
 
 @Component({
@@ -36,6 +37,8 @@ export class InstantVoiceComponent implements OnInit {
 
   allUsers: AppUser[] = [];
   usersLoading = false;
+  channelMembers: AppUser[] = [];
+  membersLoading = false;
 
   currentUserId = '';
   currentUserRole = '';
@@ -65,7 +68,7 @@ export class InstantVoiceComponent implements OnInit {
         this.currentUserPost = data?.post ?? '';
         // If this is a MEMBRE_SIMPLE with a post, ensure their channel exists
         if (this.currentUserRole === 'MEMBRE_SIMPLE' && this.currentUserPost) {
-          this.channelService.ensurePostChannel(this.currentUserPost, this.currentUserId).subscribe({
+          this.channelService.syncMemberPostChannel(this.currentUserId, this.currentUserPost).subscribe({
             next: () => this.loadChannels(),
             error: () => this.loadChannels()
           });
@@ -89,6 +92,18 @@ export class InstantVoiceComponent implements OnInit {
   openChannel(channel: Channel) {
     this.selectedChannel = channel;
     this.view = 'detail';
+    this.channelMembers = [];
+    this.membersLoading = true;
+    this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
+      next: (users) => {
+        const ids = channel.memberIds ?? [];
+        this.channelMembers = users.filter(u =>
+          u.role !== 'MEMBRE_SIMPLE' || ids.includes(u.id)
+        );
+        this.membersLoading = false;
+      },
+      error: () => { this.membersLoading = false; }
+    });
   }
 
   deleteChannel(id: string, event: Event) {

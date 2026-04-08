@@ -21,16 +21,9 @@ public class Channel {
     private boolean isPrivate;
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    private List<SubChannel> subChannels = new ArrayList<>();
     private List<String> memberIds = new ArrayList<>();
     private String createdBy;
 
     @JsonProperty("isPostChannel")
     private boolean postChannel;
-
-    @Data
-    public static class SubChannel {
-        private String id;
-        private String name;
-    }
 }
