@@ -104,6 +104,19 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    // ── DELETE /api/users/by-post/{postName} ──────────────────────────
+    // Clears the post field for all MEMBRE_SIMPLE users with that post
+    @DeleteMapping("/by-post/{postName}")
+    public ResponseEntity<Void> clearPostByName(
+            @PathVariable String postName,
+            HttpServletRequest request) {
+        String role = getRoleFromRequest(request);
+        if (role == null) return ResponseEntity.status(401).build();
+        if ("MEMBRE_SIMPLE".equals(role)) return ResponseEntity.status(403).build();
+        userService.clearPostByName(postName);
+        return ResponseEntity.noContent().build();
+    }
+
     // ── GET /api/users/members ────────────────────────────────────────
     @GetMapping("/members")
     public ResponseEntity<List<User>> getSimpleMembers() {

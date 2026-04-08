@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ChannelService, Channel } from '../shared/services/channel.service';
 import { AuthService } from '../services/auth.service';
+import { switchMap } from 'rxjs';
 
 interface AppUser {
   id: string;
@@ -30,6 +31,7 @@ export class InstantVoiceComponent implements OnInit {
   isRecording = false;
   loading = false;
   error = '';
+  pendingDeleteChannel: Channel | null = null;
 
   newChannelName = '';
   newChannelPrivate = false;
@@ -106,12 +108,36 @@ export class InstantVoiceComponent implements OnInit {
     });
   }
 
-  deleteChannel(id: string, event: Event) {
+  requestDeleteChannel(channel: Channel, event: Event) {
     event.stopPropagation();
-    this.channelService.delete(id).subscribe({
-      next: () => { this.channels = this.channels.filter(c => c.id !== id); },
-      error: () => { this.error = 'Failed to delete channel.'; }
-    });
+    this.pendingDeleteChannel = channel;
+  }
+
+  cancelDelete() {
+    this.pendingDeleteChannel = null;
+  }
+
+  confirmDelete() {
+    const channel = this.pendingDeleteChannel;
+    if (!channel) return;
+    this.pendingDeleteChannel = null;
+
+    const doDelete = () => {
+      this.channelService.delete(channel.id).subscribe({
+        next: () => { this.channels = this.channels.filter(c => c.id !== channel.id); },
+        error: () => { this.error = 'Failed to delete channel.'; }
+      });
+    };
+
+    if (channel.isPostChannel) {
+      // Clear posts for all members who had this post, then delete the channel
+      this.authService.clearPostByName(channel.name).subscribe({
+        next: () => doDelete(),
+        error: () => doDelete()
+      });
+    } else {
+      doDelete();
+    }
   }
 
   goToCreate() {

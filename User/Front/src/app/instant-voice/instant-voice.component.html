@@ -60,8 +60,8 @@
           </div>
           <button
             *ngIf="!isMembreSimple"
-            (click)="deleteChannel(channel.id, $event)"
-            class="rounded p-1.5 text-bodydark2 opacity-0 transition hover:bg-red-50 hover:text-danger group-hover:opacity-100 dark:hover:bg-meta-4"
+            (click)="requestDeleteChannel(channel, $event)"
+            class="rounded p-1.5 text-red-500 transition hover:bg-red-50 dark:hover:bg-meta-4"
             title="Delete channel"
           >
             <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
@@ -85,6 +85,50 @@
         <p *ngIf="isMembreSimple" class="text-sm text-bodydark2 italic">Only admins can create channels</p>
       </div>
     </div>
+
+    <!-- Delete confirmation modal -->
+    <div
+      *ngIf="pendingDeleteChannel"
+      class="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50"
+      (click)="cancelDelete()"
+    >
+      <div
+        class="w-full max-w-sm rounded-sm border border-stroke bg-white p-6 shadow-default dark:border-strokedark dark:bg-boxdark"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="mb-4 flex items-center gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-meta-4">
+            <svg class="h-5 w-5 text-danger fill-current" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-base font-semibold text-black dark:text-white">Delete channel</h4>
+            <p class="text-sm text-bodydark2">
+              Are you sure you want to delete <span class="font-medium text-black dark:text-white">{{ pendingDeleteChannel.name }}</span>?
+            </p>
+          </div>
+        </div>
+        <p *ngIf="pendingDeleteChannel.isPostChannel" class="mb-4 rounded border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+          This is a post channel. All members assigned to this post will have their post cleared.
+        </p>
+        <div class="flex items-center justify-end gap-3">
+          <button
+            (click)="cancelDelete()"
+            class="rounded border border-stroke px-4 py-2 text-sm font-medium text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+          >
+            Cancel
+          </button>
+          <button
+            (click)="confirmDelete()"
+            class="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
   </ng-container>
 
 

@@ -101,6 +101,14 @@ export class AuthService {
     );
   }
 
+  // ── Vide le post de tous les membres avec ce postName ────────────
+  clearPostByName(postName: string): Observable<any> {
+    return this.http.delete(
+      `${this.usersApi}/by-post/${encodeURIComponent(postName)}`,
+      { withCredentials: true }
+    );
+  }
+
   private static readonly SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24h
 
   isLoggedIn(): boolean {

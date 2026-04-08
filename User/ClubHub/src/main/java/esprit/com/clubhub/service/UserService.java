@@ -53,4 +53,13 @@ public class UserService {
         existing.setPost(post);
         return userRepo.save(existing);
     }
+
+    public void clearPostByName(String postName) {
+        userRepo.findByRole(Role.MEMBRE_SIMPLE).stream()
+                .filter(u -> postName.equals(u.getPost()))
+                .forEach(u -> {
+                    u.setPost(null);
+                    userRepo.save(u);
+                });
+    }
 }
