@@ -18,9 +18,12 @@ public class ChannelController {
 
     // GET channels for a user
     @GetMapping
-    public List<Channel> getChannels(@RequestParam(required = false) String userId) {
+    public List<Channel> getChannels(
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String userPost) {
         if (userId != null && !userId.isEmpty()) {
-            return channelService.getChannelsForUser(userId);
+            return channelService.getChannelsForUser(userId, role, userPost);
         }
         return channelService.getAllChannels();
     }
@@ -81,5 +84,13 @@ public class ChannelController {
             @PathVariable String id,
             @PathVariable String subId) {
         return ResponseEntity.ok(channelService.deleteSubChannel(id, subId));
+    }
+
+    // POST ensure a post channel exists and add a member to it
+    @PostMapping("/post-channel/{postName}/{memberId}")
+    public ResponseEntity<Channel> ensurePostChannel(
+            @PathVariable String postName,
+            @PathVariable String memberId) {
+        return ResponseEntity.ok(channelService.ensurePostChannel(postName, memberId));
     }
 }

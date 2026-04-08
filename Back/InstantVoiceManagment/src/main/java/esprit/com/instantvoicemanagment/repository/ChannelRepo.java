@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface ChannelRepo extends MongoRepository<Channel, String> {
     List<Channel> findByMemberIdsContaining(String userId);
+    java.util.Optional<Channel> findByNameAndPostChannel(String name, boolean postChannel);
 }

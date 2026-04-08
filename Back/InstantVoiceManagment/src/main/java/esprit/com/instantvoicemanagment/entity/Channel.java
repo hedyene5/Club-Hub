@@ -25,6 +25,9 @@ public class Channel {
     private List<String> memberIds = new ArrayList<>();
     private String createdBy;
 
+    @JsonProperty("isPostChannel")
+    private boolean postChannel;
+
     @Data
     public static class SubChannel {
         private String id;

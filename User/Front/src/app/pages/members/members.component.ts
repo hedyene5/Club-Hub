@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { ChannelService } from '../../shared/services/channel.service';
 
 interface SimpleMember {
   id: string;
@@ -25,7 +26,7 @@ export class MembersComponent implements OnInit {
   loading = true;
   error = '';
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private channelService: ChannelService) {}
 
   ngOnInit() {
     this.authService.getSimpleMembers().subscribe({
@@ -42,6 +43,10 @@ export class MembersComponent implements OnInit {
           saved: false,
         }));
         this.loading = false;
+        // Sync channels for members who already have a post assigned
+        this.members
+          .filter(m => m.post)
+          .forEach(m => this.channelService.ensurePostChannel(m.post, m.id).subscribe());
       },
       error: () => {
         this.error = 'Failed to load members.';
@@ -51,11 +56,14 @@ export class MembersComponent implements OnInit {
   }
 
   savePost(member: SimpleMember) {
+    if (!member.postInput.trim()) return;
     member.saving = true;
     member.saved = false;
-    this.authService.assignPost(member.id, member.postInput).subscribe({
+    this.authService.assignPost(member.id, member.postInput.trim()).subscribe({
       next: (updated: any) => {
         member.post = updated.post ?? member.postInput;
+        // Ensure the post channel exists and add this member to it
+        this.channelService.ensurePostChannel(member.post, member.id).subscribe();
         member.saving = false;
         member.saved = true;
         setTimeout(() => (member.saved = false), 2000);

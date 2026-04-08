@@ -15,15 +15,22 @@ public class ChannelService {
 
     private final ChannelRepo channelRepo;
 
-    // Get channels visible to a specific user:
-    // - public channels are visible to everyone
-    // - private channels are visible only to assigned members
-    public List<Channel> getChannelsForUser(String userId) {
+    // Get channels visible to a specific user
+    public List<Channel> getChannelsForUser(String userId, String role, String userPost) {
         return channelRepo.findAll().stream()
-                .filter(c -> !c.isPrivate()
-                        || c.getMemberIds() == null
-                        || c.getMemberIds().isEmpty()
-                        || c.getMemberIds().contains(userId))
+                .filter(c -> {
+                    if (c.isPostChannel()) {
+                        // Non-simple members see ALL post channels
+                        if (!"MEMBRE_SIMPLE".equals(role)) return true;
+                        // Simple members see only their matching post channel
+                        return userPost != null && userPost.equals(c.getName());
+                    }
+                    // Regular channels: public or member
+                    return !c.isPrivate()
+                            || c.getMemberIds() == null
+                            || c.getMemberIds().isEmpty()
+                            || c.getMemberIds().contains(userId);
+                })
                 .collect(java.util.stream.Collectors.toList());
     }
 
@@ -84,5 +91,22 @@ public class ChannelService {
         Channel channel = getChannelById(channelId);
         channel.getSubChannels().removeIf(s -> s.getId().equals(subChannelId));
         return channelRepo.save(channel);
+    }
+
+    // Ensure a post channel exists for the given post name, and add the member to it
+    public Channel ensurePostChannel(String postName, String memberId) {
+        Channel channel = channelRepo.findByNameAndPostChannel(postName, true)
+                .orElseGet(() -> {
+                    Channel c = new Channel();
+                    c.setName(postName);
+                    c.setPostChannel(true);
+                    c.setPrivate(true);
+                    return channelRepo.save(c);
+                });
+        if (memberId != null && !memberId.isEmpty() && !channel.getMemberIds().contains(memberId)) {
+            channel.getMemberIds().add(memberId);
+            return channelRepo.save(channel);
+        }
+        return channel;
     }
 }

@@ -11,6 +11,7 @@ export interface Channel {
   id: string;
   name: string;
   isPrivate: boolean;
+  isPostChannel?: boolean;
   createdAt?: string;
   createdBy?: string;
   memberIds?: string[];
@@ -24,8 +25,18 @@ export class ChannelService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(userId: string): Observable<Channel[]> {
-    return this.http.get<Channel[]>(`${this.apiUrl}?userId=${userId}`);
+  getAll(userId: string, role?: string, userPost?: string): Observable<Channel[]> {
+    let params = `userId=${userId}`;
+    if (role) params += `&role=${role}`;
+    if (userPost) params += `&userPost=${encodeURIComponent(userPost)}`;
+    return this.http.get<Channel[]>(`${this.apiUrl}?${params}`);
+  }
+
+  ensurePostChannel(postName: string, memberId: string): Observable<Channel> {
+    return this.http.post<Channel>(
+      `${this.apiUrl}/post-channel/${encodeURIComponent(postName)}/${memberId}`,
+      {}
+    );
   }
 
   create(

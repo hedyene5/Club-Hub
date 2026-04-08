@@ -32,8 +32,6 @@ export class InstantVoiceComponent implements OnInit {
 
   newChannelName = '';
   newChannelPrivate = false;
-  newChannelHasSubChannel = false;
-  newSubChannelName = '';
   selectedMemberIds: string[] = [];
 
   allUsers: AppUser[] = [];
@@ -41,6 +39,7 @@ export class InstantVoiceComponent implements OnInit {
 
   currentUserId = '';
   currentUserRole = '';
+  currentUserPost = '';
 
   get isMembreSimple(): boolean {
     return this.currentUserRole === 'MEMBRE_SIMPLE';
@@ -60,13 +59,28 @@ export class InstantVoiceComponent implements OnInit {
     const user = this.authService.getCurrentUser();
     this.currentUserId = user?.userId ?? '';
     this.currentUserRole = user?.role ?? '';
-    this.loadChannels();
+    // Fetch full user to get the post field
+    this.authService.getMe().subscribe({
+      next: (data: any) => {
+        this.currentUserPost = data?.post ?? '';
+        // If this is a MEMBRE_SIMPLE with a post, ensure their channel exists
+        if (this.currentUserRole === 'MEMBRE_SIMPLE' && this.currentUserPost) {
+          this.channelService.ensurePostChannel(this.currentUserPost, this.currentUserId).subscribe({
+            next: () => this.loadChannels(),
+            error: () => this.loadChannels()
+          });
+        } else {
+          this.loadChannels();
+        }
+      },
+      error: () => this.loadChannels()
+    });
   }
 
   loadChannels() {
     this.loading = true;
     this.error = '';
-    this.channelService.getAll(this.currentUserId).subscribe({
+    this.channelService.getAll(this.currentUserId, this.currentUserRole, this.currentUserPost).subscribe({
       next: (data: Channel[]) => { this.channels = data; this.loading = false; },
       error: () => { this.error = 'Could not load channels. Is the backend running?'; this.loading = false; }
     });
@@ -82,14 +96,6 @@ export class InstantVoiceComponent implements OnInit {
     this.channelService.delete(id).subscribe({
       next: () => { this.channels = this.channels.filter(c => c.id !== id); },
       error: () => { this.error = 'Failed to delete channel.'; }
-    });
-  }
-
-  deleteSubChannel(subId: string) {
-    if (!this.selectedChannel) return;
-    this.channelService.deleteSubChannel(this.selectedChannel.id, subId).subscribe({
-      next: (updated: Channel) => { this.selectedChannel = updated; },
-      error: () => { this.error = 'Failed to delete sub-channel.'; }
     });
   }
 
@@ -145,17 +151,7 @@ export class InstantVoiceComponent implements OnInit {
       this.currentUserId,
       this.currentUserRole
     ).subscribe({
-      next: (channel: Channel) => {
-        if (this.newChannelHasSubChannel && this.newSubChannelName.trim()) {
-          this.channelService.addSubChannel(channel.id, { name: this.newSubChannelName.trim() }).subscribe({
-            next: (updated: Channel) => { this.channels.push(updated); this.resetForm(); },
-            error: () => { this.channels.push(channel); this.resetForm(); }
-          });
-        } else {
-          this.channels.push(channel);
-          this.resetForm();
-        }
-      },
+      next: (channel: Channel) => { this.channels.push(channel); this.resetForm(); },
       error: () => { this.error = 'Failed to create channel.'; this.loading = false; }
     });
   }
@@ -163,8 +159,6 @@ export class InstantVoiceComponent implements OnInit {
   private resetForm() {
     this.newChannelName = '';
     this.newChannelPrivate = false;
-    this.newChannelHasSubChannel = false;
-    this.newSubChannelName = '';
     this.selectedMemberIds = [];
     this.allUsers = [];
     this.loading = false;
