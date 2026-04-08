@@ -33,6 +33,8 @@ public class User {
 
     private String profilePhoto;
 
+    private String post;
+
     @DBRef
     private Club club;
 
@@ -65,4 +67,7 @@ public class User {
 
     public String getProfilePhoto() { return profilePhoto; }
     public void setProfilePhoto(String profilePhoto) { this.profilePhoto = profilePhoto; }
+
+    public String getPost() { return post; }
+    public void setPost(String post) { this.post = post; }
 }

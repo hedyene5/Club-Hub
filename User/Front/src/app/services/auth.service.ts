@@ -85,6 +85,22 @@ export class AuthService {
     );
   }
 
+  // ── Récupère les membres simples ─────────────────────────────────
+  getSimpleMembers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.usersApi}/members`, {
+      withCredentials: true
+    });
+  }
+
+  // ── Assigne un poste à un membre simple ──────────────────────────
+  assignPost(userId: string, post: string): Observable<any> {
+    return this.http.put(
+      `${this.usersApi}/${userId}/post`,
+      { post },
+      { withCredentials: true }
+    );
+  }
+
   private static readonly SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24h
 
   isLoggedIn(): boolean {

@@ -19,6 +19,7 @@ import { SignInComponent } from './pages/auth-pages/sign-in/sign-in.component';
 import { SignUpComponent } from './pages/auth-pages/sign-up/sign-up.component';
 import { CalenderComponent } from './pages/calender/calender.component';
 import { InstantVoiceComponent } from './instant-voice/instant-voice.component';
+import { MembersComponent } from './pages/members/members.component';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -42,6 +43,11 @@ export const routes: Routes = [
         path: 'instant-voice',
         component: InstantVoiceComponent,
         title: 'Instant Voice | Club Hub',
+      },
+      {
+        path: 'members',
+        component: MembersComponent,
+        title: 'Members Management | Club Hub',
       },
       {
         path:'calendar',

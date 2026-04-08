@@ -1,5 +1,6 @@
 package esprit.com.clubhub.service;
 
+import esprit.com.clubhub.entity.Role;
 import esprit.com.clubhub.entity.User;
 import esprit.com.clubhub.repository.UserRepo;
 import org.springframework.stereotype.Service;
@@ -41,5 +42,15 @@ public class UserService {
 
     public void deleteUser(String id) {
         userRepo.deleteById(id);
+    }
+
+    public List<User> getSimpleMembers() {
+        return userRepo.findByRole(Role.MEMBRE_SIMPLE);
+    }
+
+    public User assignPost(String id, String post) {
+        User existing = getUserById(id);
+        existing.setPost(post);
+        return userRepo.save(existing);
     }
 }

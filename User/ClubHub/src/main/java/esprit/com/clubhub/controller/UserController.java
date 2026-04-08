@@ -36,6 +36,17 @@ public class UserController {
                 .orElse(null);
     }
 
+    // ── Helper : extrait le role depuis le cookie JWT ────────────────
+    private String getRoleFromRequest(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
+        return Arrays.stream(request.getCookies())
+                .filter(c -> "jwt".equals(c.getName()))
+                .map(Cookie::getValue)
+                .map(jwtUtil::extractRole)
+                .findFirst()
+                .orElse(null);
+    }
+
     // ── GET /api/users/me ─────────────────────────────────────────────
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> getMe(HttpServletRequest request) {
@@ -91,5 +102,24 @@ public class UserController {
     public ResponseEntity<Void> delete(@PathVariable String id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── GET /api/users/members ────────────────────────────────────────
+    @GetMapping("/members")
+    public ResponseEntity<List<User>> getSimpleMembers() {
+        return ResponseEntity.ok(userService.getSimpleMembers());
+    }
+
+    // ── PUT /api/users/{id}/post ──────────────────────────────────────
+    // Assigns a post to a MEMBRE_SIMPLE user; caller must not be MEMBRE_SIMPLE
+    @PutMapping("/{id}/post")
+    public ResponseEntity<User> assignPost(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+        String role = getRoleFromRequest(request);
+        if (role == null) return ResponseEntity.status(401).build();
+        if ("MEMBRE_SIMPLE".equals(role)) return ResponseEntity.status(403).build();
+        return ResponseEntity.ok(userService.assignPost(id, body.get("post")));
     }
 }

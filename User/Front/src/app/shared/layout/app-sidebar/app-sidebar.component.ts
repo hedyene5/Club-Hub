@@ -5,6 +5,7 @@ import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { SafeHtmlPipe } from '../../pipe/safe-html.pipe';
 import { SidebarWidgetComponent } from './app-sidebar-widget.component';
 import { combineLatest, Subscription } from 'rxjs';
+import { AuthService } from '../../../services/auth.service';
 
 type NavItem = {
   name: string;
@@ -110,10 +111,16 @@ export class AppSidebarComponent {
 
   private subscription: Subscription = new Subscription();
 
+  get canManageMembers(): boolean {
+    const user = this.authService.getCurrentUser();
+    return !!user && user.role !== 'MEMBRE_SIMPLE';
+  }
+
   constructor(
     public sidebarService: SidebarService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private authService: AuthService
   ) {
     this.isExpanded$ = this.sidebarService.isExpanded$;
     this.isMobileOpen$ = this.sidebarService.isMobileOpen$;

@@ -240,6 +240,36 @@
             </li>
             }
           </ul>
+
+          @if (canManageMembers) {
+          <ul class="flex flex-col gap-1 mt-1">
+            <li>
+              <a
+                routerLink="/members"
+                routerLinkActive="menu-item-active"
+                class="menu-item group"
+                [ngClass]="{ 'menu-item-inactive': !isActive('/members') }"
+              >
+                <span
+                  class="menu-item-icon-size"
+                  [ngClass]="{
+                    'menu-item-icon-active': isActive('/members'),
+                    'menu-item-icon-inactive': !isActive('/members')
+                  }"
+                >
+                  <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M8.5 5.5C8.5 3.567 10.067 2 12 2C13.933 2 15.5 3.567 15.5 5.5C15.5 7.433 13.933 9 12 9C10.067 9 8.5 7.433 8.5 5.5ZM12 3.5C10.8954 3.5 10 4.39543 10 5.5C10 6.60457 10.8954 7.5 12 7.5C13.1046 7.5 14 6.60457 14 5.5C14 4.39543 13.1046 3.5 12 3.5ZM3.75 18.5C3.75 15.3244 6.3244 12.75 9.5 12.75H14.5C17.6756 12.75 20.25 15.3244 20.25 18.5V20C20.25 20.4142 19.9142 20.75 19.5 20.75H4.5C4.08579 20.75 3.75 20.4142 3.75 20V18.5ZM9.5 14.25C7.15279 14.25 5.25 16.1528 5.25 18.5V19.25H18.75V18.5C18.75 16.1528 16.8472 14.25 14.5 14.25H9.5Z" fill="currentColor"></path>
+                  </svg>
+                </span>
+                <span class="menu-item-text">
+                  @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
+                  Members
+                  }
+                </span>
+              </a>
+            </li>
+          </ul>
+          }
         </div>
         <!-- end main menu -->
 
