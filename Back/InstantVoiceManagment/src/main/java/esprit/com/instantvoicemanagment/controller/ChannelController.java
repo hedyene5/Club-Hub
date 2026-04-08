@@ -5,6 +5,7 @@ import esprit.com.instantvoicemanagment.service.ChannelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
@@ -14,6 +15,7 @@ import java.util.List;
 public class ChannelController {
 
     private final ChannelService channelService;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     // GET channels for a user
     @GetMapping
@@ -63,9 +65,18 @@ public class ChannelController {
 
     // DELETE remove member from channel
     @DeleteMapping("/{id}/members/{memberId}")
-    public ResponseEntity<Channel> removeMember(
+    public ResponseEntity<?> removeMember(
             @PathVariable String id,
             @PathVariable String memberId) {
+        try {
+            java.util.Map<?, ?> user = restTemplate.getForObject(
+                    "http://localhost:8081/api/users/" + memberId, java.util.Map.class);
+            if (user != null && "PRESIDENT".equals(user.get("role"))) {
+                return ResponseEntity.status(403).body("Cannot remove a PRESIDENT from a channel.");
+            }
+        } catch (Exception ignored) {
+            // If the user service is unavailable, proceed (do not block)
+        }
         return ResponseEntity.ok(channelService.removeMember(id, memberId));
     }
 

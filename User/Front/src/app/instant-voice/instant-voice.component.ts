@@ -50,6 +50,26 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   playingId: string | null = null;
   private activeAudio: HTMLAudioElement | null = null;
 
+  // Kick
+  pendingKickMember: AppUser | null = null;
+  kickingId: string | null = null;
+
+  // Add member
+  showAddMemberPanel = false;
+  addableUsers: AppUser[] = [];
+  addableLoading = false;
+  addingUserId: string | null = null;
+  memberSearch = '';
+
+  get filteredAddableUsers(): AppUser[] {
+    const q = this.memberSearch.trim().toLowerCase();
+    if (!q) return [];
+    return this.addableUsers.filter(u =>
+      `${u.firstName} ${u.lastName}`.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q)
+    );
+  }
+
   currentUserId = '';
   currentUserRole = '';
   currentUserPost = '';
@@ -106,13 +126,14 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.channelMembers = [];
     this.membersLoading = true;
     this.recordingError = '';
+    this.showAddMemberPanel = false;
+    this.addableUsers = [];
+    this.pendingKickMember = null;
 
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
       next: (users) => {
-        const ids = channel.memberIds ?? [];
-        this.channelMembers = users.filter(u =>
-          u.role !== 'MEMBRE_SIMPLE' || ids.includes(u.id)
-        );
+        const ids = new Set(channel.memberIds ?? []);
+        this.channelMembers = users.filter(u => ids.has(u.id));
         this.membersLoading = false;
       },
       error: () => { this.membersLoading = false; }
@@ -196,6 +217,73 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     return this.selectedMemberIds.includes(userId);
   }
 
+  // ─── Kick ─────────────────────────────────────────────────────────────────
+
+  requestKick(member: AppUser, event: Event) {
+    event.stopPropagation();
+    this.pendingKickMember = member;
+  }
+
+  cancelKick() { this.pendingKickMember = null; }
+
+  confirmKick() {
+    const member = this.pendingKickMember;
+    if (!member) return;
+    this.pendingKickMember = null;
+    this.kickingId = member.id;
+    this.channelService.removeMember(this.selectedChannel!.id, member.id).subscribe({
+      next: (ch) => {
+        this.channelMembers = this.channelMembers.filter(m => m.id !== member.id);
+        if (this.selectedChannel) this.selectedChannel.memberIds = ch.memberIds;
+        this.kickingId = null;
+        // Refresh addable list if panel is open
+        if (this.showAddMemberPanel) this.refreshAddableUsers();
+      },
+      error: () => { this.kickingId = null; }
+    });
+  }
+
+  // ─── Add member ───────────────────────────────────────────────────────────
+
+  openAddMemberPanel() {
+    this.showAddMemberPanel = true;
+    this.refreshAddableUsers();
+  }
+
+  closeAddMemberPanel() {
+    this.showAddMemberPanel = false;
+    this.addableUsers = [];
+    this.memberSearch = '';
+  }
+
+  private refreshAddableUsers() {
+    this.addableLoading = true;
+    this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
+      next: (users) => {
+        const inChannel = new Set(this.selectedChannel?.memberIds ?? []);
+        this.addableUsers = users.filter(u => !inChannel.has(u.id));
+        this.addableLoading = false;
+      },
+      error: () => { this.addableLoading = false; }
+    });
+  }
+
+  addMemberToChannel(user: AppUser) {
+    if (this.addingUserId) return;
+    this.addingUserId = user.id;
+    this.channelService.addMember(this.selectedChannel!.id, user.id).subscribe({
+      next: (ch) => {
+        this.channelMembers.push(user);
+        this.addableUsers = this.addableUsers.filter(u => u.id !== user.id);
+        if (this.selectedChannel) this.selectedChannel.memberIds = ch.memberIds;
+        this.addingUserId = null;
+      },
+      error: () => { this.addingUserId = null; }
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   goBack() {
     if (this.isRecording) this.cancelRecordingQuietly();
     this.voiceService.leaveChannel();
@@ -205,6 +293,10 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.view = 'list';
     this.selectedChannel = null;
     this.audioHistory = [];
+    this.showAddMemberPanel = false;
+    this.addableUsers = [];
+    this.memberSearch = '';
+    this.pendingKickMember = null;
     this.error = '';
   }
 
@@ -263,7 +355,18 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   createChannel() {
     if (!this.newChannelName.trim()) return;
     this.loading = true;
-    const memberIds = [this.currentUserId, ...this.selectedMemberIds];
+
+    // All non-simple users are members by default
+    const nonSimpleIds = this.allUsers
+      .filter(u => u.role !== 'MEMBRE_SIMPLE')
+      .map(u => u.id);
+
+    const memberIds = [...new Set([
+      this.currentUserId,
+      ...nonSimpleIds,
+      ...this.selectedMemberIds
+    ])];
+
     this.channelService.create(
       { name: this.newChannelName.trim(), isPrivate: this.newChannelPrivate, memberIds },
       this.currentUserId, this.currentUserRole

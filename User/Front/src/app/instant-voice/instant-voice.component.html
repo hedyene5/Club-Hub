@@ -246,37 +246,211 @@
       </div>
 
       <!-- Members list (narrower) -->
-      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark">
-          <h4 class="text-base font-semibold text-black dark:text-white">Members</h4>
+      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark flex flex-col">
+
+        <!-- Header -->
+        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark flex items-center justify-between">
+          <h4 class="text-base font-semibold text-black dark:text-white">
+            Members
+            <span *ngIf="channelMembers.length > 0" class="ml-1.5 text-sm font-normal text-bodydark2">({{ channelMembers.length }})</span>
+          </h4>
+          <!-- Add member button — admins only -->
+          <button
+            *ngIf="!isMembreSimple && !showAddMemberPanel"
+            (click)="openAddMemberPanel()"
+            class="flex items-center gap-1.5 rounded border border-primary px-2.5 py-1 text-xs font-medium text-primary transition hover:bg-primary hover:text-white"
+            title="Add a member"
+          >
+            <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 20 20">
+              <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+            </svg>
+            Add
+          </button>
+          <button
+            *ngIf="!isMembreSimple && showAddMemberPanel"
+            (click)="closeAddMemberPanel()"
+            class="text-xs font-medium text-bodydark2 hover:text-danger transition"
+          >
+            Cancel
+          </button>
         </div>
+
+        <!-- Add member search panel -->
+        <div *ngIf="showAddMemberPanel && !isMembreSimple" class="border-b border-stroke dark:border-strokedark">
+
+          <!-- Search input -->
+          <div class="px-4 py-3">
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-bodydark2">
+                <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
+                </svg>
+              </span>
+              <input
+                #searchInput
+                type="text"
+                [(ngModel)]="memberSearch"
+                placeholder="Search by name or email..."
+                autofocus
+                class="w-full rounded border border-stroke bg-transparent py-2 pl-9 pr-3 text-xs text-black outline-none transition focus:border-primary dark:border-strokedark dark:text-white dark:focus:border-primary"
+              />
+              <button
+                *ngIf="memberSearch"
+                (click)="memberSearch = ''"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-bodydark2 hover:text-danger"
+              >
+                <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading -->
+          <div *ngIf="addableLoading" class="px-6 pb-3 text-xs text-bodydark2">Loading users...</div>
+
+          <!-- Prompt to type -->
+          <p *ngIf="!addableLoading && !memberSearch" class="px-6 pb-3 text-xs text-bodydark2 italic">
+            Start typing to search for a member to add.
+          </p>
+
+          <!-- No results -->
+          <p *ngIf="!addableLoading && memberSearch && filteredAddableUsers.length === 0" class="px-6 pb-3 text-xs text-bodydark2 italic">
+            No users found matching "{{ memberSearch }}".
+          </p>
+
+          <!-- Results -->
+          <ul *ngIf="!addableLoading && filteredAddableUsers.length > 0"
+            class="max-h-44 overflow-y-auto divide-y divide-stroke dark:divide-strokedark">
+            <li
+              *ngFor="let user of filteredAddableUsers"
+              class="flex items-center justify-between gap-3 px-4 py-2.5"
+            >
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-gray-2 dark:bg-meta-4">
+                  <img *ngIf="user.profilePhoto" [src]="user.profilePhoto" [alt]="user.firstName" class="h-full w-full object-cover"/>
+                  <div *ngIf="!user.profilePhoto" class="flex h-full w-full items-center justify-center text-xs font-semibold text-bodydark2">
+                    {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+                  </div>
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate text-xs font-medium text-black dark:text-white">{{ user.firstName }} {{ user.lastName }}</p>
+                  <p class="truncate text-xs text-bodydark2">{{ user.role.replace('_', ' ') }}</p>
+                </div>
+              </div>
+              <button
+                (click)="addMemberToChannel(user)"
+                [disabled]="addingUserId === user.id"
+                class="flex-shrink-0 rounded border border-meta-3 px-2.5 py-1 text-xs font-medium text-meta-3 transition hover:bg-meta-3 hover:text-white disabled:opacity-50"
+              >
+                <svg *ngIf="addingUserId === user.id" class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                <span *ngIf="addingUserId !== user.id">Add</span>
+              </button>
+            </li>
+          </ul>
+
+        </div>
+
+        <!-- Member rows -->
         <div *ngIf="membersLoading" class="px-6 py-5 text-sm text-bodydark2">Loading...</div>
         <ul *ngIf="!membersLoading" class="divide-y divide-stroke dark:divide-strokedark">
           <li *ngIf="channelMembers.length === 0" class="px-6 py-5 text-sm text-bodydark2">No members.</li>
           <li
             *ngFor="let member of channelMembers"
-            class="flex items-center gap-3 px-4 py-3"
+            class="flex items-center gap-3 px-4 py-3 group"
           >
+            <!-- Avatar -->
             <div class="h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-gray-2 dark:bg-meta-4">
-              <img
-                *ngIf="member.profilePhoto"
-                [src]="member.profilePhoto"
-                [alt]="member.firstName"
-                class="h-full w-full object-cover"
-              />
-              <div
-                *ngIf="!member.profilePhoto"
-                class="flex h-full w-full items-center justify-center text-xs font-semibold text-bodydark2"
-              >
+              <img *ngIf="member.profilePhoto" [src]="member.profilePhoto" [alt]="member.firstName" class="h-full w-full object-cover"/>
+              <div *ngIf="!member.profilePhoto" class="flex h-full w-full items-center justify-center text-xs font-semibold text-bodydark2">
                 {{ member.firstName.charAt(0) }}{{ member.lastName.charAt(0) }}
               </div>
             </div>
-            <div class="min-w-0">
-              <p class="truncate text-sm font-medium text-black dark:text-white">{{ member.firstName }} {{ member.lastName }}</p>
+
+            <!-- Name + role -->
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-black dark:text-white">
+                {{ member.firstName }} {{ member.lastName }}
+                <span *ngIf="member.id === currentUserId" class="ml-1 text-xs text-bodydark2">(you)</span>
+              </p>
               <p class="truncate text-xs text-bodydark2">{{ member.role.replace('_', ' ') }}</p>
             </div>
+
+            <!-- Kick button — admins only, not for yourself -->
+            <button
+              *ngIf="!isMembreSimple && member.id !== currentUserId && member.role !== 'PRESIDENT'"
+              (click)="requestKick(member, $event)"
+              [disabled]="kickingId === member.id"
+              class="flex-shrink-0 rounded p-1.5 text-danger transition hover:bg-red-50 dark:hover:bg-meta-4 disabled:opacity-50"
+              title="Remove from channel"
+            >
+              <svg *ngIf="kickingId !== member.id" class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"/>
+              </svg>
+              <svg *ngIf="kickingId === member.id" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+            </button>
           </li>
         </ul>
+      </div>
+
+      <!-- Kick confirmation modal -->
+      <div
+        *ngIf="pendingKickMember"
+        class="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50"
+        (click)="cancelKick()"
+      >
+        <div
+          class="w-full max-w-sm rounded-sm border border-stroke bg-white p-6 shadow-default dark:border-strokedark dark:bg-boxdark"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="mb-4 flex items-center gap-3">
+            <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-meta-4">
+              <svg class="h-5 w-5 text-danger fill-current" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div>
+              <h4 class="text-base font-semibold text-black dark:text-white">Remove member</h4>
+              <p class="text-sm text-bodydark2">
+                Remove <span class="font-medium text-black dark:text-white">{{ pendingKickMember.firstName }} {{ pendingKickMember.lastName }}</span> from this channel?
+              </p>
+            </div>
+          </div>
+
+          <!-- Bureau member warning -->
+          <div
+            *ngIf="pendingKickMember.role !== 'MEMBRE_SIMPLE'"
+            class="mb-4 flex items-start gap-2.5 rounded border border-warning/40 bg-warning/10 px-4 py-3"
+          >
+            <svg class="mt-0.5 h-4 w-4 flex-shrink-0 fill-current text-warning" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <p class="text-xs text-warning">
+              <span class="font-semibold">{{ pendingKickMember.firstName }} {{ pendingKickMember.lastName }}</span>
+              is a bureau member ({{ pendingKickMember.role.replace('_', ' ') }}). Are you sure you want to remove them from this channel?
+            </p>
+          </div>
+          <div class="flex items-center justify-end gap-3">
+            <button
+              (click)="cancelKick()"
+              class="rounded border border-stroke px-4 py-2 text-sm font-medium text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+            >
+              Cancel
+            </button>
+            <button
+              (click)="confirmKick()"
+              class="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
       </div>
 
     </div>
