@@ -11,7 +11,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/channels")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 public class ChannelController {
 
     private final ChannelService channelService;

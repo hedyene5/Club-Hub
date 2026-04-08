@@ -2,6 +2,16 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+export interface AudioMessage {
+  id: string;
+  channelId: string;
+  userId: string;
+  userName: string;
+  audioData: string;
+  contentType: string;
+  createdAt: string;
+}
+
 export interface Channel {
   id: string;
   name: string;
@@ -10,7 +20,7 @@ export interface Channel {
   createdAt?: string;
   createdBy?: string;
   memberIds?: string[];
-  audioHistory?: any[];
+  audioHistory?: AudioMessage[];
 }
 
 @Injectable({ providedIn: 'root' })

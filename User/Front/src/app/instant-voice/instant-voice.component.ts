@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { ChannelService, Channel } from '../shared/services/channel.service';
+import { ChannelService, Channel, AudioMessage } from '../shared/services/channel.service';
 import { AuthService } from '../services/auth.service';
-import { switchMap } from 'rxjs';
+import { VoiceSignalingService } from '../shared/services/voice-signaling.service';
 
 interface AppUser {
   id: string;
@@ -22,13 +22,15 @@ interface AppUser {
   templateUrl: './instant-voice.component.html',
   styleUrl: './instant-voice.component.css',
 })
-export class InstantVoiceComponent implements OnInit {
+export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   view: 'list' | 'detail' | 'create' = 'list';
   channels: Channel[] = [];
   selectedChannel: Channel | null = null;
 
   isRecording = false;
+  isSaving = false;
+  recordingError = '';
   loading = false;
   error = '';
   pendingDeleteChannel: Channel | null = null;
@@ -42,9 +44,16 @@ export class InstantVoiceComponent implements OnInit {
   channelMembers: AppUser[] = [];
   membersLoading = false;
 
+  audioHistory: AudioMessage[] = [];
+  audioLoading = false;
+
+  playingId: string | null = null;
+  private activeAudio: HTMLAudioElement | null = null;
+
   currentUserId = '';
   currentUserRole = '';
   currentUserPost = '';
+  currentUserName = '';
 
   get isMembreSimple(): boolean {
     return this.currentUserRole === 'MEMBRE_SIMPLE';
@@ -54,21 +63,25 @@ export class InstantVoiceComponent implements OnInit {
     return this.allUsers.filter(u => this.selectedMemberIds.includes(u.id));
   }
 
+  get peerCount(): number {
+    return this.voiceService.peerCount;
+  }
+
   constructor(
     private channelService: ChannelService,
     private authService: AuthService,
-    private http: HttpClient
+    private http: HttpClient,
+    private voiceService: VoiceSignalingService
   ) {}
 
   ngOnInit() {
     const user = this.authService.getCurrentUser();
     this.currentUserId = user?.userId ?? '';
     this.currentUserRole = user?.role ?? '';
-    // Fetch full user to get the post field
     this.authService.getMe().subscribe({
       next: (data: any) => {
         this.currentUserPost = data?.post ?? '';
-        // If this is a MEMBRE_SIMPLE with a post, ensure their channel exists
+        this.currentUserName = `${data?.firstName ?? ''} ${data?.lastName ?? ''}`.trim() || data?.email || 'Unknown';
         if (this.currentUserRole === 'MEMBRE_SIMPLE' && this.currentUserPost) {
           this.channelService.syncMemberPostChannel(this.currentUserId, this.currentUserPost).subscribe({
             next: () => this.loadChannels(),
@@ -86,7 +99,7 @@ export class InstantVoiceComponent implements OnInit {
     this.loading = true;
     this.error = '';
     this.channelService.getAll(this.currentUserId, this.currentUserRole, this.currentUserPost).subscribe({
-      next: (data: Channel[]) => { this.channels = data; this.loading = false; },
+      next: (data) => { this.channels = data; this.loading = false; },
       error: () => { this.error = 'Could not load channels. Is the backend running?'; this.loading = false; }
     });
   }
@@ -94,8 +107,10 @@ export class InstantVoiceComponent implements OnInit {
   openChannel(channel: Channel) {
     this.selectedChannel = channel;
     this.view = 'detail';
+    this.audioHistory = [];
     this.channelMembers = [];
     this.membersLoading = true;
+
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
       next: (users) => {
         const ids = channel.memberIds ?? [];
@@ -106,6 +121,34 @@ export class InstantVoiceComponent implements OnInit {
       },
       error: () => { this.membersLoading = false; }
     });
+
+    this.loadAudioHistory(channel.id);
+  }
+
+  loadAudioHistory(channelId: string) {
+    this.audioLoading = true;
+    this.http.get<AudioMessage[]>(`http://localhost:8082/api/channels/${channelId}/audio`).subscribe({
+      next: (msgs) => { this.audioHistory = msgs; this.audioLoading = false; },
+      error: () => { this.audioLoading = false; }
+    });
+  }
+
+  playAudio(msg: AudioMessage) {
+    if (this.activeAudio) {
+      this.activeAudio.pause();
+      this.activeAudio = null;
+      if (this.playingId === msg.id) { this.playingId = null; return; }
+    }
+    const audio = new Audio(`data:${msg.contentType};base64,${msg.audioData}`);
+    audio.play().catch(() => {});
+    audio.onended = () => { this.playingId = null; this.activeAudio = null; };
+    this.activeAudio = audio;
+    this.playingId = msg.id;
+  }
+
+  formatDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleString();
   }
 
   requestDeleteChannel(channel: Channel, event: Event) {
@@ -113,9 +156,7 @@ export class InstantVoiceComponent implements OnInit {
     this.pendingDeleteChannel = channel;
   }
 
-  cancelDelete() {
-    this.pendingDeleteChannel = null;
-  }
+  cancelDelete() { this.pendingDeleteChannel = null; }
 
   confirmDelete() {
     const channel = this.pendingDeleteChannel;
@@ -130,10 +171,8 @@ export class InstantVoiceComponent implements OnInit {
     };
 
     if (channel.isPostChannel) {
-      // Clear posts for all members who had this post, then delete the channel
       this.authService.clearPostByName(channel.name).subscribe({
-        next: () => doDelete(),
-        error: () => doDelete()
+        next: () => doDelete(), error: () => doDelete()
       });
     } else {
       doDelete();
@@ -143,28 +182,20 @@ export class InstantVoiceComponent implements OnInit {
   goToCreate() {
     this.usersLoading = true;
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
-      next: (users) => {
-        this.allUsers = users.filter(u => u.id !== this.currentUserId);
-        this.usersLoading = false;
-      },
+      next: (users) => { this.allUsers = users.filter(u => u.id !== this.currentUserId); this.usersLoading = false; },
       error: () => { this.usersLoading = false; }
     });
     this.view = 'create';
   }
 
   onPrivacyChange() {
-    if (!this.newChannelPrivate) {
-      this.selectedMemberIds = [];
-    }
+    if (!this.newChannelPrivate) this.selectedMemberIds = [];
   }
 
   toggleMember(userId: string) {
     const idx = this.selectedMemberIds.indexOf(userId);
-    if (idx === -1) {
-      this.selectedMemberIds.push(userId);
-    } else {
-      this.selectedMemberIds.splice(idx, 1);
-    }
+    if (idx === -1) this.selectedMemberIds.push(userId);
+    else this.selectedMemberIds.splice(idx, 1);
   }
 
   isMemberSelected(userId: string): boolean {
@@ -172,27 +203,86 @@ export class InstantVoiceComponent implements OnInit {
   }
 
   goBack() {
+    this.stopRecordingIfActive();
+    this.activeAudio?.pause();
+    this.activeAudio = null;
+    this.playingId = null;
     this.view = 'list';
     this.selectedChannel = null;
+    this.audioHistory = [];
     this.error = '';
   }
 
-  toggleRecording() {
-    this.isRecording = !this.isRecording;
+  async toggleRecording() {
+    if (this.isRecording) {
+      this.isRecording = false;
+      this.isSaving = true;
+      this.recordingError = '';
+      try {
+        const blob = await this.voiceService.stop();
+        if (blob && blob.size > 0) {
+          await this.uploadAudio(blob);
+        }
+      } catch {
+        // upload failure is silent — history refreshes anyway
+      } finally {
+        this.isSaving = false;
+        this.loadAudioHistory(this.selectedChannel!.id);
+      }
+    } else {
+      this.recordingError = '';
+      try {
+        await this.voiceService.start(this.selectedChannel!.id, this.currentUserId);
+        this.isRecording = true;
+      } catch (err: any) {
+        this.recordingError = err?.name === 'NotAllowedError'
+          ? 'Microphone permission denied. Please allow access and try again.'
+          : 'Could not access microphone. Check your device settings.';
+      }
+    }
+  }
+
+  private uploadAudio(blob: Blob): Promise<void> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        const base64 = dataUrl.split(',')[1];
+        this.http.post<AudioMessage>(
+          `http://localhost:8082/api/channels/${this.selectedChannel!.id}/audio`,
+          {
+            userId: this.currentUserId,
+            userName: this.currentUserName,
+            audioData: base64,
+            contentType: blob.type || 'audio/webm'
+          }
+        ).subscribe({
+          next: (saved) => { this.audioHistory.unshift(saved); resolve(); },
+          error: () => resolve()
+        });
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  ngOnDestroy() { this.stopRecordingIfActive(); }
+
+  private stopRecordingIfActive() {
+    if (this.isRecording) {
+      this.voiceService.stop();
+      this.isRecording = false;
+    }
   }
 
   createChannel() {
     if (!this.newChannelName.trim()) return;
     this.loading = true;
-
     const memberIds = [this.currentUserId, ...this.selectedMemberIds];
-
     this.channelService.create(
       { name: this.newChannelName.trim(), isPrivate: this.newChannelPrivate, memberIds },
-      this.currentUserId,
-      this.currentUserRole
+      this.currentUserId, this.currentUserRole
     ).subscribe({
-      next: (channel: Channel) => { this.channels.push(channel); this.resetForm(); },
+      next: (channel) => { this.channels.push(channel); this.resetForm(); },
       error: () => { this.error = 'Failed to create channel.'; this.loading = false; }
     });
   }

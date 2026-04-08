@@ -163,35 +163,85 @@
 
       <!-- Audio history (wider) -->
       <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-2">
-        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark">
-          <h4 class="text-base font-semibold text-black dark:text-white">Audio Channel History</h4>
+        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark flex items-center justify-between">
+          <h4 class="text-base font-semibold text-black dark:text-white">Audio History</h4>
+          <span *ngIf="audioHistory.length > 0"
+            class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+            {{ audioHistory.length }} message{{ audioHistory.length !== 1 ? 's' : '' }}
+          </span>
         </div>
-        <ul class="divide-y divide-stroke dark:divide-strokedark">
-          <li *ngIf="!selectedChannel.audioHistory || selectedChannel.audioHistory.length === 0"
-            class="px-6 py-5 text-sm text-bodydark2">No audio messages yet.</li>
+
+        <!-- Loading -->
+        <div *ngIf="audioLoading" class="flex items-center justify-center py-10">
+          <svg class="h-6 w-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+        </div>
+
+        <!-- Saving indicator -->
+        <div *ngIf="isSaving" class="flex items-center gap-2 border-b border-stroke px-6 py-3 dark:border-strokedark bg-primary/5">
+          <svg class="h-4 w-4 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span class="text-xs text-primary font-medium">Saving audio message...</span>
+        </div>
+
+        <ul *ngIf="!audioLoading" class="divide-y divide-stroke dark:divide-strokedark">
+          <li *ngIf="audioHistory.length === 0" class="px-6 py-10 text-center text-sm text-bodydark2">
+            No audio messages yet. Press the mic button below to transmit.
+          </li>
+
           <li
-            *ngFor="let audio of selectedChannel.audioHistory || []; let i = index"
+            *ngFor="let msg of audioHistory"
             class="flex items-center gap-4 px-6 py-4"
           >
-            <button class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-stroke text-bodydark2 transition hover:border-primary hover:text-primary dark:border-strokedark">
-              <svg class="h-3.5 w-3.5 fill-current" viewBox="0 0 20 20">
+            <!-- Play / Pause button -->
+            <button
+              (click)="playAudio(msg)"
+              class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border transition"
+              [class.border-primary]="playingId === msg.id"
+              [class.text-primary]="playingId === msg.id"
+              [class.bg-primary]="playingId === msg.id"
+              [class.border-stroke]="playingId !== msg.id"
+              [class.text-bodydark2]="playingId !== msg.id"
+              [class.hover:border-primary]="playingId !== msg.id"
+              [class.hover:text-primary]="playingId !== msg.id"
+              [class.dark:border-strokedark]="playingId !== msg.id"
+            >
+              <!-- Play icon -->
+              <svg *ngIf="playingId !== msg.id" class="h-4 w-4 fill-current" viewBox="0 0 20 20">
                 <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
               </svg>
+              <!-- Pause icon -->
+              <svg *ngIf="playingId === msg.id" class="h-4 w-4 fill-current text-white" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
             </button>
-            <div class="flex flex-1 items-center gap-1">
-              <ng-container *ngFor="let bar of [3,5,7,4,6,8,5,3,6,4,7,5,3,6,4]">
-                <div class="w-1 rounded-full bg-stroke dark:bg-strokedark" [style.height.px]="bar * 3"></div>
+
+            <!-- Waveform decoration -->
+            <div class="flex flex-1 items-center gap-0.5">
+              <ng-container *ngFor="let bar of [3,5,7,4,6,8,5,3,6,4,7,5,3,6,4,8,6,4,5,7]">
+                <div class="w-1 rounded-full transition-colors"
+                  [class.bg-primary]="playingId === msg.id"
+                  [class.bg-stroke]="playingId !== msg.id"
+                  [class.dark:bg-strokedark]="playingId !== msg.id"
+                  [style.height.px]="bar * 3">
+                </div>
               </ng-container>
             </div>
-            <div class="text-right">
-              <p class="text-xs font-medium text-black dark:text-white">Audio {{ i + 1 }}</p>
-              <p class="text-xs text-bodydark2">from <span class="text-primary">{{ audio.memberName }}</span></p>
-              <p class="mt-0.5 text-xs text-bodydark2">{{ audio.preview }}</p>
+
+            <!-- Meta -->
+            <div class="text-right flex-shrink-0">
+              <p class="text-sm font-medium text-black dark:text-white">{{ msg.userName }}</p>
+              <p class="mt-0.5 text-xs text-bodydark2">{{ formatDate(msg.createdAt) }}</p>
             </div>
           </li>
         </ul>
+
         <div class="border-t border-stroke px-6 py-3 dark:border-strokedark">
-          <p class="text-xs text-bodydark2">Hold the mic button below to send a message to this channel</p>
+          <p class="text-xs text-bodydark2">Tap the mic button below to transmit voice to this channel</p>
         </div>
       </div>
 
@@ -231,25 +281,47 @@
 
     </div>
 
-    <div class="mt-8 flex justify-center">
-      <button
-        (click)="toggleRecording()"
-        [class.bg-danger]="isRecording"
-        [class.bg-primary]="!isRecording"
-        class="flex h-16 w-16 items-center justify-center rounded-full text-blue shadow-lg transition hover:opacity-90 active:scale-95"
-        [title]="isRecording ? 'Stop recording' : 'Start recording'"
-      >
-        <svg *ngIf="!isRecording" class="h-7 w-7 fill-current" viewBox="0 0 24 24">
-          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2a1 1 0 012 0v2a5 5 0 0010 0v-2a1 1 0 012 0zM11 19.93V22h2v-2.07A8.001 8.001 0 0019.93 13H18a6 6 0 01-12 0H4.07A8.001 8.001 0 0011 19.93z"/>
-        </svg>
-        <svg *ngIf="isRecording" class="h-7 w-7 fill-current" viewBox="0 0 24 24">
-          <path d="M6 6h12v12H6z"/>
-        </svg>
-      </button>
+    <!-- Recording error -->
+    <div *ngIf="recordingError" class="mt-4 rounded border border-danger bg-red-50 px-4 py-3 text-sm text-danger dark:bg-meta-4 text-center">
+      {{ recordingError }}
     </div>
-    <p class="mt-2 text-center text-xs text-bodydark2">
-      {{ isRecording ? 'Recording... tap to stop' : 'Tap to start recording' }}
-    </p>
+
+    <!-- Record button + status -->
+    <div class="mt-8 flex flex-col items-center gap-3">
+
+      <!-- Pulse ring when recording -->
+      <div class="relative flex items-center justify-center">
+        <span *ngIf="isRecording"
+          class="absolute inline-flex h-20 w-20 animate-ping rounded-full bg-danger opacity-30"></span>
+        <button
+          (click)="toggleRecording()"
+          [class.bg-danger]="isRecording"
+          [class.bg-primary]="!isRecording"
+          class="relative flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition hover:opacity-90 active:scale-95"
+          [title]="isRecording ? 'Stop transmitting' : 'Start transmitting'"
+        >
+          <svg *ngIf="!isRecording" class="h-7 w-7 fill-current" viewBox="0 0 24 24">
+            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2a1 1 0 012 0v2a5 5 0 0010 0v-2a1 1 0 012 0zM11 19.93V22h2v-2.07A8.001 8.001 0 0019.93 13H18a6 6 0 01-12 0H4.07A8.001 8.001 0 0011 19.93z"/>
+          </svg>
+          <svg *ngIf="isRecording" class="h-7 w-7 fill-current" viewBox="0 0 24 24">
+            <path d="M6 6h12v12H6z"/>
+          </svg>
+        </button>
+      </div>
+
+      <p class="text-sm font-medium" [class.text-danger]="isRecording" [class.text-bodydark2]="!isRecording">
+        {{ isRecording ? 'Transmitting live...' : 'Tap to start transmitting' }}
+      </p>
+
+      <!-- Peer count badge -->
+      <div *ngIf="isRecording" class="flex items-center gap-1.5 rounded-full bg-meta-3/10 px-3 py-1">
+        <span class="inline-block h-2 w-2 rounded-full bg-meta-3"></span>
+        <span class="text-xs font-medium text-meta-3">
+          {{ peerCount === 0 ? 'No one else in the channel yet' : peerCount + ' listener' + (peerCount > 1 ? 's' : '') + ' connected' }}
+        </span>
+      </div>
+
+    </div>
 
   </ng-container>
 
