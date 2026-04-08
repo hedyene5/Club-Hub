@@ -55,23 +55,19 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   currentUserPost = '';
   currentUserName = '';
 
-  get isMembreSimple(): boolean {
-    return this.currentUserRole === 'MEMBRE_SIMPLE';
-  }
+  get isMembreSimple(): boolean { return this.currentUserRole === 'MEMBRE_SIMPLE'; }
 
   get selectedUsers(): AppUser[] {
     return this.allUsers.filter(u => this.selectedMemberIds.includes(u.id));
   }
 
-  get peerCount(): number {
-    return this.voiceService.peerCount;
-  }
+  get listenerCount(): number { return this.voiceService.listenerCount; }
 
   constructor(
     private channelService: ChannelService,
     private authService: AuthService,
     private http: HttpClient,
-    private voiceService: VoiceSignalingService
+    public voiceService: VoiceSignalingService
   ) {}
 
   ngOnInit() {
@@ -84,8 +80,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
         this.currentUserName = `${data?.firstName ?? ''} ${data?.lastName ?? ''}`.trim() || data?.email || 'Unknown';
         if (this.currentUserRole === 'MEMBRE_SIMPLE' && this.currentUserPost) {
           this.channelService.syncMemberPostChannel(this.currentUserId, this.currentUserPost).subscribe({
-            next: () => this.loadChannels(),
-            error: () => this.loadChannels()
+            next: () => this.loadChannels(), error: () => this.loadChannels()
           });
         } else {
           this.loadChannels();
@@ -110,6 +105,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.audioHistory = [];
     this.channelMembers = [];
     this.membersLoading = true;
+    this.recordingError = '';
 
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
       next: (users) => {
@@ -123,6 +119,9 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     });
 
     this.loadAudioHistory(channel.id);
+
+    // Join signaling immediately so we can receive audio from anyone who starts talking
+    this.voiceService.joinChannel(channel.id, this.currentUserId);
   }
 
   loadAudioHistory(channelId: string) {
@@ -147,8 +146,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   }
 
   formatDate(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleString();
+    return new Date(iso).toLocaleString();
   }
 
   requestDeleteChannel(channel: Channel, event: Event) {
@@ -162,14 +160,12 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     const channel = this.pendingDeleteChannel;
     if (!channel) return;
     this.pendingDeleteChannel = null;
-
     const doDelete = () => {
       this.channelService.delete(channel.id).subscribe({
         next: () => { this.channels = this.channels.filter(c => c.id !== channel.id); },
         error: () => { this.error = 'Failed to delete channel.'; }
       });
     };
-
     if (channel.isPostChannel) {
       this.authService.clearPostByName(channel.name).subscribe({
         next: () => doDelete(), error: () => doDelete()
@@ -188,9 +184,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.view = 'create';
   }
 
-  onPrivacyChange() {
-    if (!this.newChannelPrivate) this.selectedMemberIds = [];
-  }
+  onPrivacyChange() { if (!this.newChannelPrivate) this.selectedMemberIds = []; }
 
   toggleMember(userId: string) {
     const idx = this.selectedMemberIds.indexOf(userId);
@@ -203,7 +197,8 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   }
 
   goBack() {
-    this.stopRecordingIfActive();
+    if (this.isRecording) this.cancelRecordingQuietly();
+    this.voiceService.leaveChannel();
     this.activeAudio?.pause();
     this.activeAudio = null;
     this.playingId = null;
@@ -219,12 +214,8 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
       this.isSaving = true;
       this.recordingError = '';
       try {
-        const blob = await this.voiceService.stop();
-        if (blob && blob.size > 0) {
-          await this.uploadAudio(blob);
-        }
-      } catch {
-        // upload failure is silent — history refreshes anyway
+        const blob = await this.voiceService.stopTransmitting();
+        if (blob && blob.size > 0) await this.uploadAudio(blob);
       } finally {
         this.isSaving = false;
         this.loadAudioHistory(this.selectedChannel!.id);
@@ -232,7 +223,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     } else {
       this.recordingError = '';
       try {
-        await this.voiceService.start(this.selectedChannel!.id, this.currentUserId);
+        await this.voiceService.startTransmitting();
         this.isRecording = true;
       } catch (err: any) {
         this.recordingError = err?.name === 'NotAllowedError'
@@ -242,20 +233,19 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     }
   }
 
+  private cancelRecordingQuietly() {
+    this.isRecording = false;
+    this.voiceService.stopTransmitting().catch(() => {});
+  }
+
   private uploadAudio(blob: Blob): Promise<void> {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        const base64 = dataUrl.split(',')[1];
+        const base64 = (reader.result as string).split(',')[1];
         this.http.post<AudioMessage>(
           `http://localhost:8082/api/channels/${this.selectedChannel!.id}/audio`,
-          {
-            userId: this.currentUserId,
-            userName: this.currentUserName,
-            audioData: base64,
-            contentType: blob.type || 'audio/webm'
-          }
+          { userId: this.currentUserId, userName: this.currentUserName, audioData: base64, contentType: blob.type || 'audio/webm' }
         ).subscribe({
           next: (saved) => { this.audioHistory.unshift(saved); resolve(); },
           error: () => resolve()
@@ -265,13 +255,9 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() { this.stopRecordingIfActive(); }
-
-  private stopRecordingIfActive() {
-    if (this.isRecording) {
-      this.voiceService.stop();
-      this.isRecording = false;
-    }
+  ngOnDestroy() {
+    if (this.isRecording) this.cancelRecordingQuietly();
+    this.voiceService.leaveChannel();
   }
 
   createChannel() {

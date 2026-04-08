@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 interface PeerState {
   pc: RTCPeerConnection;
   pendingCandidates: RTCIceCandidateInit[];
-  audioEl: HTMLAudioElement;
+  audioEl?: HTMLAudioElement; // only on inbound (listener) side
 }
 
 @Injectable({ providedIn: 'root' })
@@ -13,38 +13,33 @@ export class VoiceSignalingService {
   private localStream: MediaStream | null = null;
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: BlobPart[] = [];
-  private peers = new Map<string, PeerState>();
 
   private channelId = '';
   private userId = '';
+  private isTransmitting = false;
+
+  // Users currently connected to the channel's signaling WS
+  private connectedUsers = new Set<string>();
+
+  // inbound: remote speaker sent us an offer → we listen to them
+  private inboundPeers = new Map<string, PeerState>();
+  // outbound: we sent an offer → they listen to us
+  private outboundPeers = new Map<string, PeerState>();
 
   private readonly iceConfig: RTCConfiguration = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   };
 
-  get isActive(): boolean {
-    return this.ws !== null;
-  }
+  get isConnected(): boolean { return this.ws !== null; }
+  get isRecording(): boolean { return this.isTransmitting; }
 
-  get peerCount(): number {
-    return this.peers.size;
-  }
-
-  async start(channelId: string, userId: string): Promise<void> {
-    if (this.isActive) return;
+  /** Call when entering a channel — joins signaling passively (no mic). */
+  joinChannel(channelId: string, userId: string): void {
+    if (this.ws) this.leaveChannel(); // clean up any previous session
 
     this.channelId = channelId;
     this.userId = userId;
-    this.audioChunks = [];
-
-    this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-    // Start MediaRecorder to capture a local copy of what is being transmitted
-    this.mediaRecorder = new MediaRecorder(this.localStream);
-    this.mediaRecorder.ondataavailable = (evt) => {
-      if (evt.data.size > 0) this.audioChunks.push(evt.data);
-    };
-    this.mediaRecorder.start(100); // collect in 100 ms chunks
+    this.connectedUsers.clear();
 
     this.ws = new WebSocket('ws://localhost:8082/ws/voice');
 
@@ -53,31 +48,59 @@ export class VoiceSignalingService {
     };
 
     this.ws.onmessage = (evt) => {
-      try {
-        const msg = JSON.parse(evt.data);
-        this.handleMessage(msg);
-      } catch (e) {
-        console.error('WS parse error', e);
-      }
+      try { this.handleMessage(JSON.parse(evt.data)); }
+      catch (e) { console.error('WS parse error', e); }
     };
 
     this.ws.onerror = (e) => console.error('Voice WS error', e);
-    this.ws.onclose = () => this.cleanupPeers();
+    this.ws.onclose = () => {
+      this.closeAllPeers();
+    };
   }
 
-  /** Stops recording, returns the recorded Blob (or null if nothing was captured). */
-  stop(): Promise<Blob | null> {
+  /** Call when leaving the channel detail view. */
+  leaveChannel(): void {
+    if (this.isTransmitting) {
+      this.stopMic();
+    }
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.send({ type: 'LEAVE', channelId: this.channelId, fromUserId: this.userId });
     }
     this.ws?.close();
     this.ws = null;
+    this.closeAllPeers();
+    this.connectedUsers.clear();
+  }
 
-    this.cleanupPeers();
+  /** Start capturing mic and transmitting to all connected users. */
+  async startTransmitting(): Promise<void> {
+    this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    this.isTransmitting = true;
+    this.audioChunks = [];
+
+    this.mediaRecorder = new MediaRecorder(this.localStream);
+    this.mediaRecorder.ondataavailable = (evt) => {
+      if (evt.data.size > 0) this.audioChunks.push(evt.data);
+    };
+    this.mediaRecorder.start(100);
+
+    // Push audio to every user already in the channel
+    for (const peerId of this.connectedUsers) {
+      this.createOutboundOffer(peerId);
+    }
+  }
+
+  /** Stop mic, close outbound connections, return recorded blob. */
+  stopTransmitting(): Promise<Blob | null> {
+    this.isTransmitting = false;
+
+    // Close outbound peers (stop sending our audio)
+    this.outboundPeers.forEach((state) => state.pc.close());
+    this.outboundPeers.clear();
 
     return new Promise((resolve) => {
       if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
-        this.releaseStream();
+        this.stopMic();
         resolve(null);
         return;
       }
@@ -88,7 +111,7 @@ export class VoiceSignalingService {
           ? new Blob(this.audioChunks, { type: mimeType })
           : null;
         this.audioChunks = [];
-        this.releaseStream();
+        this.stopMic();
         resolve(blob);
       };
 
@@ -96,19 +119,16 @@ export class VoiceSignalingService {
     });
   }
 
-  private releaseStream(): void {
+  get listenerCount(): number {
+    return this.outboundPeers.size;
+  }
+
+  // ─── Private helpers ───────────────────────────────────────────────────────
+
+  private stopMic(): void {
     this.localStream?.getTracks().forEach(t => t.stop());
     this.localStream = null;
     this.mediaRecorder = null;
-  }
-
-  private cleanupPeers(): void {
-    this.peers.forEach((state) => {
-      state.pc.close();
-      state.audioEl.srcObject = null;
-      state.audioEl.remove();
-    });
-    this.peers.clear();
   }
 
   private send(msg: object): void {
@@ -118,37 +138,56 @@ export class VoiceSignalingService {
   }
 
   private handleMessage(msg: any): void {
-    if (msg.targetUserId && msg.targetUserId !== this.userId) return;
-
     switch (msg.type as string) {
       case 'PEERS':
+        // List of users already in the channel
+        (msg.data as string[]).forEach(id => this.connectedUsers.add(id));
         break;
+
       case 'JOINED':
-        if (msg.fromUserId !== this.userId) this.createOffer(msg.fromUserId);
+        if (msg.fromUserId !== this.userId) {
+          this.connectedUsers.add(msg.fromUserId);
+          // If we are transmitting, push our audio to the new joiner
+          if (this.isTransmitting) {
+            this.createOutboundOffer(msg.fromUserId);
+          }
+        }
         break;
+
       case 'LEFT':
-        this.closePeer(msg.fromUserId);
+        this.connectedUsers.delete(msg.fromUserId);
+        this.closeInboundPeer(msg.fromUserId);
+        this.closeOutboundPeer(msg.fromUserId);
         break;
+
       case 'OFFER':
-        this.handleOffer(msg.fromUserId, msg.data);
+        // A speaker is sending us their audio
+        if (!msg.targetUserId || msg.targetUserId === this.userId) {
+          this.handleInboundOffer(msg.fromUserId, msg.data);
+        }
         break;
+
       case 'ANSWER':
-        this.handleAnswer(msg.fromUserId, msg.data);
+        // A listener answered our outbound offer
+        if (!msg.targetUserId || msg.targetUserId === this.userId) {
+          this.handleOutboundAnswer(msg.fromUserId, msg.data);
+        }
         break;
+
       case 'ICE':
-        this.handleIce(msg.fromUserId, msg.data);
+        if (!msg.targetUserId || msg.targetUserId === this.userId) {
+          this.handleIce(msg.fromUserId, msg.data);
+        }
         break;
     }
   }
 
-  private makePeer(peerId: string): PeerState {
+  // Speaker creates outbound offer to a listener
+  private async createOutboundOffer(peerId: string): Promise<void> {
+    if (this.outboundPeers.has(peerId) || !this.localStream) return;
+
     const pc = new RTCPeerConnection(this.iceConfig);
-    const audioEl = new Audio();
-    audioEl.autoplay = true;
-
-    this.localStream?.getTracks().forEach(track => pc.addTrack(track, this.localStream!));
-
-    pc.ontrack = (evt) => { if (evt.streams[0]) audioEl.srcObject = evt.streams[0]; };
+    this.localStream.getTracks().forEach(track => pc.addTrack(track, this.localStream!));
 
     pc.onicecandidate = (evt) => {
       if (evt.candidate) {
@@ -160,16 +199,11 @@ export class VoiceSignalingService {
       }
     };
 
-    const state: PeerState = { pc, pendingCandidates: [], audioEl };
-    this.peers.set(peerId, state);
-    return state;
-  }
+    const state: PeerState = { pc, pendingCandidates: [] };
+    this.outboundPeers.set(peerId, state);
 
-  private async createOffer(peerId: string): Promise<void> {
-    if (this.peers.has(peerId)) return;
-    const state = this.makePeer(peerId);
-    const offer = await state.pc.createOffer();
-    await state.pc.setLocalDescription(offer);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
     this.send({
       type: 'OFFER', channelId: this.channelId,
       fromUserId: this.userId, targetUserId: peerId,
@@ -177,14 +211,40 @@ export class VoiceSignalingService {
     });
   }
 
-  private async handleOffer(fromId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
-    if (this.peers.has(fromId)) return;
-    const state = this.makePeer(fromId);
-    await state.pc.setRemoteDescription(new RTCSessionDescription(sdp));
-    for (const c of state.pendingCandidates) await state.pc.addIceCandidate(new RTCIceCandidate(c));
+  // Listener receives inbound offer from a speaker → auto-answer, play audio
+  private async handleInboundOffer(fromId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
+    // Close any existing inbound connection from this speaker (re-connect)
+    this.closeInboundPeer(fromId);
+
+    const pc = new RTCPeerConnection(this.iceConfig);
+    const audioEl = new Audio();
+    audioEl.autoplay = true;
+
+    pc.ontrack = (evt) => {
+      if (evt.streams[0]) audioEl.srcObject = evt.streams[0];
+    };
+
+    pc.onicecandidate = (evt) => {
+      if (evt.candidate) {
+        this.send({
+          type: 'ICE', channelId: this.channelId,
+          fromUserId: this.userId, targetUserId: fromId,
+          data: evt.candidate.toJSON()
+        });
+      }
+    };
+
+    const state: PeerState = { pc, pendingCandidates: [], audioEl };
+    this.inboundPeers.set(fromId, state);
+
+    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    for (const c of state.pendingCandidates) {
+      await pc.addIceCandidate(new RTCIceCandidate(c));
+    }
     state.pendingCandidates = [];
-    const answer = await state.pc.createAnswer();
-    await state.pc.setLocalDescription(answer);
+
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
     this.send({
       type: 'ANSWER', channelId: this.channelId,
       fromUserId: this.userId, targetUserId: fromId,
@@ -192,17 +252,21 @@ export class VoiceSignalingService {
     });
   }
 
-  private async handleAnswer(fromId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
-    const state = this.peers.get(fromId);
+  private async handleOutboundAnswer(fromId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
+    const state = this.outboundPeers.get(fromId);
     if (!state) return;
     await state.pc.setRemoteDescription(new RTCSessionDescription(sdp));
-    for (const c of state.pendingCandidates) await state.pc.addIceCandidate(new RTCIceCandidate(c));
+    for (const c of state.pendingCandidates) {
+      await state.pc.addIceCandidate(new RTCIceCandidate(c));
+    }
     state.pendingCandidates = [];
   }
 
   private async handleIce(fromId: string, candidate: RTCIceCandidateInit): Promise<void> {
-    const state = this.peers.get(fromId);
+    // Check inbound first, then outbound
+    const state = this.inboundPeers.get(fromId) ?? this.outboundPeers.get(fromId);
     if (!state) return;
+
     if (state.pc.remoteDescription) {
       await state.pc.addIceCandidate(new RTCIceCandidate(candidate));
     } else {
@@ -210,12 +274,28 @@ export class VoiceSignalingService {
     }
   }
 
-  private closePeer(peerId: string): void {
-    const state = this.peers.get(peerId);
+  private closeInboundPeer(peerId: string): void {
+    const state = this.inboundPeers.get(peerId);
     if (!state) return;
     state.pc.close();
-    state.audioEl.srcObject = null;
-    state.audioEl.remove();
-    this.peers.delete(peerId);
+    if (state.audioEl) { state.audioEl.srcObject = null; state.audioEl.remove(); }
+    this.inboundPeers.delete(peerId);
+  }
+
+  private closeOutboundPeer(peerId: string): void {
+    const state = this.outboundPeers.get(peerId);
+    if (!state) return;
+    state.pc.close();
+    this.outboundPeers.delete(peerId);
+  }
+
+  private closeAllPeers(): void {
+    this.inboundPeers.forEach((s) => {
+      s.pc.close();
+      if (s.audioEl) { s.audioEl.srcObject = null; s.audioEl.remove(); }
+    });
+    this.inboundPeers.clear();
+    this.outboundPeers.forEach((s) => s.pc.close());
+    this.outboundPeers.clear();
   }
 }

@@ -310,16 +310,21 @@
       </div>
 
       <p class="text-sm font-medium" [class.text-danger]="isRecording" [class.text-bodydark2]="!isRecording">
-        {{ isRecording ? 'Transmitting live...' : 'Tap to start transmitting' }}
+        {{ isRecording ? 'Transmitting live...' : 'Tap mic to start talking' }}
       </p>
 
-      <!-- Peer count badge -->
+      <!-- Live listener count when transmitting -->
       <div *ngIf="isRecording" class="flex items-center gap-1.5 rounded-full bg-meta-3/10 px-3 py-1">
-        <span class="inline-block h-2 w-2 rounded-full bg-meta-3"></span>
+        <span class="inline-block h-2 w-2 animate-ping rounded-full bg-meta-3 opacity-75"></span>
         <span class="text-xs font-medium text-meta-3">
-          {{ peerCount === 0 ? 'No one else in the channel yet' : peerCount + ' listener' + (peerCount > 1 ? 's' : '') + ' connected' }}
+          {{ listenerCount === 0 ? 'No one is listening yet' : listenerCount + ' listener' + (listenerCount > 1 ? 's' : '') + ' connected' }}
         </span>
       </div>
+
+      <!-- Idle connected hint -->
+      <p *ngIf="!isRecording && voiceService.isConnected" class="text-xs text-meta-3">
+        Connected — you will hear others automatically when they speak
+      </p>
 
     </div>
 
