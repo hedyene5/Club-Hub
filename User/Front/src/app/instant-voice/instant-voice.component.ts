@@ -143,8 +143,13 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
 
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
       next: (users) => {
-        const ids = new Set(channel.memberIds ?? []);
-        this.channelMembers = this.sortMembers(users.filter(u => ids.has(u.id)));
+        if (!channel.isPrivate) {
+          // Public channel — everyone can see it, show all users
+          this.channelMembers = this.sortMembers(users);
+        } else {
+          const ids = new Set(channel.memberIds ?? []);
+          this.channelMembers = this.sortMembers(users.filter(u => ids.has(u.id)));
+        }
         this.membersLoading = false;
       },
       error: () => { this.membersLoading = false; }
@@ -268,6 +273,11 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   }
 
   private refreshAddableUsers() {
+    if (!this.selectedChannel?.isPrivate) {
+      // Public channel — everyone is already visible, nothing to add
+      this.addableUsers = [];
+      return;
+    }
     this.addableLoading = true;
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
       next: (users) => {
