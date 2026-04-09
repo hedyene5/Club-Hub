@@ -77,6 +77,17 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   get isMembreSimple(): boolean { return this.currentUserRole === 'MEMBRE_SIMPLE'; }
 
+  private memberOrder(member: AppUser): number {
+    if (member.role === 'PRESIDENT') return 0;
+    if (member.role !== 'MEMBRE_SIMPLE') return 1;
+    if (member.id === this.currentUserId) return 2;
+    return 3;
+  }
+
+  private sortMembers(members: AppUser[]): AppUser[] {
+    return members.sort((a, b) => this.memberOrder(a) - this.memberOrder(b));
+  }
+
   get selectedUsers(): AppUser[] {
     return this.allUsers.filter(u => this.selectedMemberIds.includes(u.id));
   }
@@ -133,7 +144,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
       next: (users) => {
         const ids = new Set(channel.memberIds ?? []);
-        this.channelMembers = users.filter(u => ids.has(u.id));
+        this.channelMembers = this.sortMembers(users.filter(u => ids.has(u.id)));
         this.membersLoading = false;
       },
       error: () => { this.membersLoading = false; }
@@ -233,7 +244,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.kickingId = member.id;
     this.channelService.removeMember(this.selectedChannel!.id, member.id).subscribe({
       next: (ch) => {
-        this.channelMembers = this.channelMembers.filter(m => m.id !== member.id);
+        this.channelMembers = this.sortMembers(this.channelMembers.filter(m => m.id !== member.id));
         if (this.selectedChannel) this.selectedChannel.memberIds = ch.memberIds;
         this.kickingId = null;
         // Refresh addable list if panel is open
@@ -273,10 +284,11 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.addingUserId = user.id;
     this.channelService.addMember(this.selectedChannel!.id, user.id).subscribe({
       next: (ch) => {
-        this.channelMembers.push(user);
+        this.channelMembers = this.sortMembers([...this.channelMembers, user]);
         this.addableUsers = this.addableUsers.filter(u => u.id !== user.id);
         if (this.selectedChannel) this.selectedChannel.memberIds = ch.memberIds;
         this.addingUserId = null;
+        this.memberSearch = '';
       },
       error: () => { this.addingUserId = null; }
     });
