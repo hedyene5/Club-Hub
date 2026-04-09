@@ -232,13 +232,118 @@
               </ng-container>
             </div>
 
-            <!-- Meta -->
+            <!-- Meta + report -->
             <div class="text-right flex-shrink-0">
               <p class="text-sm font-medium text-black dark:text-white">{{ msg.userName }}</p>
               <p class="mt-0.5 text-xs text-bodydark2">{{ formatDate(msg.createdAt) }}</p>
+              <button
+                (click)="openReportModal(msg)"
+                class="mt-1 flex items-center gap-1 text-xs text-bodydark2 hover:text-danger transition ml-auto"
+                title="Report this audio"
+              >
+                <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 7l2.55 2.4A1 1 0 0116 11H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd"/>
+                </svg>
+                Report
+              </button>
             </div>
           </li>
         </ul>
+
+        <!-- Report modal -->
+        <div
+          *ngIf="reportingAudio"
+          class="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50"
+          (click)="closeReportModal()"
+        >
+          <div
+            class="w-full max-w-md rounded-sm border border-stroke bg-white p-6 shadow-default dark:border-strokedark dark:bg-boxdark"
+            (click)="$event.stopPropagation()"
+          >
+            <!-- Success state -->
+            <div *ngIf="reportSuccess" class="flex flex-col items-center gap-3 py-4">
+              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-meta-3/20">
+                <svg class="h-6 w-6 text-meta-3 fill-current" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <p class="text-sm font-medium text-black dark:text-white">Report submitted successfully.</p>
+            </div>
+
+            <!-- Form state -->
+            <ng-container *ngIf="!reportSuccess">
+              <div class="mb-4 flex items-start gap-3">
+                <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-meta-4">
+                  <svg class="h-5 w-5 text-danger fill-current" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 7l2.55 2.4A1 1 0 0116 11H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+                <div>
+                  <h4 class="text-base font-semibold text-black dark:text-white">Report audio message</h4>
+                  <p class="text-sm text-bodydark2">
+                    From <span class="font-medium text-black dark:text-white">{{ reportingAudio.userName }}</span>
+                    &middot; {{ formatDate(reportingAudio.createdAt) }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Reason -->
+              <div class="mb-4">
+                <label class="mb-2 block text-sm font-medium text-black dark:text-white">
+                  Reason <span class="text-danger">*</span>
+                </label>
+                <div class="flex flex-col gap-2">
+                  <label *ngFor="let r of [
+                    { value: 'INAPPROPRIATE', label: 'Inappropriate content' },
+                    { value: 'HARASSMENT',    label: 'Harassment or bullying' },
+                    { value: 'SPAM',          label: 'Spam' },
+                    { value: 'OTHER',         label: 'Other' }
+                  ]" class="flex cursor-pointer items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="reportReason"
+                      [value]="r.value"
+                      [(ngModel)]="reportReason"
+                      class="accent-danger"
+                    />
+                    <span class="text-sm text-body dark:text-bodydark">{{ r.label }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Details -->
+              <div class="mb-5">
+                <label class="mb-2 block text-sm font-medium text-black dark:text-white">Additional details <span class="text-bodydark2 font-normal">(optional)</span></label>
+                <textarea
+                  [(ngModel)]="reportDetails"
+                  rows="3"
+                  placeholder="Describe the issue..."
+                  class="w-full rounded border border-stroke bg-transparent px-4 py-2 text-sm text-black outline-none transition focus:border-primary dark:border-strokedark dark:text-white dark:focus:border-primary resize-none"
+                ></textarea>
+              </div>
+
+              <div class="flex items-center justify-end gap-3">
+                <button
+                  (click)="closeReportModal()"
+                  class="rounded border border-stroke px-4 py-2 text-sm font-medium text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  (click)="submitReport()"
+                  [disabled]="!reportReason || reportSubmitting"
+                  class="inline-flex items-center gap-2 rounded bg-danger px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg *ngIf="reportSubmitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                  </svg>
+                  Submit Report
+                </button>
+              </div>
+            </ng-container>
+          </div>
+        </div>
 
         <div class="border-t border-stroke px-6 py-3 dark:border-strokedark">
           <p class="text-xs text-bodydark2">Tap the mic button below to transmit voice to this channel</p>

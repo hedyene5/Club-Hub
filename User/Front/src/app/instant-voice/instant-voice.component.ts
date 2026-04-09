@@ -50,6 +50,49 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   playingId: string | null = null;
   private activeAudio: HTMLAudioElement | null = null;
 
+  // Report
+  reportingAudio: AudioMessage | null = null;
+  reportReason = '';
+  reportDetails = '';
+  reportSubmitting = false;
+  reportSuccess = false;
+
+  openReportModal(msg: AudioMessage) {
+    this.reportingAudio = msg;
+    this.reportReason = '';
+    this.reportDetails = '';
+    this.reportSuccess = false;
+  }
+
+  closeReportModal() {
+    this.reportingAudio = null;
+  }
+
+  submitReport() {
+    if (!this.reportReason || !this.reportingAudio) return;
+    this.reportSubmitting = true;
+    this.http.post('http://localhost:8082/api/reports', {
+      audioMessageId: this.reportingAudio.id,
+      channelId: this.selectedChannel!.id,
+      channelName: this.selectedChannel!.name,
+      reportedByUserId: this.currentUserId,
+      reportedByUserName: this.currentUserName,
+      reportedUserId: this.reportingAudio.userId,
+      reportedUserName: this.reportingAudio.userName,
+      audioData: this.reportingAudio.audioData,
+      contentType: this.reportingAudio.contentType,
+      reason: this.reportReason,
+      details: this.reportDetails
+    }).subscribe({
+      next: () => {
+        this.reportSubmitting = false;
+        this.reportSuccess = true;
+        setTimeout(() => this.closeReportModal(), 1500);
+      },
+      error: () => { this.reportSubmitting = false; }
+    });
+  }
+
   // Kick
   pendingKickMember: AppUser | null = null;
   kickingId: string | null = null;
