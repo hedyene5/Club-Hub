@@ -10,4 +10,5 @@ import java.util.List;
 public interface AudioReportRepo extends MongoRepository<AudioReport, String> {
     List<AudioReport> findAllByOrderByCreatedAtDesc();
     List<AudioReport> findByStatusOrderByCreatedAtDesc(String status);
+    List<AudioReport> findByReportedByUserIdOrderByCreatedAtDesc(String reportedByUserId);
 }

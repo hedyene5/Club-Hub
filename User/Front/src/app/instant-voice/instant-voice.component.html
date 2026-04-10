@@ -621,8 +621,21 @@
         </span>
       </div>
 
+      <!-- Who is currently speaking -->
+      <div *ngIf="!isRecording && voiceService.currentSpeakers.length > 0"
+        class="flex items-center gap-2 rounded-full bg-meta-3/10 px-4 py-1.5">
+        <span class="inline-block h-2 w-2 animate-ping rounded-full bg-meta-3 opacity-75"></span>
+        <span class="text-xs font-medium text-meta-3">
+          <span *ngFor="let name of voiceService.currentSpeakers; let last = last">
+            {{ name }}<span *ngIf="!last">, </span>
+          </span>
+          {{ voiceService.currentSpeakers.length === 1 ? 'is' : 'are' }} talking
+        </span>
+      </div>
+
       <!-- Idle connected hint -->
-      <p *ngIf="!isRecording && voiceService.isConnected" class="text-xs text-meta-3">
+      <p *ngIf="!isRecording && voiceService.isConnected && voiceService.currentSpeakers.length === 0"
+        class="text-xs text-meta-3">
         Connected — you will hear others automatically when they speak
       </p>
 

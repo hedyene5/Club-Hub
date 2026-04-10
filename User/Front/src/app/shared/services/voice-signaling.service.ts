@@ -16,7 +16,9 @@ export class VoiceSignalingService {
 
   private channelId = '';
   private userId = '';
+  private userName = '';
   private isTransmitting = false;
+  private speakerNames = new Map<string, string>(); // fromUserId → displayName
 
   // Users currently connected to the channel's signaling WS
   private connectedUsers = new Set<string>();
@@ -34,12 +36,14 @@ export class VoiceSignalingService {
   get isRecording(): boolean { return this.isTransmitting; }
 
   /** Call when entering a channel — joins signaling passively (no mic). */
-  joinChannel(channelId: string, userId: string): void {
+  joinChannel(channelId: string, userId: string, userName = ''): void {
     if (this.ws) this.leaveChannel(); // clean up any previous session
 
     this.channelId = channelId;
     this.userId = userId;
+    this.userName = userName;
     this.connectedUsers.clear();
+    this.speakerNames.clear();
 
     this.ws = new WebSocket('ws://localhost:8082/ws/voice');
 
@@ -123,6 +127,10 @@ export class VoiceSignalingService {
     return this.outboundPeers.size;
   }
 
+  get currentSpeakers(): string[] {
+    return Array.from(this.speakerNames.values());
+  }
+
   // ─── Private helpers ───────────────────────────────────────────────────────
 
   private stopMic(): void {
@@ -156,6 +164,7 @@ export class VoiceSignalingService {
 
       case 'LEFT':
         this.connectedUsers.delete(msg.fromUserId);
+        this.speakerNames.delete(msg.fromUserId);
         this.closeInboundPeer(msg.fromUserId);
         this.closeOutboundPeer(msg.fromUserId);
         break;
@@ -163,7 +172,7 @@ export class VoiceSignalingService {
       case 'OFFER':
         // A speaker is sending us their audio
         if (!msg.targetUserId || msg.targetUserId === this.userId) {
-          this.handleInboundOffer(msg.fromUserId, msg.data);
+          this.handleInboundOffer(msg.fromUserId, msg.fromUserName ?? msg.fromUserId, msg.data);
         }
         break;
 
@@ -206,13 +215,15 @@ export class VoiceSignalingService {
     await pc.setLocalDescription(offer);
     this.send({
       type: 'OFFER', channelId: this.channelId,
-      fromUserId: this.userId, targetUserId: peerId,
+      fromUserId: this.userId, fromUserName: this.userName,
+      targetUserId: peerId,
       data: { type: offer.type, sdp: offer.sdp }
     });
   }
 
   // Listener receives inbound offer from a speaker → auto-answer, play audio
-  private async handleInboundOffer(fromId: string, sdp: RTCSessionDescriptionInit): Promise<void> {
+  private async handleInboundOffer(fromId: string, fromName: string, sdp: RTCSessionDescriptionInit): Promise<void> {
+    this.speakerNames.set(fromId, fromName);
     // Close any existing inbound connection from this speaker (re-connect)
     this.closeInboundPeer(fromId);
 
@@ -280,6 +291,7 @@ export class VoiceSignalingService {
     state.pc.close();
     if (state.audioEl) { state.audioEl.srcObject = null; state.audioEl.remove(); }
     this.inboundPeers.delete(peerId);
+    this.speakerNames.delete(peerId);
   }
 
   private closeOutboundPeer(peerId: string): void {

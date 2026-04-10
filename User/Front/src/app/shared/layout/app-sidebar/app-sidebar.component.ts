@@ -68,6 +68,11 @@ export class AppSidebarComponent {
         { name: "404 Error", path: "/error-404", pro: false },
       ],
     },
+    {
+      name: "Talkie Walkie",
+      path: "/instant-voice",
+      icon: `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2a1 1 0 012 0v2a5 5 0 0010 0v-2a1 1 0 012 0zM11 19.93V22h2v-2.07A8.001 8.001 0 0019.93 13H18a6 6 0 01-12 0H4.07A8.001 8.001 0 0011 19.93z" fill="currentColor"/></svg>`,
+    },
   ];
   // Others nav items
   othersItems: NavItem[] = [

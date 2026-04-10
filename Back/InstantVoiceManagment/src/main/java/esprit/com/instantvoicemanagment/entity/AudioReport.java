@@ -31,5 +31,10 @@ public class AudioReport {
 
     private String status = "PENDING"; // PENDING, REVIEWED, DISMISSED
 
+    // Decision written by bureau member
+    private String decisionType;  // WARNING, BAN_FROM_CHANNEL
+    private String decisionText;
+    private LocalDateTime treatedAt;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 }

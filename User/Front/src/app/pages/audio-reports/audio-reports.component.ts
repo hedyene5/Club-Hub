@@ -17,6 +17,9 @@ interface AudioReport {
   reason: string;
   details: string;
   status: string;
+  decisionType: string;
+  decisionText: string;
+  treatedAt: string;
   createdAt: string;
 }
 
@@ -36,6 +39,12 @@ export class AudioReportsComponent implements OnInit {
   playingId: string | null = null;
   private activeAudio: HTMLAudioElement | null = null;
 
+  // Decision modal
+  decisionReport: AudioReport | null = null;
+  decisionType = '';
+  decisionText = '';
+  decisionSubmitting = false;
+
   private readonly api = 'http://localhost:8082/api/reports';
 
   constructor(private http: HttpClient) {}
@@ -50,6 +59,37 @@ export class AudioReportsComponent implements OnInit {
     this.http.get<AudioReport[]>(url).subscribe({
       next: (data) => { this.reports = data; this.loading = false; },
       error: () => { this.loading = false; }
+    });
+  }
+
+  openDecisionModal(report: AudioReport) {
+    this.decisionReport = report;
+    this.decisionType = report.decisionType ?? '';
+    this.decisionText = report.decisionText ?? '';
+  }
+
+  closeDecisionModal() {
+    this.decisionReport = null;
+    this.decisionType = '';
+    this.decisionText = '';
+  }
+
+  submitDecision() {
+    if (!this.decisionReport || !this.decisionType) return;
+    this.decisionSubmitting = true;
+    this.http.patch(`${this.api}/${this.decisionReport.id}/status`, {
+      status: 'REVIEWED',
+      decisionType: this.decisionType,
+      decisionText: this.decisionText
+    }).subscribe({
+      next: (updated: any) => {
+        const idx = this.reports.findIndex(r => r.id === updated.id);
+        if (idx !== -1) this.reports[idx] = updated;
+        this.decisionSubmitting = false;
+        this.closeDecisionModal();
+        if (this.statusFilter !== 'ALL') this.loadReports();
+      },
+      error: () => { this.decisionSubmitting = false; }
     });
   }
 
@@ -100,6 +140,13 @@ export class AudioReportsComponent implements OnInit {
       SPAM: 'Spam',
       OTHER: 'Other'
     } as any)[reason] ?? reason;
+  }
+
+  decisionLabel(type: string): string {
+    return ({
+      WARNING: 'Warning issued',
+      BAN_FROM_CHANNEL: 'Banned from channel'
+    } as any)[type] ?? type;
   }
 
   get pendingCount(): number {

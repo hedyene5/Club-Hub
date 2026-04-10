@@ -168,12 +168,22 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = '';
     this.channelService.getAll(this.currentUserId, this.currentUserRole, this.currentUserPost).subscribe({
-      next: (data) => { this.channels = data; this.loading = false; },
+      next: (data) => {
+        this.channels = data;
+        this.loading = false;
+        // Restore previously open channel after refresh
+        const savedId = sessionStorage.getItem('selectedChannelId');
+        if (savedId) {
+          const ch = data.find(c => c.id === savedId);
+          if (ch) this.openChannel(ch);
+        }
+      },
       error: () => { this.error = 'Could not load channels. Is the backend running?'; this.loading = false; }
     });
   }
 
   openChannel(channel: Channel) {
+    sessionStorage.setItem('selectedChannelId', channel.id);
     this.selectedChannel = channel;
     this.view = 'detail';
     this.audioHistory = [];
@@ -201,7 +211,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.loadAudioHistory(channel.id);
 
     // Join signaling immediately so we can receive audio from anyone who starts talking
-    this.voiceService.joinChannel(channel.id, this.currentUserId);
+    this.voiceService.joinChannel(channel.id, this.currentUserId, this.currentUserName);
   }
 
   loadAudioHistory(channelId: string) {
@@ -350,6 +360,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   // ─────────────────────────────────────────────────────────────────────────
 
   goBack() {
+    sessionStorage.removeItem('selectedChannelId');
     if (this.isRecording) this.cancelRecordingQuietly();
     this.voiceService.leaveChannel();
     this.activeAudio?.pause();

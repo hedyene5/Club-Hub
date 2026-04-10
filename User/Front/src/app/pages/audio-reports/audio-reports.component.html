@@ -147,8 +147,50 @@
           <p class="text-sm text-black dark:text-white">{{ report.details }}</p>
         </div>
 
+        <!-- Decision badge if already treated -->
+        <div *ngIf="report.decisionType" class="mt-3 flex items-center gap-2 rounded border px-3 py-2"
+          [class.border-warning]="report.decisionType === 'WARNING'"
+          [class.bg-warning/5]="report.decisionType === 'WARNING'"
+          [class.border-danger]="report.decisionType === 'BAN_FROM_CHANNEL'"
+          [class.bg-danger/5]="report.decisionType === 'BAN_FROM_CHANNEL'"
+        >
+          <svg class="h-4 w-4 flex-shrink-0 fill-current"
+            [class.text-warning]="report.decisionType === 'WARNING'"
+            [class.text-danger]="report.decisionType === 'BAN_FROM_CHANNEL'"
+            viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+          </svg>
+          <span class="text-xs font-medium"
+            [class.text-warning]="report.decisionType === 'WARNING'"
+            [class.text-danger]="report.decisionType === 'BAN_FROM_CHANNEL'"
+          >
+            Decision: {{ decisionLabel(report.decisionType) }}
+            <span *ngIf="report.decisionText" class="font-normal"> — {{ report.decisionText }}</span>
+          </span>
+        </div>
+
         <!-- Actions -->
         <div class="mt-4 flex items-center justify-end gap-2">
+          <!-- Write decision button — only for pending/no-decision reports -->
+          <button
+            *ngIf="report.status === 'PENDING' || (report.status === 'REVIEWED' && !report.decisionType)"
+            (click)="openDecisionModal(report)"
+            class="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary hover:text-white"
+          >
+            <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
+              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+            </svg>
+            Write Decision
+          </button>
+          <!-- Edit decision button — for already reviewed with decision -->
+          <button
+            *ngIf="report.decisionType"
+            (click)="openDecisionModal(report)"
+            class="inline-flex items-center gap-1.5 rounded border border-stroke px-3 py-1.5 text-xs font-medium text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+          >
+            Edit Decision
+          </button>
+
           <button
             *ngIf="report.status !== 'REVIEWED'"
             (click)="updateStatus(report, 'REVIEWED')"
@@ -194,4 +236,80 @@
     </div>
   </div>
 
+</div>
+
+<!-- Decision modal -->
+<div
+  *ngIf="decisionReport"
+  class="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50"
+  (click)="closeDecisionModal()"
+>
+  <div
+    class="w-full max-w-md rounded-sm border border-stroke bg-white p-6 shadow-default dark:border-strokedark dark:bg-boxdark"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="mb-5 flex items-start gap-3">
+      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
+        <svg class="h-5 w-5 text-primary fill-current" viewBox="0 0 20 20">
+          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+        </svg>
+      </div>
+      <div>
+        <h4 class="text-base font-semibold text-black dark:text-white">Write Decision</h4>
+        <p class="text-sm text-bodydark2">
+          Report against <span class="font-medium text-black dark:text-white">{{ decisionReport.reportedUserName }}</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Decision type -->
+    <div class="mb-4">
+      <label class="mb-2 block text-sm font-medium text-black dark:text-white">
+        Decision type <span class="text-danger">*</span>
+      </label>
+      <div class="flex flex-col gap-2">
+        <label class="flex cursor-pointer items-center gap-2.5">
+          <input type="radio" name="decisionType" value="WARNING" [(ngModel)]="decisionType" class="accent-warning"/>
+          <span class="text-sm text-body dark:text-bodydark">Warning — issue a formal warning to the user</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-2.5">
+          <input type="radio" name="decisionType" value="BAN_FROM_CHANNEL" [(ngModel)]="decisionType" class="accent-danger"/>
+          <span class="text-sm text-body dark:text-bodydark">Ban from channel — remove and ban from the channel</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Decision text -->
+    <div class="mb-5">
+      <label class="mb-2 block text-sm font-medium text-black dark:text-white">
+        Explanation <span class="text-bodydark2 font-normal">(optional)</span>
+      </label>
+      <textarea
+        [(ngModel)]="decisionText"
+        rows="3"
+        placeholder="Explain the decision to the reporter..."
+        class="w-full rounded border border-stroke bg-transparent px-4 py-2 text-sm text-black outline-none transition focus:border-primary dark:border-strokedark dark:text-white dark:focus:border-primary resize-none"
+      ></textarea>
+    </div>
+
+    <div class="flex items-center justify-end gap-3">
+      <button
+        (click)="closeDecisionModal()"
+        class="rounded border border-stroke px-4 py-2 text-sm font-medium text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+      >
+        Cancel
+      </button>
+      <button
+        (click)="submitDecision()"
+        [disabled]="!decisionType || decisionSubmitting"
+        class="inline-flex items-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <svg *ngIf="decisionSubmitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        Confirm Decision
+      </button>
+    </div>
+  </div>
 </div>

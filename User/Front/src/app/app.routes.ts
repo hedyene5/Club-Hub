@@ -21,6 +21,7 @@ import { CalenderComponent } from './pages/calender/calender.component';
 import { InstantVoiceComponent } from './instant-voice/instant-voice.component';
 import { MembersComponent } from './pages/members/members.component';
 import { AudioReportsComponent } from './pages/audio-reports/audio-reports.component';
+import { MyReportsComponent } from './pages/my-reports/my-reports.component';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -54,6 +55,11 @@ export const routes: Routes = [
         path: 'audio-reports',
         component: AudioReportsComponent,
         title: 'Audio Reports | Club Hub',
+      },
+      {
+        path: 'my-reports',
+        component: MyReportsComponent,
+        title: 'My Reports | Club Hub',
       },
       {
         path:'calendar',

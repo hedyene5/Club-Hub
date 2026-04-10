@@ -295,6 +295,37 @@
             </li>
           </ul>
           }
+
+          <!-- My Reports — visible to simple members only -->
+          @if (!canManageMembers) {
+          <ul class="flex flex-col gap-1 mt-1">
+            <li>
+              <a
+                routerLink="/my-reports"
+                routerLinkActive="menu-item-active"
+                class="menu-item group"
+                [ngClass]="{ 'menu-item-inactive': !isActive('/my-reports') }"
+              >
+                <span
+                  class="menu-item-icon-size"
+                  [ngClass]="{
+                    'menu-item-icon-active': isActive('/my-reports'),
+                    'menu-item-icon-inactive': !isActive('/my-reports')
+                  }"
+                >
+                  <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 7l2.55 2.4A1 1 0 0116 11H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" fill="currentColor"/>
+                  </svg>
+                </span>
+                <span class="menu-item-text">
+                  @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
+                  My Reports
+                  }
+                </span>
+              </a>
+            </li>
+          </ul>
+          }
         </div>
         <!-- end main menu -->
 
