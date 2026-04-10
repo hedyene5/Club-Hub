@@ -20,6 +20,7 @@ export interface Channel {
   createdAt?: string;
   createdBy?: string;
   memberIds?: string[];
+  kickedMemberIds?: string[];
   audioHistory?: AudioMessage[];
 }
 

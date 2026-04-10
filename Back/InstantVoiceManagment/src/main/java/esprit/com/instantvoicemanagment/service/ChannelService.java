@@ -70,10 +70,13 @@ public class ChannelService {
         return channelRepo.save(channel);
     }
 
-    // Remove member from channel
+    // Remove member from channel and mark as kicked so they aren't re-added on sync
     public Channel removeMember(String channelId, String userId) {
         Channel channel = getChannelById(channelId);
         channel.getMemberIds().remove(userId);
+        if (!channel.getKickedMemberIds().contains(userId)) {
+            channel.getKickedMemberIds().add(userId);
+        }
         return channelRepo.save(channel);
     }
 
@@ -99,6 +102,7 @@ public class ChannelService {
     }
 
     // Ensure a post channel exists for the given post name, and add the member to it
+    // Skip if the member was explicitly kicked from this channel
     public Channel ensurePostChannel(String postName, String memberId) {
         Channel channel = channelRepo.findByNameAndPostChannel(postName, true)
                 .orElseGet(() -> {
@@ -108,7 +112,10 @@ public class ChannelService {
                     c.setPrivate(true);
                     return channelRepo.save(c);
                 });
-        if (memberId != null && !memberId.isEmpty() && !channel.getMemberIds().contains(memberId)) {
+        boolean kicked = channel.getKickedMemberIds() != null
+                && channel.getKickedMemberIds().contains(memberId);
+        if (!kicked && memberId != null && !memberId.isEmpty()
+                && !channel.getMemberIds().contains(memberId)) {
             channel.getMemberIds().add(memberId);
             return channelRepo.save(channel);
         }

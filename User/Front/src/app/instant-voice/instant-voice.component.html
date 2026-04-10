@@ -505,9 +505,9 @@
               </p>
             </div>
 
-            <!-- Kick button — admins only, not for yourself -->
+            <!-- Kick button -->
             <button
-              *ngIf="!isMembreSimple && member.id !== currentUserId && member.role !== 'PRESIDENT'"
+              *ngIf="canKick(member)"
               (click)="requestKick(member, $event)"
               [disabled]="kickingId === member.id"
               class="flex-shrink-0 rounded p-1.5 text-danger transition hover:bg-red-50 dark:hover:bg-meta-4 disabled:opacity-50"

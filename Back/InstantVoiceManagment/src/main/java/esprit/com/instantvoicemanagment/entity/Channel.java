@@ -22,6 +22,7 @@ public class Channel {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private List<String> memberIds = new ArrayList<>();
+    private List<String> kickedMemberIds = new ArrayList<>();
     private String createdBy;
 
     @JsonProperty("isPostChannel")

@@ -12,6 +12,7 @@ interface AppUser {
   lastName: string;
   email: string;
   role: string;
+  post?: string;
   profilePhoto?: string;
 }
 
@@ -120,6 +121,14 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   get isMembreSimple(): boolean { return this.currentUserRole === 'MEMBRE_SIMPLE'; }
 
+  canKick(member: AppUser): boolean {
+    if (this.isMembreSimple) return false;
+    if (member.id === this.currentUserId) return false;
+    if (member.role === 'PRESIDENT') return false;
+    if (member.role !== 'MEMBRE_SIMPLE') return this.currentUserRole === 'PRESIDENT';
+    return true;
+  }
+
   private memberOrder(member: AppUser): number {
     if (member.role === 'PRESIDENT') return 0;
     if (member.role !== 'MEMBRE_SIMPLE') return 1;
@@ -197,11 +206,15 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
       next: (users) => {
         if (!channel.isPrivate) {
-          // Public channel — everyone can see it, show all users
           this.channelMembers = this.sortMembers(users);
         } else {
-          const ids = new Set(channel.memberIds ?? []);
-          this.channelMembers = this.sortMembers(users.filter(u => ids.has(u.id)));
+          const memberIds = new Set(channel.memberIds ?? []);
+          const kickedIds = new Set(channel.kickedMemberIds ?? []);
+          this.channelMembers = this.sortMembers(users.filter(u => {
+            if (u.role === 'PRESIDENT') return true;                        // always shown
+            if (u.role !== 'MEMBRE_SIMPLE') return !kickedIds.has(u.id);   // non-simple unless kicked
+            return memberIds.has(u.id);                                     // simple only if in memberIds
+          }));
         }
         this.membersLoading = false;
       },
@@ -302,10 +315,13 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.kickingId = member.id;
     this.channelService.removeMember(this.selectedChannel!.id, member.id).subscribe({
       next: (ch) => {
+        if (this.selectedChannel) {
+          this.selectedChannel.memberIds = ch.memberIds;
+          this.selectedChannel.kickedMemberIds = ch.kickedMemberIds;
+        }
+        // Remove from visible list — kicked members no longer appear
         this.channelMembers = this.sortMembers(this.channelMembers.filter(m => m.id !== member.id));
-        if (this.selectedChannel) this.selectedChannel.memberIds = ch.memberIds;
         this.kickingId = null;
-        // Refresh addable list if panel is open
         if (this.showAddMemberPanel) this.refreshAddableUsers();
       },
       error: () => { this.kickingId = null; }
@@ -327,7 +343,6 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   private refreshAddableUsers() {
     if (!this.selectedChannel?.isPrivate) {
-      // Public channel — everyone is already visible, nothing to add
       this.addableUsers = [];
       return;
     }
@@ -335,7 +350,14 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
       next: (users) => {
         const inChannel = new Set(this.selectedChannel?.memberIds ?? []);
-        this.addableUsers = users.filter(u => !inChannel.has(u.id));
+        const kickedIds = new Set(this.selectedChannel?.kickedMemberIds ?? []);
+        let candidates = users.filter(u => !inChannel.has(u.id) && !kickedIds.has(u.id));
+        // Post channels: only allow users with the same post
+        if (this.selectedChannel?.isPostChannel) {
+          const postName = this.selectedChannel.name;
+          candidates = candidates.filter(u => u.role === 'MEMBRE_SIMPLE' && u.post === postName);
+        }
+        this.addableUsers = candidates;
         this.addableLoading = false;
       },
       error: () => { this.addableLoading = false; }
@@ -349,7 +371,10 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
       next: (ch) => {
         this.channelMembers = this.sortMembers([...this.channelMembers, user]);
         this.addableUsers = this.addableUsers.filter(u => u.id !== user.id);
-        if (this.selectedChannel) this.selectedChannel.memberIds = ch.memberIds;
+        if (this.selectedChannel) {
+          this.selectedChannel.memberIds = ch.memberIds;
+          this.selectedChannel.kickedMemberIds = ch.kickedMemberIds;
+        }
         this.addingUserId = null;
         this.memberSearch = '';
       },
