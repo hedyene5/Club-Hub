@@ -7,7 +7,7 @@
       *ngIf="notifying"
       class="absolute -right-1 -top-1 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-400 px-1 text-[10px] font-bold text-white"
     >
-      {{ notifService.unreadCount > 9 ? '9+' : notifService.unreadCount }}
+      {{ unreadCount > 9 ? '9+' : unreadCount }}
     </span>
     <svg
       class="fill-current"
@@ -33,7 +33,7 @@
       <h5 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
         Notifications
         <span *ngIf="notifying" class="ml-2 inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
-          {{ notifService.unreadCount }} new
+          {{ unreadCount }} new
         </span>
       </h5>
       <button
@@ -81,11 +81,11 @@
     </ul>
 
     <a
-      [routerLink]="isbureauMember ? '/audio-reports' : '/my-reports'"
+      [routerLink]="isBureauMember ? '/audio-reports' : '/my-reports'"
       (click)="closeDropdown()"
       class="block px-4 py-2 mt-3 text-sm font-medium text-center text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
     >
-      {{ isbureauMember ? 'View All Reports' : 'View All My Reports' }}
+      {{ isBureauMember ? 'View All Reports' : 'View All My Reports' }}
     </a>
   </app-dropdown>
 </div>

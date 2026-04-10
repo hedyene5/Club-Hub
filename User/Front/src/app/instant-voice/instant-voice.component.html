@@ -237,6 +237,7 @@
               <p class="text-sm font-medium text-black dark:text-white">{{ msg.userName }}</p>
               <p class="mt-0.5 text-xs text-bodydark2">{{ formatDate(msg.createdAt) }}</p>
               <button
+                *ngIf="msg.userId !== currentUserId"
                 (click)="openReportModal(msg)"
                 class="mt-1 flex items-center gap-1 text-xs text-bodydark2 hover:text-danger transition ml-auto"
                 title="Report this audio"

@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.client.RestTemplate;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -19,12 +21,37 @@ public class ReportController {
 
     private final AudioReportRepo reportRepo;
     private final NotificationRepo notifRepo;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @PostMapping
     public ResponseEntity<AudioReport> createReport(@RequestBody AudioReport report) {
         report.setStatus("PENDING");
         report.setCreatedAt(LocalDateTime.now());
-        return ResponseEntity.ok(reportRepo.save(report));
+        AudioReport saved = reportRepo.save(report);
+
+        // Notify all bureau members (non-simple) so they can treat the report
+        try {
+            List<?> bureauMembers = restTemplate.getForObject(
+                    "http://localhost:8081/api/users/bureau", List.class);
+            if (bureauMembers != null) {
+                String msg = saved.getReportedByUserName() + " reported an audio message from "
+                        + saved.getReportedUserName() + " in channel \""
+                        + saved.getChannelName() + "\".";
+                for (Object obj : bureauMembers) {
+                    if (!(obj instanceof Map<?, ?> user)) continue;
+                    String userId = (String) user.get("id");
+                    if (userId == null) continue;
+                    Notification notif = new Notification();
+                    notif.setUserId(userId);
+                    notif.setMessage(msg);
+                    notif.setReportId(saved.getId());
+                    notif.setReportedUserId(saved.getReportedUserId());
+                    notifRepo.save(notif);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        return ResponseEntity.ok(saved);
     }
 
     @GetMapping
@@ -65,6 +92,19 @@ public class ReportController {
                 String msg = "Your report about " + report.getReportedUserName()
                         + " has been reviewed. Decision: " + decisionLabel
                         + (decisionText != null && !decisionText.isBlank() ? " — " + decisionText : "");
+
+                Notification notif = new Notification();
+                notif.setUserId(report.getReportedByUserId());
+                notif.setMessage(msg);
+                notif.setReportId(report.getId());
+                notif.setReportedUserId(report.getReportedUserId());
+                notifRepo.save(notif);
+            }
+
+            // Notify the reporter when their report is dismissed
+            if ("DISMISSED".equals(newStatus)) {
+                String msg = "Your report about " + report.getReportedUserName()
+                        + " in channel \"" + report.getChannelName() + "\" has been dismissed.";
 
                 Notification notif = new Notification();
                 notif.setUserId(report.getReportedByUserId());

@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
 
@@ -22,20 +22,27 @@ export class NotificationService implements OnDestroy {
   private pollInterval: ReturnType<typeof setInterval> | null = null;
   private currentUserId = '';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private ngZone: NgZone) {}
 
   load(userId: string) {
+    if (this.currentUserId === userId && this.pollInterval) return;
     this.currentUserId = userId;
     this.fetch();
-    if (!this.pollInterval) {
+    // Run interval outside Angular zone to avoid triggering unnecessary CD,
+    // but re-enter zone when data arrives so the template updates
+    this.ngZone.runOutsideAngular(() => {
+      if (this.pollInterval) clearInterval(this.pollInterval);
       this.pollInterval = setInterval(() => this.fetch(), 15000);
-    }
+    });
   }
 
   private fetch() {
     if (!this.currentUserId) return;
     this.http.get<AppNotification[]>(`${this.api}?userId=${this.currentUserId}`)
-      .subscribe({ next: (data) => this._notifications.next(data), error: () => {} });
+      .subscribe({
+        next: (data) => this.ngZone.run(() => this._notifications.next(data)),
+        error: () => {}
+      });
   }
 
   markRead(id: string) {

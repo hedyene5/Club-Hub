@@ -123,6 +123,13 @@ public class UserController {
         return ResponseEntity.ok(userService.getSimpleMembers());
     }
 
+    // ── GET /api/users/bureau ─────────────────────────────────────────
+    // Internal endpoint (no auth required) — returns only non-simple members
+    @GetMapping("/bureau")
+    public ResponseEntity<List<User>> getBureauMembers() {
+        return ResponseEntity.ok(userService.getBureauMembers());
+    }
+
     // ── PUT /api/users/{id}/post ──────────────────────────────────────
     // Assigns a post to a MEMBRE_SIMPLE user; caller must not be MEMBRE_SIMPLE
     @PutMapping("/{id}/post")

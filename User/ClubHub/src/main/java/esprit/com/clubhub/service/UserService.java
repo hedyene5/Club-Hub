@@ -48,6 +48,12 @@ public class UserService {
         return userRepo.findByRole(Role.MEMBRE_SIMPLE);
     }
 
+    public List<User> getBureauMembers() {
+        return userRepo.findAll().stream()
+                .filter(u -> u.getRole() != null && u.getRole() != Role.MEMBRE_SIMPLE)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     public User assignPost(String id, String post) {
         User existing = getUserById(id);
         existing.setPost(post);

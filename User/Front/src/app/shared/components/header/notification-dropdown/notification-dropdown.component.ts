@@ -29,6 +29,7 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
     if (user?.userId) {
       this.notifService.load(user.userId);
     }
+    // Subscribe so this.notifications stays in sync — Angular CD picks up changes here
     this.sub.add(
       this.notifService.notifications$.subscribe(n => this.notifications = n)
     );
@@ -36,25 +37,22 @@ export class NotificationDropdownComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() { this.sub.unsubscribe(); }
 
-  get notifying(): boolean { return this.notifService.unreadCount > 0; }
+  get unreadCount(): number {
+    return this.notifications.filter(n => !n.read).length;
+  }
 
-  get isbureauMember(): boolean {
+  get notifying(): boolean { return this.unreadCount > 0; }
+
+  get isBureauMember(): boolean {
     const user = this.authService.getCurrentUser();
     return !!user && user.role !== 'MEMBRE_SIMPLE';
   }
 
-  toggleDropdown() {
-    this.isOpen = !this.isOpen;
-  }
-
-  closeDropdown() {
-    this.isOpen = false;
-  }
+  toggleDropdown() { this.isOpen = !this.isOpen; }
+  closeDropdown() { this.isOpen = false; }
 
   onNotificationClick(notif: AppNotification) {
-    if (!notif.read) {
-      this.notifService.markRead(notif.id);
-    }
+    if (!notif.read) this.notifService.markRead(notif.id);
     this.closeDropdown();
     const user = this.authService.getCurrentUser();
     if (user && user.role !== 'MEMBRE_SIMPLE') {
