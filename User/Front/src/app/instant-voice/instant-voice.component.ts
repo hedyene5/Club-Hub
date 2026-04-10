@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -50,6 +50,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   playingId: string | null = null;
   private activeAudio: HTMLAudioElement | null = null;
+  private audioHistoryPoll: any = null;
 
   // Report
   reportingAudio: AudioMessage | null = null;
@@ -150,7 +151,8 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     private channelService: ChannelService,
     private authService: AuthService,
     private http: HttpClient,
-    public voiceService: VoiceSignalingService
+    public voiceService: VoiceSignalingService,
+    private ngZone: NgZone
   ) {}
 
   ngOnInit() {
@@ -233,6 +235,21 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
       next: (msgs) => { this.audioHistory = msgs; this.audioLoading = false; },
       error: () => { this.audioLoading = false; }
     });
+    this.stopAudioHistoryPoll();
+    this.ngZone.runOutsideAngular(() => {
+      this.audioHistoryPoll = setInterval(() => {
+        this.http.get<AudioMessage[]>(`http://localhost:8082/api/channels/${channelId}/audio`).subscribe({
+          next: (msgs) => this.ngZone.run(() => { this.audioHistory = msgs; })
+        });
+      }, 10000);
+    });
+  }
+
+  private stopAudioHistoryPoll() {
+    if (this.audioHistoryPoll) {
+      clearInterval(this.audioHistoryPoll);
+      this.audioHistoryPoll = null;
+    }
   }
 
   playAudio(msg: AudioMessage) {
@@ -386,6 +403,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   goBack() {
     sessionStorage.removeItem('selectedChannelId');
+    this.stopAudioHistoryPoll();
     if (this.isRecording) this.cancelRecordingQuietly();
     this.voiceService.leaveChannel();
     this.activeAudio?.pause();
@@ -449,6 +467,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.stopAudioHistoryPoll();
     if (this.isRecording) this.cancelRecordingQuietly();
     this.voiceService.leaveChannel();
   }

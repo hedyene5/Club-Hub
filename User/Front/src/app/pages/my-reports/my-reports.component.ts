@@ -82,9 +82,7 @@ export class MyReportsComponent implements OnInit {
   }
 
   decisionLabel(type: string): string {
-    return ({
-      WARNING: 'Warning issued',
-      BAN_FROM_CHANNEL: 'Banned from channel'
-    } as any)[type] ?? type;
+    const map: Record<string, string> = { WARNING: 'Warning issued', DELETE_AUDIO: 'Audio deleted' };
+    return type.split(',').map(t => map[t] ?? t).join(' + ');
   }
 }

@@ -147,26 +147,24 @@
           <p class="text-sm text-black dark:text-white">{{ report.details }}</p>
         </div>
 
-        <!-- Decision badge if already treated -->
-        <div *ngIf="report.decisionType" class="mt-3 flex items-center gap-2 rounded border px-3 py-2"
-          [class.border-warning]="report.decisionType === 'WARNING'"
-          [class.bg-warning/5]="report.decisionType === 'WARNING'"
-          [class.border-danger]="report.decisionType === 'BAN_FROM_CHANNEL'"
-          [class.bg-danger/5]="report.decisionType === 'BAN_FROM_CHANNEL'"
-        >
-          <svg class="h-4 w-4 flex-shrink-0 fill-current"
-            [class.text-warning]="report.decisionType === 'WARNING'"
-            [class.text-danger]="report.decisionType === 'BAN_FROM_CHANNEL'"
-            viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-          </svg>
-          <span class="text-xs font-medium"
-            [class.text-warning]="report.decisionType === 'WARNING'"
-            [class.text-danger]="report.decisionType === 'BAN_FROM_CHANNEL'"
-          >
-            Decision: {{ decisionLabel(report.decisionType) }}
-            <span *ngIf="report.decisionText" class="font-normal"> — {{ report.decisionText }}</span>
-          </span>
+        <!-- Decision badges if already treated -->
+        <div *ngIf="report.decisionType" class="mt-3 flex flex-col gap-1.5">
+          <div *ngIf="report.decisionType.includes('WARNING')" class="flex items-center gap-2 rounded border border-warning bg-warning/5 px-3 py-2">
+            <svg class="h-4 w-4 flex-shrink-0 fill-current text-warning" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <span class="text-xs font-medium text-warning">Warning issued
+              <span *ngIf="report.decisionText && !report.decisionType.includes('DELETE_AUDIO')" class="font-normal"> — {{ report.decisionText }}</span>
+            </span>
+          </div>
+          <div *ngIf="report.decisionType.includes('DELETE_AUDIO')" class="flex items-center gap-2 rounded border border-danger bg-danger/5 px-3 py-2">
+            <svg class="h-4 w-4 flex-shrink-0 fill-current text-danger" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <span class="text-xs font-medium text-danger">Audio deleted
+              <span *ngIf="report.decisionText" class="font-normal"> — {{ report.decisionText }}</span>
+            </span>
+          </div>
         </div>
 
         <!-- Actions -->
@@ -191,21 +189,6 @@
             Edit Decision
           </button>
 
-          <button
-            *ngIf="report.status !== 'REVIEWED'"
-            (click)="updateStatus(report, 'REVIEWED')"
-            [disabled]="updatingId === report.id"
-            class="inline-flex items-center gap-1.5 rounded border border-meta-3 px-3 py-1.5 text-xs font-medium text-meta-3 transition hover:bg-meta-3 hover:text-white disabled:opacity-50"
-          >
-            <svg *ngIf="updatingId === report.id" class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-            </svg>
-            <svg *ngIf="updatingId !== report.id" class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-            </svg>
-            Mark Reviewed
-          </button>
 
           <button
             *ngIf="report.status !== 'DISMISSED'"
@@ -269,12 +252,12 @@
       </label>
       <div class="flex flex-col gap-2">
         <label class="flex cursor-pointer items-center gap-2.5">
-          <input type="radio" name="decisionType" value="WARNING" [(ngModel)]="decisionType" class="accent-warning"/>
+          <input type="checkbox" [(ngModel)]="decisionTypeWarning" class="accent-warning"/>
           <span class="text-sm text-body dark:text-bodydark">Warning — issue a formal warning to the user</span>
         </label>
         <label class="flex cursor-pointer items-center gap-2.5">
-          <input type="radio" name="decisionType" value="BAN_FROM_CHANNEL" [(ngModel)]="decisionType" class="accent-danger"/>
-          <span class="text-sm text-body dark:text-bodydark">Ban from channel — remove and ban from the channel</span>
+          <input type="checkbox" [(ngModel)]="decisionTypeDeleteAudio" class="accent-danger"/>
+          <span class="text-sm text-body dark:text-bodydark">Delete audio — permanently remove the audio from history</span>
         </label>
       </div>
     </div>
@@ -301,7 +284,7 @@
       </button>
       <button
         (click)="submitDecision()"
-        [disabled]="!decisionType || decisionSubmitting"
+        [disabled]="(!decisionTypeWarning && !decisionTypeDeleteAudio) || decisionSubmitting"
         class="inline-flex items-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <svg *ngIf="decisionSubmitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">

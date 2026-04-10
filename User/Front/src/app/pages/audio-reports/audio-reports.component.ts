@@ -41,7 +41,8 @@ export class AudioReportsComponent implements OnInit {
 
   // Decision modal
   decisionReport: AudioReport | null = null;
-  decisionType = '';
+  decisionTypeWarning = false;
+  decisionTypeDeleteAudio = false;
   decisionText = '';
   decisionSubmitting = false;
 
@@ -64,22 +65,29 @@ export class AudioReportsComponent implements OnInit {
 
   openDecisionModal(report: AudioReport) {
     this.decisionReport = report;
-    this.decisionType = report.decisionType ?? '';
+    const types = (report.decisionType ?? '').split(',');
+    this.decisionTypeWarning = types.includes('WARNING');
+    this.decisionTypeDeleteAudio = types.includes('DELETE_AUDIO');
     this.decisionText = report.decisionText ?? '';
   }
 
   closeDecisionModal() {
     this.decisionReport = null;
-    this.decisionType = '';
+    this.decisionTypeWarning = false;
+    this.decisionTypeDeleteAudio = false;
     this.decisionText = '';
   }
 
   submitDecision() {
-    if (!this.decisionReport || !this.decisionType) return;
+    if (!this.decisionReport || (!this.decisionTypeWarning && !this.decisionTypeDeleteAudio)) return;
+    const types = [
+      this.decisionTypeWarning ? 'WARNING' : null,
+      this.decisionTypeDeleteAudio ? 'DELETE_AUDIO' : null
+    ].filter(Boolean).join(',');
     this.decisionSubmitting = true;
     this.http.patch(`${this.api}/${this.decisionReport.id}/status`, {
       status: 'REVIEWED',
-      decisionType: this.decisionType,
+      decisionType: types,
       decisionText: this.decisionText
     }).subscribe({
       next: (updated: any) => {
@@ -143,10 +151,8 @@ export class AudioReportsComponent implements OnInit {
   }
 
   decisionLabel(type: string): string {
-    return ({
-      WARNING: 'Warning issued',
-      BAN_FROM_CHANNEL: 'Banned from channel'
-    } as any)[type] ?? type;
+    const map: Record<string, string> = { WARNING: 'Warning issued', DELETE_AUDIO: 'Audio deleted' };
+    return type.split(',').map(t => map[t] ?? t).join(' + ');
   }
 
   get pendingCount(): number {

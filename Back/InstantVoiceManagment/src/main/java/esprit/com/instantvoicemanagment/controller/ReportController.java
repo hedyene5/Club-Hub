@@ -2,6 +2,7 @@ package esprit.com.instantvoicemanagment.controller;
 
 import esprit.com.instantvoicemanagment.entity.AudioReport;
 import esprit.com.instantvoicemanagment.entity.Notification;
+import esprit.com.instantvoicemanagment.repository.AudioMessageRepo;
 import esprit.com.instantvoicemanagment.repository.AudioReportRepo;
 import esprit.com.instantvoicemanagment.repository.NotificationRepo;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class ReportController {
 
     private final AudioReportRepo reportRepo;
     private final NotificationRepo notifRepo;
+    private final AudioMessageRepo audioMessageRepo;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @PostMapping
@@ -82,6 +84,16 @@ public class ReportController {
                 report.setDecisionType(decisionType);
                 report.setDecisionText(decisionText);
                 report.setTreatedAt(LocalDateTime.now());
+
+                // If DELETE_AUDIO is among the decisions, remove the audio message from history
+                // and clear the embedded audio data from the report itself
+                if (decisionType.contains("DELETE_AUDIO")) {
+                    if (report.getAudioMessageId() != null) {
+                        audioMessageRepo.deleteById(report.getAudioMessageId());
+                    }
+                    report.setAudioData(null);
+                    report.setContentType(null);
+                }
             }
 
             AudioReport saved = reportRepo.save(report);
@@ -125,10 +137,12 @@ public class ReportController {
     }
 
     private String decisionTypeLabel(String type) {
-        return switch (type) {
-            case "WARNING" -> "Warning issued";
-            case "BAN_FROM_CHANNEL" -> "Banned from channel";
-            default -> type;
-        };
+        return java.util.Arrays.stream(type.split(","))
+                .map(t -> switch (t.trim()) {
+                    case "WARNING" -> "Warning issued";
+                    case "DELETE_AUDIO" -> "Audio deleted";
+                    default -> t;
+                })
+                .collect(java.util.stream.Collectors.joining(" + "));
     }
 }
