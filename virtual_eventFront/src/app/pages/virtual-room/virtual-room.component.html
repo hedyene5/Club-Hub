@@ -1,0 +1,54 @@
+<div #canvasContainer class="canvas-wrap"></div>
+
+<!-- HUD TOP: Info Room -->
+<div class="hud-top">
+  <div class="room-info">
+    <div class="room-dot" [class.active]="connected"></div>
+    <span class="room-name">🏢 Virtual Room — Main</span>
+    <span class="users-count">{{ otherAvatars.size + 1 }} participants</span>
+  </div>
+  <div class="screen-share-label" *ngIf="connected">
+    <span>📊 Présentation en cours</span>
+  </div>
+</div>
+
+<!-- HUD BOTTOM LEFT: Contrôles -->
+<div class="controls-hint">
+  <span>⬆⬇⬅➡ ou ZQSD pour bouger</span>
+</div>
+
+<!-- CHAT PANEL -->
+<div class="chat-panel" [class.open]="chatOpen">
+  <div class="chat-header" (click)="chatOpen = !chatOpen">
+    <span>💬 Chat</span>
+    <span class="toggle-btn">{{ chatOpen ? '▼' : '▲' }}</span>
+  </div>
+
+  <div class="chat-messages" #chatBox>
+    <div *ngFor="let msg of chatMessages" class="chat-msg">
+      <span class="msg-user">{{ msg.user }}</span>
+      <span class="msg-text">{{ msg.message }}</span>
+    </div>
+    <div *ngIf="chatMessages.length === 0" class="chat-empty">
+      Aucun message... Dites bonjour ! 👋
+    </div>
+  </div>
+
+  <div class="chat-input-row" *ngIf="chatOpen">
+    <input
+      [(ngModel)]="chatInput"
+      (keydown)="onChatKeydown($event)"
+      placeholder="Écrire un message..."
+      class="chat-input"
+      [disabled]="!connected"
+    />
+    <button (click)="sendChat()" class="send-btn" [disabled]="!connected">
+      ➤
+    </button>
+  </div>
+</div>
+
+<!-- Status connexion -->
+<div class="connection-badge" [class.connected]="connected">
+  {{ connected ? '🟢 Connecté' : '🔴 Hors ligne' }}
+</div>

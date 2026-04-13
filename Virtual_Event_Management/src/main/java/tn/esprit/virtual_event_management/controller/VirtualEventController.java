@@ -1,13 +1,16 @@
 package tn.esprit.virtual_event_management.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.*;
+import tn.esprit.virtual_event_management.entity.User;
 import tn.esprit.virtual_event_management.entity.VirtualEvent;
 import tn.esprit.virtual_event_management.service.IVirtualEventService;
+import tn.esprit.virtual_event_management.service.UserClientService;
 import tn.esprit.virtual_event_management.service.VirtualEventService;
 import tn.esprit.virtual_event_management.service.PdfService;
 import java.time.LocalDateTime;
@@ -39,17 +42,24 @@ public class VirtualEventController {
         return ResponseEntity.ok(virtualEventService.updateEvent(id, event));
     }
 
-    // 🔥 JOIN EVENT
     @PutMapping("/{id}/join")
     public VirtualEvent joinEvent(@PathVariable String id) {
 
         VirtualEvent event = virtualEventService.getEventById(id)
                 .orElseThrow(() -> new RuntimeException("Event introuvable"));
 
-        if (event.getCurrentParticipants() >= event.getMaxParticipants()) {
+        // 🔥 sécuriser null
+        if (event.getCurrentParticipants() == null) {
+            event.setCurrentParticipants(0);
+        }
+
+        // 🔥 vérifier maxParticipants
+        if (event.getMaxParticipants() != null &&
+                event.getCurrentParticipants() >= event.getMaxParticipants()) {
             throw new RuntimeException("Event complet");
         }
 
+        // 🔥 incrément
         event.setCurrentParticipants(event.getCurrentParticipants() + 1);
 
         return virtualEventService.updateEvent(id, event);
@@ -87,5 +97,19 @@ public class VirtualEventController {
                 .header("Content-Disposition", "attachment; filename=event.pdf")
                 .header("Content-Type", "application/pdf")
                 .body(pdf);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteEvent(@PathVariable String id) {
+        virtualEventService.deleteEvent(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Autowired
+    private UserClientService userClientService;
+
+    @GetMapping("/user/{id}")
+    public User getUserFromUserService(@PathVariable Long id) {
+        return userClientService.getUserById(id);
     }
 }

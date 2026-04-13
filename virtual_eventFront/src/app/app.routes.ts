@@ -19,6 +19,7 @@ import { SignInComponent } from './pages/auth-pages/sign-in/sign-in.component';
 import { SignUpComponent } from './pages/auth-pages/sign-up/sign-up.component';
 import { CalendarComponent } from './pages/calendar/calendar.component';
 
+
 export const routes: Routes = [
   {
     path: '',
@@ -43,7 +44,9 @@ export const routes: Routes = [
       // ✅ Events route doit être ici
       { path: 'events', loadComponent: () => import('./pages/events/events.component').then(m => m.EventsComponent), title: 'CLUB HUB Events' },
       { path: 'meeting/:id',loadComponent: () => import('./pages/meeting-room/meeting-room.component') .then(m => m.MeetingRoomComponent), title: 'CLUB HUB Meeting Room' },
-    ]
+      {path: 'virtual-room', loadComponent: () => import('./pages/virtual-room/virtual-room.component').then(m => m.VirtualRoomComponent), title: 'CLUB HUB Virtual Room'},
+      {path: 'lobby',loadComponent: () =>import('./pages/lobby/lobby.component').then(m => m.LobbyComponent), title: 'CLUB HUB Lobby' },
+       ]
   },
   // auth pages
   { path: 'signin', component: SignInComponent, title: 'CLUB HUB Sign In' },

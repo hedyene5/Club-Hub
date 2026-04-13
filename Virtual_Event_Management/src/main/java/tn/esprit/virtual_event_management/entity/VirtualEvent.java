@@ -55,6 +55,11 @@ public class VirtualEvent {
     // 🔹 Metadata
     private LocalDateTime createdAt;
 
+    private String type;   // VIRTUAL ou ROOM
+    private String roomId;
+
+
+
 
 
 }

@@ -78,7 +78,7 @@ public class PdfService {
             for (int i = 0; i < event.getParticipants().size(); i++) {
                 content.append(i + 1)
                         .append(". ")
-                        .append(event.getParticipants().get(i).getFullName())
+                        .append(event.getParticipants().get(i).getLastName())
                         .append("\n");
             }
         }

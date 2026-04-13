@@ -3,11 +3,12 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { VirtualEventService } from '../../services/virtual-event.service';
 import { VirtualEvent } from '../../models/virtual-event';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-events',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   providers: [DatePipe],
   templateUrl: './events.component.html'
 })
@@ -16,6 +17,10 @@ export class EventsComponent implements OnInit {
   events: VirtualEvent[] = [];
   selectedEvent: VirtualEvent | null = null;
   isModalOpen = false;
+
+  // 🔥 AVATAR PAR DEFAUT
+  selectedColor = 'blue';
+  selectedType = 'cube';
 
   constructor(
     private virtualEventService: VirtualEventService,
@@ -44,7 +49,17 @@ export class EventsComponent implements OnInit {
     this.selectedEvent = null;
   }
 
-  // 🔥 INSCRIPTION CORRIGÉE
+  // ✅ AVATAR
+  selectAvatar() {
+    const avatar = {
+      color: this.selectedColor,
+      type: this.selectedType
+    };
+
+    localStorage.setItem("avatar", JSON.stringify(avatar));
+  }
+
+  // 🔥 INSCRIPTION
   registerToEvent(event: VirtualEvent) {
 
     if (!event.id) return;
@@ -70,6 +85,7 @@ export class EventsComponent implements OnInit {
     });
   }
 
+  // 💰 PAIEMENT
   payForEvent(event: VirtualEvent) {
     if (!event.price || event.price <= 0) {
       alert("Cet événement est gratuit.");
@@ -79,7 +95,8 @@ export class EventsComponent implements OnInit {
     this.closeModal();
   }
 
-  joinMeeting(event: VirtualEvent) {
+  // 🔥 JOIN FINAL (IMPORTANT)
+  joinMeeting(event: any) {
 
     if (!event.id) return;
 
@@ -100,7 +117,21 @@ export class EventsComponent implements OnInit {
       return;
     }
 
-    this.router.navigate(['/meeting', event.id]);
+    // 🔥 SAUVEGARDE AVATAR AVANT ENTRER
+    this.selectAvatar();
+
+    // 🔥 LOGIQUE TYPE EVENT
+    if (event.type === 'VIRTUAL') {
+      window.open(event.meetingLink, '_blank');
+      return;
+    }
+
+   if (event.type === 'ROOM') {
+    localStorage.setItem("roomId", event.roomId);
+    this.router.navigate(['/lobby']);
+  return;
+}
+
     this.closeModal();
   }
 

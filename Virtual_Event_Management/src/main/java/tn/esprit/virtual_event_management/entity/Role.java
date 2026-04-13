@@ -1,6 +1,6 @@
 package tn.esprit.virtual_event_management.entity;
 
-public enum RoleType {
+public enum Role {
     ADMIN,
     ORGANISATEUR,
     PARTICIPANT

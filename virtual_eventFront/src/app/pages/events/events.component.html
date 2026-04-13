@@ -94,92 +94,95 @@
   <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-[999] p-4">
     <div class="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col">
 
-      <!-- Header du modal -->
+      <!-- Header -->
       <div class="px-8 py-6 border-b dark:border-gray-800 flex justify-between items-center">
         <div>
-          <span class="px-4 py-1 text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full">
+          <span class="px-4 py-1 text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-700 rounded-full">
             {{ selectedEvent.category }}
           </span>
           <h2 class="text-2xl font-bold mt-2">{{ selectedEvent.title }}</h2>
         </div>
 
-        <button (click)="closeModal()" 
-                class="text-4xl leading-none text-gray-400 hover:text-gray-600"
-                title="Fermer la fenêtre">
-          ×
-        </button>
+        <button (click)="closeModal()" class="text-4xl text-gray-400 hover:text-gray-600">×</button>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-8 space-y-8">
-        <p class="text-gray-600 dark:text-gray-300 leading-relaxed">
+      <!-- Content -->
+      <div class="flex-1 overflow-y-auto p-8 space-y-6">
+
+        <p class="text-gray-600 dark:text-gray-300">
           {{ selectedEvent.description }}
         </p>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+        <!-- INFOS -->
+        <div class="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span class="text-gray-500">Date de début</span>
+            <span class="text-gray-500">Date</span>
             <p class="font-medium">{{ formatDate(selectedEvent.scheduledAt) }}</p>
           </div>
-
-          @if (selectedEvent.endAt) {
-            <div>
-              <span class="text-gray-500">Date de fin</span>
-              <p class="font-medium">{{ formatDate(selectedEvent.endAt) }}</p>
-            </div>
-          }
 
           <div>
             <span class="text-gray-500">Participants</span>
             <p class="font-medium">
-              {{ selectedEvent.currentParticipants || 0 }} / {{ selectedEvent.maxParticipants || 'Illimité' }}
-            </p>
-          </div>
-
-          <div>
-            <span class="text-gray-500">Prix</span>
-            <p class="font-medium text-lg">
-              @if (selectedEvent.price && selectedEvent.price > 0) {
-                {{ selectedEvent.price }} TND
-              } @else {
-                <span class="text-green-600 font-semibold">Gratuit</span>
-              }
+              {{ selectedEvent.currentParticipants || 0 }} / {{ selectedEvent.maxParticipants || '∞' }}
             </p>
           </div>
         </div>
 
-        @if (selectedEvent.meetingLink) {
-          <div class="mt-4">
-            <span class="text-gray-500 block text-sm mb-3">Réunion en ligne</span>
+        <!-- 🔥 TYPE EVENT -->
+        <div class="mt-4">
+          <span class="text-gray-500 text-sm">Type d’événement</span>
+          <p class="font-semibold text-indigo-600">
+            {{ selectedEvent.type === 'ROOM' ? '🎮 3D Room' : '🎥 Vidéo (Jitsi)' }}
+          </p>
+        </div>
 
-            <button (click)="joinMeeting(selectedEvent); $event.stopPropagation()"
-                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-2xl font-semibold transition-all">
+        <!-- 🎨 AVATAR -->
+        <div class="mt-6 border-t pt-6">
+          <label class="block text-sm font-medium mb-3">Personnaliser Avatar</label>
+
+          <select [(ngModel)]="selectedColor"
+                  class="w-full px-4 py-2 border rounded-xl mb-3">
+            <option value="blue">Bleu</option>
+            <option value="red">Rouge</option>
+            <option value="green">Vert</option>
+          </select>
+
+          <select [(ngModel)]="selectedType"
+                  class="w-full px-4 py-2 border rounded-xl">
+            <option value="cube">Cube</option>
+            <option value="sphere">Sphere</option>
+          </select>
+        </div>
+
+        <!-- 🔥 JOIN BUTTON -->
+        <div class="mt-6">
+          <button (click)="joinMeeting(selectedEvent); $event.stopPropagation()"
+                  class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-2xl font-semibold">
+            
+            @if (selectedEvent.type === 'ROOM') {
+              🎮 Entrer dans la salle 3D
+            } @else {
               🎥 Rejoindre la réunion
-            </button>
-          </div>
-        }
+            }
+
+          </button>
+        </div>
+
       </div>
 
-      <!-- Footer Buttons -->
-      <div class="p-8 border-t dark:border-gray-800 flex flex-col sm:flex-row gap-4">
-        <button (click)="closeModal()" 
-                class="flex-1 py-4 border border-gray-300 dark:border-gray-700 rounded-2xl font-medium"
-                title="Fermer">
+      <!-- Footer -->
+      <div class="p-6 border-t flex gap-3">
+
+        <button (click)="closeModal()"
+                class="flex-1 py-3 border rounded-xl">
           Fermer
         </button>
 
         <button (click)="registerToEvent(selectedEvent)"
-                class="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-medium"
-                title="S'inscrire à cet événement">
+                class="flex-1 py-3 bg-indigo-600 text-white rounded-xl">
           S'inscrire
         </button>
 
-        @if (selectedEvent.price && selectedEvent.price > 0) {
-          <button (click)="payForEvent(selectedEvent)"
-                  class="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-medium"
-                  title="Payer l’événement">
-            Payer {{ selectedEvent.price }} TND
-          </button>
-        }
       </div>
 
     </div>

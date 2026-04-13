@@ -1,9 +1,10 @@
 package tn.esprit.virtual_event_management.entity;
 
-import org.springframework.data.annotation.Id;
 import lombok.*;
-import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+
 
 
 @AllArgsConstructor
@@ -14,13 +15,25 @@ public class User {
     @Id
     private String id;
 
-    private String fullName;
+    private String firstName;
 
-    @Indexed(unique = true)
+
+    private String lastName;
+
+
+    private String phoneNumber;
+
     private String email;
+
 
     private String password;
 
-    private RoleType role;
+   private Role role;
+
+    private String profilePhoto;
+
+//
+//    @DBRef
+//    private Club club;
 
 }

@@ -21,4 +21,8 @@ export interface VirtualEvent {
   status?: string;
 
   organizer?: any;
+
+    // 🔥 AJOUT IMPORTANT
+  type: 'VIRTUAL' | 'ROOM';
+  roomId?: string;
 }
