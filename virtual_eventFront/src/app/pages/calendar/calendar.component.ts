@@ -79,7 +79,7 @@ export class CalendarComponent implements OnInit {
   }
 
   loadAllEvents() {
-    this.http.get<VirtualEvent[]>('http://localhost:8081/api/virtual-events')
+    this.http.get<VirtualEvent[]>('http://localhost:8082/api/virtual-events')
       .subscribe({
         next: (events) => {
           const fcEvents: EventInput[] = events.map(ev => ({
@@ -166,7 +166,7 @@ export class CalendarComponent implements OnInit {
       roomId: formValue.roomId
     };
 
-    this.http.post<VirtualEvent>('http://localhost:8081/api/virtual-events', newEvent)
+    this.http.post<VirtualEvent>('http://localhost:8082/api/virtual-events', newEvent)
       .subscribe({
         next: (createdEvent) => {
           this.calendarComponent.getApi().addEvent({
@@ -194,7 +194,7 @@ export class CalendarComponent implements OnInit {
       roomId: formValue.roomId
     };
 
-    this.http.put(`http://localhost:8081/api/virtual-events/${this.selectedEventId}`, updatedEvent)
+    this.http.put(`http://localhost:8082/api/virtual-events/${this.selectedEventId}`, updatedEvent)
       .subscribe(() => {
         this.loadAllEvents();
         this.closeModal();
@@ -213,7 +213,7 @@ export class CalendarComponent implements OnInit {
 
     if (!this.selectedEventId) return;
 
-    this.http.delete(`http://localhost:8081/api/virtual-events/${this.selectedEventId}`)
+    this.http.delete(`http://localhost:8082/api/virtual-events/${this.selectedEventId}`)
       .subscribe(() => {
         const ev = this.calendarComponent.getApi().getEventById(this.selectedEventId!);
         ev?.remove();

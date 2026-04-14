@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 })
 export class RecordService {
 
-  private api = 'http://localhost:8081/api';
+  private api = 'http://localhost:8082/api';
 
   constructor(private http: HttpClient) {}
 

@@ -8,7 +8,7 @@ import { VirtualEvent } from '../models/virtual-event';
 })
 export class VirtualEventService {
 
-  private apiUrl = 'http://localhost:8081/api/virtual-events';
+  private apiUrl = 'http://localhost:8082/api/virtual-events';
 
   constructor(private http: HttpClient) {}
 
