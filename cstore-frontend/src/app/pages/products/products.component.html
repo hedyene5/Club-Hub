@@ -1,0 +1,90 @@
+<div class="p-6">
+  <h1 class="text-2xl font-bold mb-6">🛍️ Nos Produits</h1>
+
+  <!-- Filtres -->
+  <div class="mb-6 flex flex-wrap gap-4">
+    <div class="flex-1 min-w-[200px]">
+      <input type="text" 
+             [(ngModel)]="searchTerm" 
+             (ngModelChange)="onSearchChange()"
+             placeholder="🔍 Rechercher un produit..." 
+             class="w-full p-2 border rounded">
+    </div>
+    <div>
+      <select [(ngModel)]="selectedType" (change)="onTypeChange()" class="p-2 border rounded">
+        <option *ngFor="let type of productTypes" [value]="type.value">{{ type.label }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="text-center py-10">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+    <p class="mt-2">Chargement...</p>
+  </div>
+
+  <!-- Aucun résultat -->
+  <div *ngIf="!loading && filteredProducts.length === 0" class="text-center py-10 bg-gray-50 rounded-lg">
+    <p class="text-gray-500">📭 Aucun produit trouvé</p>
+    <p class="text-sm text-gray-400 mt-1">Essayez de modifier vos critères de recherche</p>
+  </div>
+
+  <!-- Grille de produits -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div *ngFor="let product of filteredProducts" class="border rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+      <!-- Image -->
+      <div class="h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
+        <img [src]="product.imageUrl || 'https://via.placeholder.com/300x200?text=No+Image'" 
+             [alt]="product.name"
+             class="w-full h-full object-cover"
+             (error)="$event.target.src='https://via.placeholder.com/300x200?text=Image+indisponible'">
+      </div>
+      
+      <!-- Contenu -->
+      <div class="p-4">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xl">{{ getProductTypeIcon(product.productType) }}</span>
+          <span class="text-xs text-gray-500">{{ getProductTypeLabel(product.productType) }}</span>
+        </div>
+        
+        <h3 class="font-bold text-lg mb-1">{{ product.name }}</h3>
+        <p class="text-sm text-gray-600 mb-2 line-clamp-2">{{ product.description || 'Aucune description' }}</p>
+        
+        <!-- Infos spécifiques aux billets -->
+        <div *ngIf="product.productType === 'EVENT_TICKET' && product.eventName" class="text-xs text-purple-600 mb-1">
+          🎫 {{ product.eventName }}
+          <span *ngIf="product.eventDate"> - {{ product.eventDate | date:'dd/MM/yyyy' }}</span>
+        </div>
+        
+        <!-- Infos vêtements -->
+        <div *ngIf="product.size || product.color" class="text-xs text-gray-500 mb-1">
+          <span *ngIf="product.size">Taille: {{ product.size }}</span>
+          <span *ngIf="product.size && product.color"> | </span>
+          <span *ngIf="product.color">Couleur: {{ product.color }}</span>
+        </div>
+        
+        <!-- Prix et stock -->
+        <div class="flex justify-between items-center mt-3">
+          <div>
+            <span class="text-xl font-bold text-green-600">{{ product.price }} €</span>
+            <p [class]="'text-xs ' + getStockStatusClass(product.stockQuantity)">
+              {{ getStockStatus(product.stockQuantity) }}
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <button (click)="addToCart(product)" 
+                    [disabled]="product.stockQuantity <= 0"
+                    class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm">
+              🛒 Ajouter
+            </button>
+            <button (click)="buyNow(product)" 
+                    [disabled]="product.stockQuantity <= 0"
+                    class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 disabled:bg-gray-400 text-sm">
+              Acheter
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

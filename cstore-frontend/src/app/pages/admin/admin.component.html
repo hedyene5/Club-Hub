@@ -1,0 +1,104 @@
+<div class="p-6">
+  <h1 class="text-2xl font-bold mb-6">⚙️ Administration</h1>
+
+  <div class="flex gap-2 mb-6 border-b">
+    <button (click)="switchTab('products')" [class]="activeTab === 'products' ? 'bg-blue-500 text-white' : 'bg-gray-200'"
+            class="px-4 py-2 rounded-t-lg">📦 Produits</button>
+    <button (click)="switchTab('orders')" [class]="activeTab === 'orders' ? 'bg-blue-500 text-white' : 'bg-gray-200'"
+            class="px-4 py-2 rounded-t-lg">📋 Commandes</button>
+  </div>
+
+  <!-- PRODUITS -->
+  <div *ngIf="activeTab === 'products'">
+    <div class="mb-8 p-4 border rounded-lg bg-gray-50">
+      <h2 class="text-xl font-bold mb-4">➕ Nouveau produit</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label>Nom *</label><input type="text" [(ngModel)]="newProduct.name" class="w-full p-2 border rounded"></div>
+        <div><label>Prix (€) *</label><input type="number" [(ngModel)]="newProduct.price" step="0.01" min="0" class="w-full p-2 border rounded"></div>
+        <div><label>Type *</label>
+          <select [(ngModel)]="newProduct.productType" (change)="onProductTypeChange()" class="w-full p-2 border rounded">
+            <option value="JERSEY">👕 Maillot</option>
+            <option value="TSHIRT">👕 T-Shirt</option>
+            <option value="HAT">🧢 Casquette</option>
+            <option value="SCARF">🧣 Écharpe</option>
+            <option value="ACCESSORY">🧤 Accessoire</option>
+            <option value="EVENT_TICKET">🎫 Billet Événement</option>
+            <option value="CERTIFICATE">📜 Certificat</option>
+          </select>
+        </div>
+        <div><label>Stock *</label><input type="number" [(ngModel)]="newProduct.stockQuantity" min="0" class="w-full p-2 border rounded"></div>
+        <div class="col-span-2"><label>Description</label><textarea [(ngModel)]="newProduct.description" rows="2" class="w-full p-2 border rounded"></textarea></div>
+
+        <!-- Vêtements -->
+        <div *ngIf="['TSHIRT','JERSEY','HAT','SCARF','ACCESSORY'].includes(newProduct.productType)" class="col-span-2">
+          <div class="grid grid-cols-2 gap-4">
+            <div><label>Taille</label><select [(ngModel)]="size" class="w-full p-2 border rounded"><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select></div>
+            <div><label>Couleur</label><input type="text" [(ngModel)]="color" class="w-full p-2 border rounded" placeholder="Ex: Rouge"></div>
+          </div>
+        </div>
+
+        <!-- Billets -->
+        <div *ngIf="newProduct.productType === 'EVENT_TICKET'" class="col-span-2">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2"><label>🏷️ Nom de l'événement *</label><input type="text" [(ngModel)]="eventName" class="w-full p-2 border rounded" placeholder="Ex: Match PSG vs OM"></div>
+            <div><label>📅 Date</label><input type="datetime-local" [(ngModel)]="eventDate" class="w-full p-2 border rounded"></div>
+            <div><label>📍 Lieu</label><input type="text" [(ngModel)]="venue" class="w-full p-2 border rounded" placeholder="Stade"></div>
+          </div>
+        </div>
+
+        <!-- Certificats -->
+        <div *ngIf="newProduct.productType === 'CERTIFICATE'" class="col-span-2">
+          <div class="grid grid-cols-2 gap-4">
+            <div><label>Durée (mois)</label><select [(ngModel)]="membershipDurationMonths" class="w-full p-2 border rounded"><option [value]="1">1</option><option [value]="3">3</option><option [value]="6">6</option><option [value]="12">12</option><option [value]="24">24</option></select></div>
+            <div><label>Niveau</label><select [(ngModel)]="membershipLevel" class="w-full p-2 border rounded"><option>BRONZE</option><option>SILVER</option><option>GOLD</option><option>PLATINUM</option></select></div>
+          </div>
+        </div>
+
+        <!-- Image -->
+        <div class="col-span-2">
+          <label>🖼️ Image</label>
+          <div class="flex gap-2 mb-2">
+            <button type="button" (click)="imageInputMethod='url'" [class]="imageInputMethod==='url'?'bg-blue-500 text-white':'bg-gray-200'" class="px-3 py-1 rounded">🔗 URL</button>
+            <button type="button" (click)="imageInputMethod='file'" [class]="imageInputMethod==='file'?'bg-blue-500 text-white':'bg-gray-200'" class="px-3 py-1 rounded">📁 Fichier</button>
+          </div>
+          <div *ngIf="imageInputMethod==='url'"><input type="text" [(ngModel)]="newProduct.imageUrl" (ngModelChange)="onImageUrlChange($event)" placeholder="https://..." class="w-full p-2 border rounded"></div>
+          <div *ngIf="imageInputMethod==='file'"><input type="file" (change)="onImageSelected($event)" accept="image/*" class="w-full p-2 border rounded"></div>
+          <div *ngIf="imagePreview" class="mt-2"><img [src]="imagePreview" class="w-32 h-32 object-cover rounded border"><button (click)="clearImage()" class="text-red-500 text-sm">🗑️ Supprimer</button></div>
+        </div>
+
+        <div class="col-span-2"><label class="flex items-center gap-2"><input type="checkbox" [(ngModel)]="newProduct.isAvailable"> ✅ Disponible</label></div>
+      </div>
+      <div class="flex gap-2 mt-4"><button (click)="createProduct()" class="bg-green-500 text-white px-4 py-2 rounded">✅ Créer</button><button (click)="resetForm()" class="bg-gray-500 text-white px-4 py-2 rounded">🔄 Réinitialiser</button></div>
+    </div>
+
+    <!-- Liste produits -->
+    <h2 class="text-xl font-bold mb-4">📦 Produits existants</h2>
+    <div *ngIf="loadingProducts">Chargement...</div>
+    <div *ngFor="let p of products" class="border rounded-lg p-3 mb-3 flex gap-3">
+      <img [src]="p.imageUrl || 'https://via.placeholder.com/60'" class="w-16 h-16 object-cover rounded">
+      <div class="flex-1"><div class="font-bold">{{ getProductTypeIcon(p.productType) }} {{ p.name }}</div><div class="text-sm text-gray-500">{{ getProductTypeLabel(p.productType) }}</div><div>💰 {{ p.price }} € | 📦 Stock: {{ p.stockQuantity }}</div></div>
+      <div><button (click)="startEdit(p)" class="bg-blue-500 text-white px-2 py-1 rounded mr-1">✏️</button><button (click)="deleteProduct(p.id)" class="bg-red-500 text-white px-2 py-1 rounded">🗑️</button></div>
+    </div>
+
+    <!-- Modal édition -->
+    <div *ngIf="editingProduct" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-96"><h2 class="text-xl font-bold mb-4">✏️ Modifier</h2><input type="text" [(ngModel)]="editingProduct.name" class="w-full p-2 border rounded mb-2"><input type="number" [(ngModel)]="editingProduct.price" class="w-full p-2 border rounded mb-2"><input type="number" [(ngModel)]="editingProduct.stockQuantity" class="w-full p-2 border rounded mb-2"><textarea [(ngModel)]="editingProduct.description" class="w-full p-2 border rounded mb-2" rows="2"></textarea><div class="flex justify-end gap-2"><button (click)="cancelEdit()" class="bg-gray-500 text-white px-3 py-1 rounded">Annuler</button><button (click)="updateProduct()" class="bg-blue-500 text-white px-3 py-1 rounded">Enregistrer</button></div></div>
+    </div>
+  </div>
+
+  <!-- COMMANDES -->
+  <div *ngIf="activeTab === 'orders'">
+    <h2 class="text-xl font-bold mb-4">📋 Commandes</h2>
+    <div *ngIf="loadingOrders">Chargement...</div>
+    <div *ngFor="let order of orders" class="border rounded-lg p-4 mb-4">
+      <div class="flex justify-between"><div><strong>#{{ order.orderNumber || order.id?.slice(-8) }}</strong> <span [class]="'px-2 py-1 rounded text-xs ' + getStatusClass(order.status)">{{ order.status }}</span></div><div class="font-bold">{{ order.totalAmount }} €</div></div>
+      <div class="text-sm text-gray-500">{{ order.orderDate | date:'dd/MM/yyyy HH:mm' }}</div>
+      <div class="mt-2"><span class="font-semibold">Adresse :</span> {{ order.shippingAddress }}</div>
+      <div class="mt-2"><span class="font-semibold">Paiement :</span> {{ order.paymentMethod }}</div>
+      <div class="mt-3 pt-2 border-t"><span class="font-semibold">Articles :</span>
+        <div *ngFor="let item of order.items" class="text-sm">• {{ item.productName }} x {{ item.quantity }} = {{ item.price * item.quantity }} €</div>
+      </div>
+      <div class="mt-3 flex gap-2 items-center"><label class="text-sm">Changer statut :</label><select [(ngModel)]="selectedStatus[order.id!]" class="p-1 border rounded text-sm"><option value="PENDING">En attente</option><option value="CONFIRMED">Confirmée</option><option value="SHIPPED">Expédiée</option><option value="DELIVERED">Livrée</option><option value="CANCELLED">Annulée</option></select><button (click)="updateOrderStatus(order.id!, selectedStatus[order.id!])" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">Mettre à jour</button></div>
+    </div>
+  </div>
+</div>
