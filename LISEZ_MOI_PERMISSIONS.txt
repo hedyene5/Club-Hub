@@ -1,0 +1,85 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║   COMMENT ACTIVER LES PERMISSIONS DES RÔLES PERSONNALISÉS     ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+📌 PROBLÈME:
+   Les permissions des rôles personnalisés ne fonctionnent pas.
+   Un user avec un rôle "Chef" a les mêmes droits qu'un membre simple.
+
+🔧 CAUSE:
+   Les nouveaux fichiers Java (PermissionService, PermissionController)
+   ne sont PAS compilés dans l'application en cours d'exécution.
+
+✅ SOLUTION (3 ÉTAPES SIMPLES):
+
+┌────────────────────────────────────────────────────────────────┐
+│ ÉTAPE 1: Arrêter le User Service                              │
+│                                                                │
+│ Dans le terminal où tourne le User Service:                   │
+│ Appuyez sur: Ctrl + C                                         │
+└────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────┐
+│ ÉTAPE 2: Recompiler                                           │
+│                                                                │
+│ Double-cliquez sur:                                           │
+│ ► RECOMPILER_USER_SERVICE.bat                                 │
+│                                                                │
+│ OU tapez dans le terminal:                                    │
+│ cd Club-Hub-Voice-Channel-Management/User/ClubHub             │
+│ ./mvnw clean spring-boot:run                                  │
+└────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────┐
+│ ÉTAPE 3: Attendre le message                                  │
+│                                                                │
+│ Vous devez voir:                                              │
+│ "Started ClubHubApplication in X.XXX seconds"                 │
+│ "Tomcat started on port 8081"                                 │
+│                                                                │
+│ ✅ C'est prêt!                                                │
+└────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+
+🧪 TESTER:
+
+1. Créez un rôle "Chef" avec permissions:
+   ✅ VIEW_MEMBERS
+   ✅ DELETE_MEMBERS
+   ❌ ADD_MEMBERS (ne pas cocher)
+
+2. Créez un user avec ce rôle:
+   Email: chef@test.com
+   Password: test123
+   Rôle: Chef
+
+3. Connectez-vous avec ce user
+
+4. Vérifiez les boutons:
+   ❌ "Ajouter un membre" → CACHÉ
+   ❌ "Modifier" → CACHÉ
+   ✅ "Supprimer" → VISIBLE
+
+═══════════════════════════════════════════════════════════════════
+
+📚 FICHIERS D'AIDE:
+
+► DIAGNOSTIC_PERMISSIONS.bat
+  Vérifie si les fichiers sont compilés
+
+► COMMENT_ACTIVER_PERMISSIONS.md
+  Guide détaillé avec explications
+
+► TEST_CUSTOM_ROLES.md
+  Scénario de test complet
+
+═══════════════════════════════════════════════════════════════════
+
+⚠️ IMPORTANT:
+   Vous DEVEZ recompiler avec "clean" pour que les nouveaux
+   fichiers Java soient inclus dans l'application!
+
+═══════════════════════════════════════════════════════════════════

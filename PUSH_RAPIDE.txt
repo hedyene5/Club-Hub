@@ -1,0 +1,98 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║              GUIDE RAPIDE - PUSHER VOTRE PROJET               ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+📌 MÉTHODE 1: SCRIPT AUTOMATIQUE (Recommandé)
+═══════════════════════════════════════════════════════════════════
+
+1. Double-cliquez sur: git-push.bat
+2. Entrez votre message de commit
+3. Appuyez sur Entrée
+4. C'est fait!
+
+═══════════════════════════════════════════════════════════════════
+
+📌 MÉTHODE 2: COMMANDES MANUELLES
+═══════════════════════════════════════════════════════════════════
+
+Ouvrez un terminal (PowerShell ou CMD) dans le dossier du projet:
+
+1. Vérifier l'état:
+   git status
+
+2. Ajouter tous les fichiers:
+   git add .
+
+3. Commiter:
+   git commit -m "Votre message ici"
+
+4. Pusher:
+   git push
+
+═══════════════════════════════════════════════════════════════════
+
+📌 PREMIER PUSH (Si nouveau repository)
+═══════════════════════════════════════════════════════════════════
+
+1. Initialiser Git:
+   git init
+
+2. Ajouter le remote (remplacez l'URL):
+   git remote add origin https://github.com/VOTRE-USERNAME/REPO.git
+
+3. Ajouter les fichiers:
+   git add .
+
+4. Commiter:
+   git commit -m "Initial commit"
+
+5. Pusher:
+   git branch -M main
+   git push -u origin main
+
+═══════════════════════════════════════════════════════════════════
+
+🔐 AUTHENTIFICATION
+═══════════════════════════════════════════════════════════════════
+
+Si demandé:
+- Username: votre email GitHub
+- Password: votre Personal Access Token (PAS votre mot de passe!)
+
+Créer un token:
+1. GitHub → Settings → Developer settings
+2. Personal access tokens → Tokens (classic)
+3. Generate new token
+4. Cochez: repo
+5. Copiez le token
+
+═══════════════════════════════════════════════════════════════════
+
+❌ PROBLÈMES COURANTS
+═══════════════════════════════════════════════════════════════════
+
+Erreur: "Updates were rejected"
+Solution:
+  git pull origin main --rebase
+  git push
+
+Erreur: "Permission denied"
+Solution:
+  git remote set-url origin https://github.com/USER/REPO.git
+  (Utilisez HTTPS au lieu de SSH)
+
+Erreur: "Large files"
+Solution:
+  Ajoutez node_modules/ et target/ dans .gitignore
+
+═══════════════════════════════════════════════════════════════════
+
+📚 DOCUMENTATION COMPLÈTE
+═══════════════════════════════════════════════════════════════════
+
+Pour plus de détails, consultez:
+► GUIDE_GIT_PUSH.md
+
+═══════════════════════════════════════════════════════════════════

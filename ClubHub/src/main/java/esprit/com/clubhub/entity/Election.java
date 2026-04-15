@@ -1,0 +1,76 @@
+package esprit.com.clubhub.entity;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Document(collection = "elections")
+public class Election {
+
+    @Id
+    private String id;
+    private String clubId;
+    private String title;
+    private String description;
+    private String type;          // "IN_PERSON", "VIRTUAL"
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
+    private String status;        // "PLANNED", "OPEN", "CLOSED", "CANCELLED"
+    private boolean anonymous;    // Vote anonyme
+    private List<Candidate> candidates;
+    private List<Vote> votes;
+    private ElectionResults results;
+    private String electionType;  // "PRESIDENT" ou "BUREAU"
+    // Règles de vote pour élection bureau
+    private String voteScope;     // "OWN_SUBGROUP" | "ALL_SUBGROUPS"
+    private String voteLimit;     // "ONCE" | "PER_SUBGROUP"
+    private List<Position> positions;
+
+
+    public Election() {
+        this.candidates = new ArrayList<>();
+        this.votes = new ArrayList<>();
+        this.status = "PLANNED";
+        this.anonymous = true;
+    }
+
+    // Getters
+    public String getId() { return id; }
+    public String getClubId() { return clubId; }
+    public String getTitle() { return title; }
+    public String getDescription() { return description; }
+    public String getType() { return type; }
+    public LocalDateTime getStartDate() { return startDate; }
+    public LocalDateTime getEndDate() { return endDate; }
+    public String getStatus() { return status; }
+    public boolean isAnonymous() { return anonymous; }
+    public List<Candidate> getCandidates() { return candidates; }
+    public List<Vote> getVotes() { return votes; }
+    public ElectionResults getResults() { return results; }
+    public String getElectionType() { return electionType; }
+    public String getVoteScope() { return voteScope; }
+    public String getVoteLimit() { return voteLimit; }
+    public List<Position> getPositions() { return positions; }
+
+    // Setters
+    public void setId(String id) { this.id = id; }
+    public void setClubId(String clubId) { this.clubId = clubId; }
+    public void setTitle(String title) { this.title = title; }
+    public void setDescription(String description) { this.description = description; }
+    public void setType(String type) { this.type = type; }
+    public void setStartDate(LocalDateTime startDate) { this.startDate = startDate; }
+    public void setEndDate(LocalDateTime endDate) { this.endDate = endDate; }
+    public void setStatus(String status) { this.status = status; }
+    public void setAnonymous(boolean anonymous) { this.anonymous = anonymous; }
+    public void setCandidates(List<Candidate> candidates) { this.candidates = candidates; }
+    public void setVotes(List<Vote> votes) { this.votes = votes; }
+    public void setResults(ElectionResults results) { this.results = results; }
+    public void setElectionType(String electionType) { this.electionType = electionType; }
+    public void setVoteScope(String voteScope) { this.voteScope = voteScope; }
+    public void setVoteLimit(String voteLimit) { this.voteLimit = voteLimit; }
+    public void setPositions(List<Position> positions) { this.positions = positions; }
+
+}

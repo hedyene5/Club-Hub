@@ -1,0 +1,254 @@
+<div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800">
+  <div *ngIf="loading" class="text-center py-10">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    <p class="mt-2 text-gray-500">Chargement...</p>
+  </div>
+
+  <div *ngIf="!loading && election">
+    <!-- En-tête -->
+    <div class="flex justify-between items-start mb-6">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <h2 class="text-2xl font-semibold text-gray-800">{{ election.title }}</h2>
+          <span class="px-2 py-1 text-xs rounded-full"
+                [ngClass]="election.electionType === 'PRESIDENT' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'">
+            {{ election.electionType === 'PRESIDENT' ? '🏆 Présidentielle' : '📋 Bureau' }}
+          </span>
+          <span class="px-2 py-1 text-xs rounded-full" [ngClass]="getStatusColor(election.status)">
+            {{ election.status }}
+          </span>
+        </div>
+        <p class="text-gray-500">{{ election.description }}</p>
+      </div>
+      <!-- Boutons admin uniquement -->
+      <div class="flex space-x-2" *ngIf="isAdmin">
+        <a [routerLink]="['/elections', election.id, 'edit']"
+           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+          Modifier
+        </a>
+        <button (click)="startElection()" *ngIf="election.status === 'PLANNED'"
+                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
+          ▶ Démarrer
+        </button>
+        <button (click)="closeElection()" *ngIf="election.status === 'OPEN'"
+                class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm">
+          ⏹ Clôturer
+        </button>
+        <button (click)="deleteElection()"
+                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">
+          🗑️ Supprimer
+        </button>
+      </div>
+    </div>
+
+    <!-- Infos -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+      <div>
+        <p class="text-sm text-gray-500">Type vote</p>
+        <p class="font-medium">{{ election.type === 'VIRTUAL' ? 'Virtuelle' : 'Présentiel' }}</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Date début</p>
+        <p class="font-medium">{{ election.startDate | date:'dd/MM/yyyy HH:mm' }}</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Date fin</p>
+        <p class="font-medium">{{ election.endDate | date:'dd/MM/yyyy HH:mm' }}</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Votes</p>
+        <p class="font-medium">{{ election.votes ? election.votes.length : 0 }}</p>
+      </div>
+    </div>
+
+    <!-- SECTION CANDIDATURE (visible si élection PLANNED ou OPEN, pas encore candidat) -->
+    <div class="mb-6" *ngIf="election.status !== 'CLOSED' && !hasAlreadyApplied">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-semibold text-gray-800">📝 Postuler comme candidat</h3>
+        <button (click)="showApplicationForm = !showApplicationForm"
+                class="px-3 py-1 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">
+          {{ showApplicationForm ? 'Annuler' : '+ Postuler' }}
+        </button>
+      </div>
+
+      <div *ngIf="showApplicationForm" class="p-4 border rounded-lg bg-gray-50">
+        <form [formGroup]="applicationForm" (ngSubmit)="submitApplication()" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Nom complet</label>
+              <input formControlName="name" class="w-full rounded-lg border px-3 py-2 bg-gray-100" readonly>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Email</label>
+              <input formControlName="email" class="w-full rounded-lg border px-3 py-2 bg-gray-100" readonly>
+            </div>
+          </div>
+
+          <!-- Poste visé pour élection bureau -->
+          <div *ngIf="election.electionType === 'BUREAU'">
+            <label class="block text-sm font-medium mb-1">Sous-groupe *</label>
+            <select formControlName="subGroupTarget" class="w-full rounded-lg border px-3 py-2">
+              <option value="">Sélectionner votre sous-groupe</option>
+              <option *ngFor="let sg of clubSubGroups" [value]="sg.name">{{ sg.name }}</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Vous devez être membre de ce sous-groupe</p>
+          </div>
+
+          <!-- Ancienneté pour président — supprimée -->
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Lettre de motivation *</label>
+            <textarea formControlName="motivation" rows="4" class="w-full rounded-lg border px-3 py-2"
+                      placeholder="Pourquoi voulez-vous ce poste ?"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Programme (optionnel)</label>
+            <textarea formControlName="manifesto" rows="2" class="w-full rounded-lg border px-3 py-2"
+                      placeholder="Vos objectifs..."></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Compétences (séparées par virgules)</label>
+            <input formControlName="skills" class="w-full rounded-lg border px-3 py-2"
+                   placeholder="leadership, communication...">
+          </div>
+
+          <label class="flex items-center gap-2">
+            <input type="checkbox" formControlName="conditionsAccepted" class="rounded">
+            <span class="text-sm">Je certifie remplir toutes les conditions d'éligibilité</span>
+          </label>
+
+          <div class="flex space-x-2">
+            <button type="submit" [disabled]="applicationForm.invalid || submitting"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50">
+              {{ submitting ? 'Envoi...' : '📤 Soumettre' }}
+            </button>
+            <button type="button" (click)="showApplicationForm = false"
+                    class="px-4 py-2 border rounded-lg">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Message si déjà candidat -->
+    <div *ngIf="hasAlreadyApplied && election.status !== 'CLOSED'"
+         class="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+      ✅ Vous avez déjà soumis votre candidature pour cette élection.
+    </div>
+
+    <!-- SECTION CANDIDATS -->
+    <div class="mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">👥 Candidats ({{ election.candidates ? election.candidates.length : 0 }})</h3>
+      </div>
+
+      <div *ngIf="!election.candidates || !election.candidates.length" class="text-gray-400 text-sm">Aucun candidat pour le moment.</div>
+
+      <div class="space-y-3">
+        <div *ngFor="let candidate of election.candidates"
+             class="flex justify-between items-start p-4 border rounded-lg"
+             [ngClass]="candidate.userId === currentUserId ? 'border-blue-300 bg-blue-50' : ''">
+          <div>
+            <div class="flex items-center gap-2">
+              <p class="font-medium">{{ candidate.name }}</p>
+              <span *ngIf="candidate.userId === currentUserId"
+                    class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Vous</span>
+              <span class="text-xs px-2 py-1 rounded-full"
+                    [ngClass]="getCandidateStatusColor(candidate.status)">
+                {{ candidate.status }}
+              </span>
+            </div>
+            <p class="text-sm text-gray-500 mt-1" *ngIf="candidate.motivation">{{ candidate.motivation }}</p>
+            <p class="text-xs text-gray-400 mt-1" *ngIf="candidate.subGroupTarget">
+              Poste visé : {{ candidate.subGroupTarget }}
+            </p>
+          </div>
+          <!-- Actions admin sur les candidatures -->
+          <div class="flex space-x-2" *ngIf="isAdmin && candidate.status === 'PENDING'">
+            <button (click)="validateCandidate(candidate.userId)"
+                    class="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">✓ Valider</button>
+            <button (click)="rejectCandidate(candidate.userId)"
+                    class="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">✗ Rejeter</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION VOTE (élection OPEN, pas encore voté) -->
+    <div class="mb-6" *ngIf="election.status === 'OPEN' && !hasAlreadyVoted">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">🗳️ Voter</h3>
+        <button (click)="showVoteForm = !showVoteForm"
+                class="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+          {{ showVoteForm ? 'Annuler' : 'Voter maintenant' }}
+        </button>
+      </div>
+
+      <div *ngIf="showVoteForm" class="p-4 border rounded-lg bg-gray-50">
+        <form [formGroup]="voteForm" (ngSubmit)="castVote()" class="space-y-3">
+          <select formControlName="candidateId" class="w-full rounded-lg border px-3 py-2">
+            <option value="">Choisir un candidat</option>
+            <option *ngFor="let c of election.candidates"
+                    [value]="c.userId"
+                    [disabled]="c.status !== 'APPROVED'">
+              {{ c.name }} {{ c.status !== 'APPROVED' ? '(non validé)' : '' }}
+            </option>
+          </select>
+          <div class="flex space-x-2">
+            <button type="submit" [disabled]="voteForm.invalid"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50">
+              🗳️ Confirmer mon vote
+            </button>
+            <button type="button" (click)="showVoteForm = false" class="px-4 py-2 border rounded-lg">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Message si déjà voté -->
+    <div *ngIf="hasAlreadyVoted && election.status === 'OPEN'"
+         class="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+      ✅ Vous avez déjà voté pour cette élection.
+    </div>
+
+    <!-- RÉSULTATS (élection CLOSED) -->
+    <div *ngIf="election.status === 'CLOSED' && election.results" class="mt-4 p-5 bg-gray-50 rounded-xl border">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Résultats finaux</h3>
+      <p class="text-sm text-gray-500 mb-3">Total des votes : {{ election.results.totalVotes }}</p>
+
+      <div class="space-y-2">
+        <div *ngFor="let candidate of election.candidates" class="flex items-center gap-3">
+          <span class="font-medium w-40">{{ candidate.name }}</span>
+          <div class="flex-1 bg-gray-200 rounded-full h-4">
+            <div class="bg-blue-500 h-4 rounded-full"
+                 [style.width.%]="election.results.totalVotes > 0
+                   ? (election.results.voteCount[candidate.userId] || 0) * 100 / election.results.totalVotes
+                   : 0">
+            </div>
+          </div>
+          <span class="text-sm w-16 text-right">
+            {{ election.results.voteCount[candidate.userId] || 0 }} votes
+          </span>
+          <span *ngIf="candidate.userId === election.results.winnerId"
+                class="text-yellow-500 text-lg">🏆</span>
+        </div>
+      </div>
+
+      <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <p class="font-bold text-green-700">🏆 Gagnant : {{ getWinnerName() }}</p>
+        <p class="text-sm text-green-600 mt-1">
+          Son rôle a été automatiquement mis à jour.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-6 pt-4 border-t">
+      <a [routerLink]="['/clubs', clubId]" class="text-blue-600 hover:underline">← Retour au club</a>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !election" class="text-center py-10">
+    <p class="text-gray-500">Élection non trouvée</p>
+  </div>
+</div>
