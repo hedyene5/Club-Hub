@@ -26,6 +26,9 @@ type NavItem = {
 })
 export class AppSidebarComponent {
 
+  // New variable for clubstore collapsible state
+  clubstoreOpen: boolean = false;
+
   // Main nav items
   navItems: NavItem[] = [
     {
@@ -68,6 +71,7 @@ export class AppSidebarComponent {
       ],
     },
   ];
+  
   // Others nav items
   othersItems: NavItem[] = [
     {
@@ -121,7 +125,6 @@ export class AppSidebarComponent {
   }
 
   ngOnInit() {
-    // Subscribe to router events
     this.subscription.add(
       this.router.events.subscribe(event => {
         if (event instanceof NavigationEnd) {
@@ -130,31 +133,26 @@ export class AppSidebarComponent {
       })
     );
 
-    // Subscribe to combined observables to close submenus when all are false
     this.subscription.add(
       combineLatest([this.isExpanded$, this.isMobileOpen$, this.isHovered$]).subscribe(
         ([isExpanded, isMobileOpen, isHovered]) => {
           if (!isExpanded && !isMobileOpen && !isHovered) {
-            // this.openSubmenu = null;
-            // this.savedSubMenuHeights = { ...this.subMenuHeights };
-            // this.subMenuHeights = {};
             this.cdr.detectChanges();
-          } else {
-            // Restore saved heights when reopening
-            // this.subMenuHeights = { ...this.savedSubMenuHeights };
-            // this.cdr.detectChanges();
           }
         }
       )
     );
 
-    // Initial load
     this.setActiveMenuFromRoute(this.router.url);
   }
 
   ngOnDestroy() {
-    // Clean up subscriptions
     this.subscription.unsubscribe();
+  }
+
+  // New method to toggle clubstore menu
+  toggleClubstoreMenu() {
+    this.clubstoreOpen = !this.clubstoreOpen;
   }
 
   isActive(path: string): boolean {
@@ -174,7 +172,7 @@ export class AppSidebarComponent {
         const el = document.getElementById(key);
         if (el) {
           this.subMenuHeights[key] = el.scrollHeight;
-          this.cdr.detectChanges(); // Ensure UI updates
+          this.cdr.detectChanges();
         }
       });
     }
@@ -206,7 +204,7 @@ export class AppSidebarComponent {
                 const el = document.getElementById(key);
                 if (el) {
                   this.subMenuHeights[key] = el.scrollHeight;
-                  this.cdr.detectChanges(); // Ensure UI updates
+                  this.cdr.detectChanges();
                 }
               });
             }
@@ -224,6 +222,4 @@ export class AppSidebarComponent {
       }
     }).unsubscribe();
   }  
-
-  
 }

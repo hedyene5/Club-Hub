@@ -44,7 +44,18 @@ export interface Order {
   updatedAt?: string;
 }
 
-const API_URL = 'http://localhost:8888/api';
+// This interface matches your backend OrderRequest DTO exactly
+export interface OrderRequestPayload {
+  memberId: string;
+  shippingAddress: string;
+  paymentMethod: string;
+  items: {
+    productId: string;
+    quantity: number;
+  }[];
+}
+
+const API_URL = 'http://localhost:8082/api';
 
 @Injectable({
   providedIn: 'root'
@@ -95,8 +106,9 @@ export class ApiService {
     return this.http.get<Order[]>(`${API_URL}/orders/member/${memberId}`, { withCredentials: true });
   }
 
-  createOrder(order: Order): Observable<Order> {
-    return this.http.post<Order>(`${API_URL}/orders`, order, { withCredentials: true });
+  // Updated to use OrderRequestPayload instead of Order
+  createOrder(orderData: OrderRequestPayload): Observable<Order> {
+    return this.http.post<Order>(`${API_URL}/orders`, orderData, { withCredentials: true });
   }
 
   updateOrderStatus(id: string, status: string): Observable<Order> {

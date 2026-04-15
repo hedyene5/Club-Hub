@@ -46,48 +46,59 @@
 
   <div class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
     <nav class="mb-6">
-  <div class="flex flex-col gap-4">
-    <!-- MENU PRINCIPAL CLUB STORE -->
-    <div>
-      <h3 class="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3">
-        Navigation
-      </h3>
-      <ul class="space-y-1">
-        <li>
-          <a routerLink="/" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            Accueil
-          </a>
-        </li>
-        <li>
-          <a routerLink="/products" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            Produits
-          </a>
-        </li>
-        <li>
-          <a routerLink="/tickets" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            Billets
-          </a>
-        </li>
-        <li>
-          <a routerLink="/cart" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            Panier
-          </a>
-        </li>
-        <li>
-          <a routerLink="/orders" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            Commandes
-          </a>
-        </li>
-        <li>
-          <a routerLink="/admin" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-            Administration
-          </a>
-        </li>
-      </ul>
-    </div>
-  </div>
       <div class="flex flex-col gap-4">
-        <!-- Menu Section -->
+        <!-- CLUBSTORE GROUP (collapsible) -->
+        <div class="mb-4">
+          <h3 class="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-3">
+            Club Store
+          </h3>
+          <ul class="space-y-1">
+            <!-- Accueil (outside clubstore) -->
+            <li>
+              <a routerLink="/" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                Accueil
+              </a>
+            </li>
+
+            <!-- Clubstore parent (collapsible) -->
+            <li>
+              <button (click)="toggleClubstoreMenu()" class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                <div class="flex items-center gap-3">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                  </svg>
+                  <span>Clubstore</span>
+                </div>
+                <svg class="w-4 h-4 transition-transform duration-200" [ngClass]="{'rotate-180': clubstoreOpen}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <div *ngIf="clubstoreOpen" class="ml-6 mt-1 space-y-1">
+                <a routerLink="/products" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                  Produits
+                </a>
+                <a routerLink="/tickets" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                  Billets
+                </a>
+                <a routerLink="/cart" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                  Panier
+                </a>
+                <a routerLink="/orders" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                  Commandes
+                </a>
+              </div>
+            </li>
+
+            <!-- Administration (outside clubstore) -->
+            <li>
+              <a routerLink="/admin" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                Administration
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Dynamic menu (Dashboard, Calendar, etc.) -->
         <div>
           <h2
             class="mb-4 text-xs uppercase flex leading-[20px] text-gray-400"
@@ -282,9 +293,6 @@
           </ul>
         </div>
         <!-- end main menu -->
-
-        <!-- Support Section -->
-        <!-- end support section -->
 
         <!-- Others Section -->
         <div>

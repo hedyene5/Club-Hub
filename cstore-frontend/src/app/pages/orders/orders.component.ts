@@ -30,7 +30,7 @@ export class OrdersComponent implements OnInit {
     private apiService: ApiService,
     public cartService: CartService,
     private route: ActivatedRoute,
-    private router: Router
+    public router: Router   // Made public so template can use it
   ) {}
 
   ngOnInit() {
@@ -75,7 +75,6 @@ export class OrdersComponent implements OnInit {
           },
           error: (err2) => {
             console.error('Erreur chargement toutes commandes:', err2);
-            // Don't show error to user, just show empty orders
             this.orders = [];
             this.loading = false;
             this.errorMessage = '';
@@ -105,29 +104,26 @@ export class OrdersComponent implements OnInit {
 
     const validPaymentMethods = ['CARTE', 'PAYPAL', 'ESPECES'];
     if (!validPaymentMethods.includes(this.orderForm.paymentMethod)) {
-      alert('Mode de paiement invalide');
+      alert('Mode de paiement invalide. Utilisez CARTE, PAYPAL ou ESPECES');
       return;
     }
 
+    // Build payload exactly matching backend OrderRequest DTO
     const orderData = {
       memberId: this.HARDCODED_USER_ID,
       shippingAddress: this.orderForm.shippingAddress.trim(),
       paymentMethod: this.orderForm.paymentMethod,
       items: cartItems.map(item => ({
         productId: item.id,
-        productName: item.name,
-        quantity: item.quantity,
-        price: item.price
-      })),
-      totalAmount: this.cartService.getTotalPrice(),
-      status: 'PENDING'
+        quantity: item.quantity
+      }))
     };
 
     this.apiService.createOrder(orderData).subscribe({
       next: (response) => {
         alert('Commande créée avec succès !');
         this.cartService.clearCart();
-        this.loadOrders();
+        this.loadOrders();          // refresh order list
         this.showOrderForm = false;
         this.orderForm = {
           shippingAddress: '',
@@ -136,8 +132,9 @@ export class OrdersComponent implements OnInit {
         this.router.navigate(['/orders']);
       },
       error: (err) => {
-        console.error('Erreur:', err);
-        alert('Erreur lors de la création de la commande');
+        console.error('Erreur création commande:', err);
+        const errorMsg = err.error?.message || 'Erreur lors de la création de la commande';
+        alert(errorMsg);
       }
     });
   }

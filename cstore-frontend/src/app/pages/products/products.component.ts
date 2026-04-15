@@ -19,15 +19,15 @@ export class ProductsComponent implements OnInit {
   selectedType = 'ALL';
   searchTerm = '';
 
+  // No emojis in labels
   productTypes = [
     { value: 'ALL', label: 'Tous' },
-    { value: 'JERSEY', label: '👕 Maillots' },
-    { value: 'TSHIRT', label: '👕 T-Shirts' },
-    { value: 'HAT', label: '🧢 Casquettes' },
-    { value: 'SCARF', label: '🧣 Écharpes' },
-    { value: 'ACCESSORY', label: '🧤 Accessoires' },
-    { value: 'EVENT_TICKET', label: '🎫 Billets' },
-    { value: 'CERTIFICATE', label: '📜 Certificats' }
+    { value: 'JERSEY', label: 'Maillots' },
+    { value: 'TSHIRT', label: 'T-Shirts' },
+    { value: 'HAT', label: 'Casquettes' },
+    { value: 'SCARF', label: 'Écharpes' },
+    { value: 'ACCESSORY', label: 'Accessoires' },
+    { value: 'CERTIFICATE', label: 'Certificats' }
   ];
 
   constructor(
@@ -44,7 +44,8 @@ export class ProductsComponent implements OnInit {
     this.loading = true;
     this.apiService.getAllProducts().subscribe({
       next: (data) => {
-        this.products = data;
+        // 🔥 CRITICAL: Exclude all tickets (EVENT_TICKET)
+        this.products = data.filter(p => p.productType !== 'EVENT_TICKET');
         this.applyFilters();
         this.loading = false;
       },
@@ -70,6 +71,7 @@ export class ProductsComponent implements OnInit {
       );
     }
     
+    // Only show available products
     filtered = filtered.filter(p => p.isAvailable);
     this.filteredProducts = filtered;
   }
@@ -92,18 +94,18 @@ export class ProductsComponent implements OnInit {
     this.router.navigate(['/cart']);
   }
 
+  // No emojis in icons (return empty string or simple text)
   getProductTypeIcon(type: string): string {
-    const icons: Record<string, string> = {
-      JERSEY: '👕', TSHIRT: '👕', HAT: '🧢', SCARF: '🧣',
-      ACCESSORY: '🧤', EVENT_TICKET: '🎫', CERTIFICATE: '📜'
-    };
-    return icons[type] || '📦';
+    return ''; // SVG icons will be used in HTML instead
   }
 
   getProductTypeLabel(type: string): string {
     const labels: Record<string, string> = {
-      JERSEY: 'Maillot', TSHIRT: 'T-Shirt', HAT: 'Casquette',
-      SCARF: 'Écharpe', ACCESSORY: 'Accessoire', EVENT_TICKET: 'Billet',
+      JERSEY: 'Maillot',
+      TSHIRT: 'T-Shirt',
+      HAT: 'Casquette',
+      SCARF: 'Écharpe',
+      ACCESSORY: 'Accessoire',
       CERTIFICATE: 'Certificat'
     };
     return labels[type] || type;
