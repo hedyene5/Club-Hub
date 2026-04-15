@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Angular cache
+frontend/.angular/
+frontend/dist/
+
+# Java build
+treasury-service/target/
+treasury-service/.mvn/
+treasury-service/mvnw
+treasury-service/mvnw.cmd
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+*.log

@@ -1,0 +1,53 @@
+spring:
+  data:
+    mongodb:
+      # MongoDB local installe (port 27017)
+      uri: mongodb://localhost:27017/clubhub_treasury
+
+  autoconfigure:
+    exclude:
+      - de.flapdoodle.embed.mongo.spring.autoconfigure.EmbeddedMongoAutoConfiguration
+
+  quartz:
+    job-store-type: memory
+    overwrite-existing-jobs: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: kayzeurdylan@gmail.com
+    password: ycaoctdpvjjlalqu
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+# Flapdoodle desactive — on utilise MongoDB local
+# de:
+#   flapdoodle:
+#     mongodb:
+#       embedded:
+#         version: 7.0.9
+
+stripe:
+  secret-key: sk_test_51OebnQI4pL3hKGDrUhMLOTCMnj2nyFKOKCs3VevmTUXM27I4tx2UB4MuEZkfBH5ZNVJkLOIiR2MbipqxpOgKBOa400JBrBp5CF
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
+  publishable-key: pk_test_51OebnQI4pL3hKGDrHvAaNloBwQ52VuxYXOcI3nlerH6w4jwtqrvRoVfU3eAlESm4ok8UsI6yNw1PLjexLOMcGgB200MzUcIWE8
+  currency: tnd
+
+gemini:
+  api-key: AIzaSyD4cJhfqA1YRt8jufrVI7-NOcpIjiStkeQ
+  model: gemini-2.0-flash
+  max-tokens: 2048
+
+notification:
+  # DESACTIVE en dev — les mails du seed (@esprit.tn) n'existent pas
+  # et provoquent des bounces qui floodent la boite Gmail
+  # Remettre a true uniquement pour tester avec de vrais emails (kayzeurdylan2@gmail.com)
+  email-enabled: false
+
+logging:
+  level:
+    com.clubhub.treasury: DEBUG
+    org.springframework.security: WARN
+    org.springframework.web: INFO
+    # de.flapdoodle: WARN
