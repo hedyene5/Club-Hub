@@ -58,8 +58,8 @@ export class ClubService {
     return this.http.delete<Club>(`${this.apiUrl}/${clubId}/subgroups/${subGroupId}`);
   }
 
-  assignToSubGroup(clubId: string, userId: string, subGroupId: string): Observable<Club> {
-    return this.http.put<Club>(`${this.apiUrl}/${clubId}/members/${userId}/subgroup/${subGroupId}`, {});
+  assignToSubGroup(clubId: string, userId: string, subGroupId: string, subGroupRole: string = 'MEMBRE'): Observable<Club> {
+    return this.http.put<Club>(`${this.apiUrl}/${clubId}/members/${userId}/subgroup/${subGroupId}`, { subGroupRole });
   }
 
   removeFromSubGroup(clubId: string, subGroupId: string, userId: string): Observable<Club> {

@@ -127,11 +127,24 @@ public class ClubController {
     @PutMapping("/{clubId}/members/{userId}/subgroup/{subGroupId}")
     public ResponseEntity<Club> assignToSubGroup(@PathVariable String clubId,
                                                  @PathVariable String userId,
-                                                 @PathVariable String subGroupId) {
+                                                 @PathVariable String subGroupId,
+                                                 @RequestBody(required = false) Map<String, String> requestBody) {
         try {
-            Club updated = clubService.assignToSubGroup(clubId, userId, subGroupId);
+            // ✅ Récupérer le subGroupRole depuis le body (par défaut: MEMBRE)
+            String subGroupRole = (requestBody != null && requestBody.containsKey("subGroupRole")) 
+                ? requestBody.get("subGroupRole") 
+                : "MEMBRE";
+            
+            System.out.println("=== ASSIGN TO SUBGROUP ===");
+            System.out.println("ClubId: " + clubId);
+            System.out.println("UserId: " + userId);
+            System.out.println("SubGroupId: " + subGroupId);
+            System.out.println("SubGroupRole: " + subGroupRole);
+            
+            Club updated = clubService.assignToSubGroup(clubId, userId, subGroupId, subGroupRole);
             return ResponseEntity.ok(updated);
         } catch (RuntimeException e) {
+            System.err.println("Erreur: " + e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }

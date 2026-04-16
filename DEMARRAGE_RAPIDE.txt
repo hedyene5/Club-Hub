@@ -1,0 +1,111 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║              GUIDE RAPIDE - LANCER LE PROJET                  ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+📌 MÉTHODE 1: SCRIPT AUTOMATIQUE (Recommandé)
+═══════════════════════════════════════════════════════════════════
+
+1. Assurez-vous que MongoDB est démarré
+2. Double-cliquez sur: start-all.bat
+3. Attendez 30-60 secondes
+4. Le navigateur s'ouvrira automatiquement sur http://localhost:4200
+
+═══════════════════════════════════════════════════════════════════
+
+📌 MÉTHODE 2: LANCEMENT MANUEL
+═══════════════════════════════════════════════════════════════════
+
+Ouvrez 4 terminaux:
+
+Terminal 1 - Gateway (Port 8084):
+  cd Club-Hub-Voice-Channel-Management/Gateway/Gateway
+  ./mvnw spring-boot:run
+
+Terminal 2 - User Service (Port 8081):
+  cd Club-Hub-Voice-Channel-Management/User/ClubHub
+  ./mvnw spring-boot:run
+
+Terminal 3 - InstantVoice (Port 8082):
+  cd Club-Hub-Voice-Channel-Management/Back/InstantVoiceManagment
+  ./mvnw spring-boot:run
+
+Terminal 4 - Frontend (Port 4200):
+  cd Club-Hub-Voice-Channel-Management/User/Front
+  npm start
+
+═══════════════════════════════════════════════════════════════════
+
+🔍 VÉRIFICATION
+═══════════════════════════════════════════════════════════════════
+
+Attendez que chaque service affiche:
+  ✅ "Started [Service]Application in X.XXX seconds"
+
+Puis ouvrez:
+  http://localhost:4200
+
+═══════════════════════════════════════════════════════════════════
+
+❌ PROBLÈMES COURANTS
+═══════════════════════════════════════════════════════════════════
+
+MongoDB pas démarré:
+  net start MongoDB
+
+Port déjà utilisé (ex: 8081):
+  netstat -ano | findstr :8081
+  taskkill /PID <PID> /F
+
+Erreur "Cannot find module" (Frontend):
+  cd User/Front
+  npm install
+
+═══════════════════════════════════════════════════════════════════
+
+🛑 ARRÊTER LE PROJET
+═══════════════════════════════════════════════════════════════════
+
+Appuyez sur Ctrl+C dans chaque terminal
+
+OU
+
+Fermez toutes les fenêtres de terminal
+
+═══════════════════════════════════════════════════════════════════
+
+📚 DOCUMENTATION COMPLÈTE
+═══════════════════════════════════════════════════════════════════
+
+Pour plus de détails, consultez:
+► LANCER_PROJET.md
+
+═══════════════════════════════════════════════════════════════════
+
+🎯 ORDRE DE DÉMARRAGE
+═══════════════════════════════════════════════════════════════════
+
+1. MongoDB (doit être démarré en premier)
+2. Gateway (Port 8084)
+3. User Service (Port 8081)
+4. InstantVoice Service (Port 8082)
+5. Frontend (Port 4200)
+
+═══════════════════════════════════════════════════════════════════
+
+✅ CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+Avant de lancer:
+  [ ] MongoDB installé et démarré
+  [ ] Java 17+ installé
+  [ ] Node.js 18+ installé
+  [ ] Ports 8081, 8082, 8084, 4200 disponibles
+
+Après le lancement:
+  [ ] Aucune erreur dans les terminaux
+  [ ] http://localhost:4200 s'ouvre
+  [ ] Vous pouvez vous connecter
+
+═══════════════════════════════════════════════════════════════════

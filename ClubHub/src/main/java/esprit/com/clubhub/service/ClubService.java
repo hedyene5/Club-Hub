@@ -11,10 +11,15 @@ import esprit.com.clubhub.repository.ClubRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 import java.time.LocalDateTime;
 
 @Service
@@ -22,8 +27,12 @@ public class ClubService {
 
     @Autowired
     private ClubRepository clubRepository;
+    
+    @Autowired
     private RestTemplate restTemplate;
+    
     private String userServiceUrl = "http://localhost:8081/users";
+    
     public UserDto getUserById(String userId) {
         try {
             return restTemplate.getForObject(userServiceUrl + "/" + userId, UserDto.class);
@@ -186,23 +195,87 @@ public class ClubService {
         return clubRepository.save(club);
     }
 
-    public Club assignToSubGroup(String clubId, String userId, String subGroupId) {
+    public Club assignToSubGroup(String clubId, String userId, String subGroupId, String subGroupRole) {
+        System.out.println("=== ASSIGN TO SUBGROUP SERVICE ===");
+        System.out.println("ClubId: " + clubId);
+        System.out.println("UserId: " + userId);
+        System.out.println("SubGroupId: " + subGroupId);
+        System.out.println("SubGroupRole: " + subGroupRole);
+        
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new RuntimeException("Club non trouvé"));
 
-        // Mettre à jour le membre
+        // ✅ Trouver le nom du sous-groupe
+        SubGroup subGroup = club.getSubGroups().stream()
+                .filter(sg -> sg.getId().equals(subGroupId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Sous-groupe non trouvé"));
+        
+        System.out.println("📋 Sous-groupe trouvé: " + subGroup.getName());
+
+        // ✅ Mettre à jour le membre dans le club avec le subGroupRole
         club.getMembers().stream()
                 .filter(m -> m.getUserId().equals(userId))
                 .findFirst()
-                .ifPresent(member -> member.setSubGroupId(subGroupId));
+                .ifPresent(member -> {
+                    System.out.println("👤 Membre trouvé: " + member.getName() + " (rôle actuel: " + member.getRole() + ")");
+                    
+                    // ✅ Sauvegarder le rôle initial si c'est la première fois qu'on l'assigne comme responsable
+                    if (subGroupRole.equals("RESPONSABLE") && member.getInitialRole() == null) {
+                        member.setInitialRole(member.getRole());
+                        System.out.println("📝 Rôle initial sauvegardé: " + member.getRole());
+                    }
+                    
+                    member.setSubGroupId(subGroupId);
+                    member.setSubGroupRole(subGroupRole);
+                    System.out.println("✅ Membre " + userId + " assigné avec rôle comité: " + subGroupRole);
+                });
+
+        // ✅ Si RESPONSABLE, mettre à jour aussi dans le service User via REST API
+        if (subGroupRole.equals("RESPONSABLE")) {
+            System.out.println("🔍 Appel du service User pour mettre à jour le rôle...");
+            try {
+                String newRole = "Responsable " + subGroup.getName();
+                String url = userServiceUrl + "/" + userId + "/role";
+                
+                Map<String, String> roleUpdate = new HashMap<>();
+                roleUpdate.put("role", newRole);
+                
+                HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
+                ResponseEntity<String> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.PUT,
+                    request,
+                    String.class
+                );
+                
+                System.out.println("✅ Rôle mis à jour dans le service User: " + newRole);
+                System.out.println("📡 Réponse: " + response.getStatusCode());
+            } catch (Exception e) {
+                System.err.println("❌ Erreur lors de la mise à jour du rôle dans User service: " + e.getMessage());
+                // On continue quand même, le rôle est mis à jour dans le club
+            }
+        } else {
+            System.out.println("ℹ️ SubGroupRole n'est pas RESPONSABLE, pas de mise à jour du rôle User");
+        }
 
         // Ajouter le membre à la liste du sous-groupe
         club.getSubGroups().stream()
                 .filter(sg -> sg.getId().equals(subGroupId))
                 .findFirst()
-                .ifPresent(sg -> sg.getMemberIds().add(userId));
+                .ifPresent(sg -> {
+                    if (!sg.getMemberIds().contains(userId)) {
+                        sg.getMemberIds().add(userId);
+                        System.out.println("✅ Membre ajouté à la liste du sous-groupe");
+                    } else {
+                        System.out.println("ℹ️ Membre déjà dans la liste du sous-groupe");
+                    }
+                });
 
-        return clubRepository.save(club);
+        Club savedClub = clubRepository.save(club);
+        System.out.println("✅ Club sauvegardé");
+        System.out.println("===================================");
+        return savedClub;
     }
 
     public Club removeFromSubGroup(String clubId, String subGroupId, String userId) {
@@ -215,11 +288,39 @@ public class ClubService {
                 .findFirst()
                 .ifPresent(sg -> sg.getMemberIds().remove(userId));
 
-        // Mettre à jour subGroupId du membre si c'était ce sous-groupe
+        // ✅ Mettre à jour subGroupId ET subGroupRole du membre + restaurer le rôle initial
         club.getMembers().stream()
                 .filter(m -> m.getUserId().equals(userId) && subGroupId.equals(m.getSubGroupId()))
                 .findFirst()
-                .ifPresent(m -> m.setSubGroupId(null));
+                .ifPresent(m -> {
+                    boolean wasResponsable = "RESPONSABLE".equals(m.getSubGroupRole());
+                    String initialRole = m.getInitialRole();
+                    
+                    m.setSubGroupId(null);
+                    m.setSubGroupRole(null);
+                    
+                    // ✅ Si c'était un responsable, restaurer son rôle initial via REST API
+                    if (wasResponsable && initialRole != null) {
+                        System.out.println("🔄 Restauration du rôle initial: " + initialRole);
+                        m.setRole(initialRole);
+                        m.setInitialRole(null);
+                        
+                        // ✅ Mettre à jour aussi dans le service User via REST API
+                        try {
+                            String url = userServiceUrl + "/" + userId + "/role";
+                            
+                            Map<String, String> roleUpdate = new HashMap<>();
+                            roleUpdate.put("role", initialRole);
+                            
+                            HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
+                            restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+                            
+                            System.out.println("✅ Rôle restauré dans le service User");
+                        } catch (Exception e) {
+                            System.err.println("❌ Erreur lors de la restauration du rôle: " + e.getMessage());
+                        }
+                    }
+                });
 
         return clubRepository.save(club);
     }

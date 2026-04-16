@@ -40,8 +40,14 @@ public class PermissionService {
         if (user.isSystemRole()) {
             System.out.println("✅ Rôle système détecté: " + user.getSystemRole());
             permissions.addAll(getSystemRolePermissions(user.getSystemRole()));
-        } else {
-            System.out.println("❌ Pas un rôle système");
+        } 
+        // ✅ NOUVEAU: Vérifier si c'est un responsable de comité
+        else if (user.getRole() != null && user.getRole().startsWith("Responsable ")) {
+            System.out.println("✅ Responsable de comité détecté: " + user.getRole());
+            permissions.addAll(getCommitteeResponsablePermissions());
+        } 
+        else {
+            System.out.println("❌ Pas un rôle système ni responsable de comité");
         }
 
         // 2. Permissions du rôle personnalisé
@@ -173,6 +179,33 @@ public class PermissionService {
                 permissions.add("JOIN_VOICE_CHANNELS");
                 break;
         }
+        
+        return permissions;
+    }
+
+    /**
+     * ✅ Permissions pour les responsables de comité
+     * Un responsable de comité peut:
+     * - Assigner des membres à SON comité
+     * - Supprimer des membres de SON comité
+     */
+    private List<String> getCommitteeResponsablePermissions() {
+        List<String> permissions = new ArrayList<>();
+        
+        // Permissions de base (comme un membre simple)
+        permissions.add("VIEW_MEMBERS");
+        permissions.add("VIEW_SUBGROUPS");
+        permissions.add("VIEW_ELECTIONS");
+        permissions.add("VOTE_ELECTIONS");
+        permissions.add("VIEW_EVENTS");
+        permissions.add("VIEW_CLUB_INFO");
+        permissions.add("JOIN_VOICE_CHANNELS");
+        
+        // ✅ Permissions spéciales pour gérer SON comité
+        permissions.add("ASSIGN_TO_SUBGROUPS");   // Peut assigner des membres à son comité
+        permissions.add("DELETE_MEMBERS");        // Peut supprimer des membres de son comité
+        
+        System.out.println("📋 Permissions responsable de comité: " + permissions);
         
         return permissions;
     }

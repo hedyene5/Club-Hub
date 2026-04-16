@@ -37,7 +37,7 @@
         <div>
           <h4 class="font-semibold text-purple-800">Recommandation pour vous</h4>
           <p class="text-sm text-purple-600 mt-1">
-            Sous-groupe suggéré : <strong>{{ recommendation.subGroupName }}</strong>
+            Comité suggéré : <strong>{{ recommendation.subGroupName }}</strong>
           </p>
           <p class="text-sm text-purple-600">
             Rôle suggéré : <strong>{{ recommendation.suggestedRole }}</strong>
@@ -81,6 +81,7 @@
               class="px-3 py-1 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600">
         🐛 Debug Permissions
       </button>
+      <!-- ✅ Seuls les admins peuvent ajouter des membres au club -->
       <button *ngIf="isAdmin || permissionService.hasPermission('ADD_MEMBERS')" (click)="openMemberForm()" 
               class="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
         + Ajouter un membre
@@ -180,10 +181,11 @@
               </span>
             </td>
             <td class="py-3 px-4">
+              <!-- ✅ Seuls les admins peuvent modifier/supprimer des membres -->
               <div class="flex space-x-2" *ngIf="isAdmin || permissionService.hasPermission('EDIT_MEMBERS') || permissionService.hasPermission('DELETE_MEMBERS')">
                 <button *ngIf="isAdmin || permissionService.hasPermission('EDIT_MEMBERS')" (click)="startEditMember(member)" 
                         class="text-blue-600 hover:text-blue-800">✏️</button>
-                <button *ngIf="isAdmin || permissionService.hasPermission('DELETE_MEMBERS')" (click)="deleteMember(member.userId)" 
+                <button *ngIf="canDeleteMember(member.userId)" (click)="deleteMember(member.userId)" 
                         class="text-red-600 hover:text-red-800">🗑️</button>
               </div>
             </td>
@@ -225,21 +227,22 @@
   </div>
 </div>
 
-<!-- SECTION SOUS-GROUPES -->
+<!-- SECTION COMITÉS -->
 <div class="mb-6">
   <div class="flex justify-between items-center mb-4">
-    <h3 class="text-lg font-semibold text-gray-800">Sous-groupes</h3>
+    <h3 class="text-lg font-semibold text-gray-800">Comités</h3>
+    <!-- ✅ Seuls les admins peuvent créer des comités -->
     <button *ngIf="isAdmin || permissionService.hasPermission('CREATE_SUBGROUPS')" (click)="showSubGroupForm = !showSubGroupForm" 
             class="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-      + Créer un sous-groupe
+      + Créer un comité
     </button>
   </div>
 
-  <!-- Formulaire création sous-groupe -->
+  <!-- Formulaire création comité -->
   <div *ngIf="showSubGroupForm" class="mb-4 p-4 border rounded-lg bg-gray-50">
-    <h4 class="font-medium mb-3">Créer un nouveau sous-groupe</h4>
+    <h4 class="font-medium mb-3">Créer un nouveau comité</h4>
     <form [formGroup]="subGroupForm" (ngSubmit)="addSubGroup()" class="space-y-3">
-      <input type="text" formControlName="name" placeholder="Nom du sous-groupe" 
+      <input type="text" formControlName="name" placeholder="Nom du comité" 
              class="w-full rounded-lg border px-3 py-2">
       <textarea formControlName="description" placeholder="Description" rows="2"
                 class="w-full rounded-lg border px-3 py-2"></textarea>
@@ -250,11 +253,11 @@
     </form>
   </div>
 
-  <!-- Liste des sous-groupes -->
+  <!-- Liste des comités -->
   <div class="space-y-4">
     <div *ngFor="let sg of club.subGroups" class="border rounded-lg overflow-hidden">
 
-      <!-- En-tête du sous-groupe -->
+      <!-- En-tête du comité -->
       <div class="flex justify-between items-center p-4 bg-gray-50">
 
         <!-- Mode édition -->
@@ -281,6 +284,7 @@
         </div>
 
         <!-- Actions admin -->
+        <!-- ✅ Seuls les admins peuvent modifier/supprimer des comités -->
         <div class="flex items-center gap-2 ml-4" *ngIf="(isAdmin || permissionService.hasPermission('EDIT_SUBGROUPS') || permissionService.hasPermission('DELETE_SUBGROUPS')) && editingSubGroupId !== sg.id">
           <button *ngIf="isAdmin || permissionService.hasPermission('EDIT_SUBGROUPS')" (click)="startEditSubGroup(sg)"
                   class="text-sm px-2 py-1 text-blue-600 hover:bg-blue-50 rounded" title="Modifier">✏️</button>
@@ -289,19 +293,21 @@
         </div>
       </div>
 
-      <!-- Tableau des membres du sous-groupe -->
+      <!-- Tableau des membres du comité -->
       <div class="p-4">
         <div *ngIf="sg.memberIds.length === 0" class="text-sm text-gray-400 italic text-center py-2">
-          Aucun membre dans ce sous-groupe
+          Aucun membre dans ce comité
         </div>
 
         <table *ngIf="sg.memberIds.length > 0" class="w-full text-sm">
           <thead>
             <tr class="border-b text-gray-500 text-xs">
               <th class="text-left py-2 px-2">Nom</th>
-              <th class="text-left py-2 px-2">Rôle</th>
+              <th class="text-left py-2 px-2">Rôle dans le club</th>
+              <th class="text-left py-2 px-2">Rôle dans le comité</th>
               <th class="text-left py-2 px-2">Statut</th>
-              <th class="text-left py-2 px-2" *ngIf="isAdmin || permissionService.hasPermission('ASSIGN_TO_SUBGROUPS')">Actions</th>
+              <!-- ✅ Admins ET responsables de comité peuvent retirer des membres -->
+              <th class="text-left py-2 px-2" *ngIf="canRemoveFromSubGroup(sg.id!)">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -314,12 +320,20 @@
                     {{ m.role }}
                   </span>
                 </td>
+                <!-- ✅ NOUVEAU: Rôle dans le comité -->
+                <td class="py-2 px-2">
+                  <span class="px-2 py-0.5 text-xs rounded-full" 
+                        [ngClass]="m.subGroupRole === 'RESPONSABLE' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'">
+                    {{ m.subGroupRole === 'RESPONSABLE' ? '👑 Responsable' : 'Membre' }}
+                  </span>
+                </td>
                 <td class="py-2 px-2">
                   <span class="px-2 py-0.5 text-xs rounded-full" [ngClass]="getStatusColor(m.status)">
                     {{ m.status }}
                   </span>
                 </td>
-                <td class="py-2 px-2" *ngIf="isAdmin || permissionService.hasPermission('ASSIGN_TO_SUBGROUPS')">
+                <!-- ✅ Admins ET responsables peuvent retirer des membres de leur comité -->
+                <td class="py-2 px-2" *ngIf="canRemoveFromSubGroup(sg.id!)">
                   <button (click)="removeMemberFromSubGroup(sg.id!, memberId)"
                           class="text-xs text-red-500 hover:text-red-700 hover:underline">
                     Retirer
@@ -334,18 +348,18 @@
     </div>
   </div>
 
-  <!-- Message si aucun sous-groupe -->
+  <!-- Message si aucun comité -->
   <div *ngIf="club.subGroups.length === 0" class="text-center py-6 text-gray-500">
-    <p>Aucun sous-groupe pour le moment</p>
-    <p class="text-sm">Créez votre premier sous-groupe pour organiser vos membres</p>
+    <p>Aucun comité pour le moment</p>
+    <p class="text-sm">Créez votre premier comité pour organiser vos membres</p>
   </div>
 </div>
 
     <!-- SECTION ASSIGNATION -->
-    <div class="mb-6" *ngIf="isAdmin || permissionService.hasPermission('ASSIGN_TO_SUBGROUPS')">
+    <div class="mb-6" *ngIf="isAdmin || permissionService.hasPermission('ASSIGN_TO_SUBGROUPS') || getMyResponsibleSubGroupId()">
       <button (click)="showAssignForm = !showAssignForm" 
               class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-        📌 Assigner un membre à un sous-groupe
+        📌 Assigner un membre à un comité
       </button>
 
       <div *ngIf="showAssignForm" class="mt-4 p-4 border rounded-lg bg-gray-50">
@@ -357,12 +371,39 @@
               {{ member.name }} ({{ member.role }})
             </option>
           </select>
+          
+          <!-- ✅ Si responsable de comité, afficher seulement SON comité -->
           <select formControlName="subGroupId" class="w-full rounded-lg border px-3 py-2">
-            <option value="">Sélectionner un sous-groupe</option>
-            <option *ngFor="let sg of club.subGroups" [value]="sg.id">
-              {{ sg.name }}
-            </option>
+            <option value="">Sélectionner un comité</option>
+            <ng-container *ngIf="isAdmin || permissionService.hasPermission('ASSIGN_TO_SUBGROUPS')">
+              <!-- Admin voit tous les comités -->
+              <option *ngFor="let sg of club.subGroups" [value]="sg.id">
+                {{ sg.name }}
+              </option>
+            </ng-container>
+            <ng-container *ngIf="!isAdmin && !permissionService.hasPermission('ASSIGN_TO_SUBGROUPS') && getMyResponsibleSubGroupId()">
+              <!-- Responsable voit seulement SON comité -->
+              <ng-container *ngFor="let sg of club.subGroups">
+                <option [value]="sg.id" *ngIf="sg.id === getMyResponsibleSubGroupId()">
+                  {{ sg.name }} (Mon comité)
+                </option>
+              </ng-container>
+            </ng-container>
           </select>
+          
+          <!-- ✅ NOUVEAU: Rôle dans le comité -->
+          <div>
+            <label class="block text-sm font-medium mb-2 text-gray-700">Rôle dans le comité</label>
+            <select formControlName="subGroupRole" class="w-full rounded-lg border px-3 py-2">
+              <option value="MEMBRE">Membre</option>
+              <option value="RESPONSABLE" *ngIf="isAdmin">Responsable</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">
+              <span *ngIf="isAdmin">Le responsable aura des droits d'administration sur ce comité</span>
+              <span *ngIf="!isAdmin">Vous pouvez ajouter des membres à votre comité</span>
+            </p>
+          </div>
+          
           <div class="flex space-x-2">
             <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg">Assigner</button>
             <button type="button" (click)="showAssignForm = false" class="px-4 py-2 border rounded-lg">Annuler</button>

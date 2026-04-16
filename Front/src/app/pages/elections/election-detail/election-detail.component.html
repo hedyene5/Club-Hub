@@ -86,12 +86,12 @@
 
           <!-- Poste visé pour élection bureau -->
           <div *ngIf="election.electionType === 'BUREAU'">
-            <label class="block text-sm font-medium mb-1">Sous-groupe *</label>
+            <label class="block text-sm font-medium mb-1">Comité *</label>
             <select formControlName="subGroupTarget" class="w-full rounded-lg border px-3 py-2">
-              <option value="">Sélectionner votre sous-groupe</option>
+              <option value="">Sélectionner votre comité</option>
               <option *ngFor="let sg of clubSubGroups" [value]="sg.name">{{ sg.name }}</option>
             </select>
-            <p class="text-xs text-gray-500 mt-1">Vous devez être membre de ce sous-groupe</p>
+            <p class="text-xs text-gray-500 mt-1">Vous devez être membre de ce comité</p>
           </div>
 
           <!-- Ancienneté pour président — supprimée -->

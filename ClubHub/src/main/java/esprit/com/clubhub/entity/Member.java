@@ -7,6 +7,7 @@ public class Member {
     private String email;
     private String name;
     private String role;        // Rôle global dans le club
+    private String initialRole; // ✅ NOUVEAU: Rôle initial avant de devenir responsable
     private String subGroupId;
     private String subGroupRole; // Rôle dans le sous-groupe : RESPONSABLE, ASSISTANT, MEMBRE
     private String status;
@@ -29,6 +30,7 @@ public class Member {
     public String getEmail() { return email; }
     public String getName() { return name; }
     public String getRole() { return role; }
+    public String getInitialRole() { return initialRole; }
     public String getSubGroupId() { return subGroupId; }
     public String getSubGroupRole() { return subGroupRole; }
     public String getStatus() { return status; }
@@ -39,6 +41,7 @@ public class Member {
     public void setEmail(String email) { this.email = email; }
     public void setName(String name) { this.name = name; }
     public void setRole(String role) { this.role = role; }
+    public void setInitialRole(String initialRole) { this.initialRole = initialRole; }
     public void setSubGroupId(String subGroupId) { this.subGroupId = subGroupId; }
     public void setSubGroupRole(String subGroupRole) { this.subGroupRole = subGroupRole; }
     public void setStatus(String status) { this.status = status; }

@@ -118,6 +118,29 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    // ✅ NOUVEAU: Endpoint pour mettre à jour le rôle d'un utilisateur (appelé par Club Service)
+    @PutMapping("/{userId}/role")
+    public ResponseEntity<User> updateUserRole(
+            @PathVariable String userId,
+            @RequestBody Map<String, String> roleUpdate) {
+        
+        try {
+            User user = userService.getUserById(userId);
+            
+            String newRole = roleUpdate.get("role");
+            System.out.println("🔄 Mise à jour du rôle: " + user.getRole() + " → " + newRole);
+            
+            user.setRole(newRole);
+            User savedUser = userService.updateUser(userId, user);
+            
+            System.out.println("✅ Rôle mis à jour dans User service");
+            return ResponseEntity.ok(savedUser);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     // GET /api/users/members
     @GetMapping("/members")
     public ResponseEntity<List<User>> getSimpleMembers() {
