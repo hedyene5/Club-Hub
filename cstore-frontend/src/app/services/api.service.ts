@@ -81,6 +81,16 @@ export class ApiService {
     return this.http.get<Product>(`${API_URL}/products/${id}`, { withCredentials: true });
   }
 
+  // AI Recommendation endpoint
+  getProductRecommendations(productId: string): Observable<Product[]> {
+    return this.http.get<Product[]>(`${API_URL}/products/${productId}/recommendations`, { withCredentials: true });
+  }
+
+  // Next upcoming event (tickets only)
+  getNextUpcomingEvent(): Observable<Product> {
+    return this.http.get<Product>(`${API_URL}/products/next-event`, { withCredentials: true });
+  }
+
   createProduct(product: Product): Observable<Product> {
     return this.http.post<Product>(`${API_URL}/products`, product, { withCredentials: true });
   }

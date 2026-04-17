@@ -64,6 +64,22 @@
         </div>
       </div>
     </div>
+
+    <!-- ========== RECOMMENDATIONS SECTION ========== -->
+    <div *ngIf="recommendations.length > 0" class="mt-12">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Vous pourriez aussi aimer</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div *ngFor="let rec of recommendations"
+             class="bg-white rounded-lg shadow p-3 text-center hover:shadow-md transition cursor-pointer"
+             (click)="viewProduct(rec)">
+          <img [src]="rec.imageUrl || 'https://placehold.co/200x200/f0f0f0/969696?text=Image'"
+               [alt]="rec.name"
+               class="w-full h-32 object-cover rounded mb-2">
+          <h3 class="font-semibold text-sm">{{ rec.name }}</h3>
+          <p class="text-gray-600 text-sm">{{ rec.price }} €</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div *ngIf="!loading && !product" class="text-center py-16">

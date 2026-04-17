@@ -1,4 +1,22 @@
 <div class="p-6 bg-gradient-to-br from-amber-50 to-white min-h-screen">
+  <!-- NEXT EVENT BANNER -->
+  <div *ngIf="nextEvent" class="mb-8 p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl shadow-lg text-white">
+    <div class="flex flex-col md:flex-row justify-between items-center">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-wide">Prochain événement</p>
+        <h2 class="text-2xl font-bold">{{ nextEvent.eventName || nextEvent.name }}</h2>
+        <p class="text-sm opacity-90">
+          {{ formatEventDate(nextEvent.eventDate) }}
+          <span *ngIf="nextEvent.venue"> – {{ nextEvent.venue }}</span>
+        </p>
+      </div>
+      <button (click)="viewEvent(nextEvent)" 
+              class="mt-3 md:mt-0 bg-white text-amber-700 px-5 py-2 rounded-full font-semibold shadow hover:bg-gray-100 transition">
+        Réserver vos places →
+      </button>
+    </div>
+  </div>
+
   <h1 class="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-amber-700 to-orange-600 inline-block mb-6">
     Billets et Événements
   </h1>
@@ -38,7 +56,6 @@
     <div *ngFor="let ticket of filteredTickets" 
          class="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-amber-100">
       
-      <!-- Image avec overlay -->
       <div class="relative h-48 bg-gradient-to-r from-amber-500 to-orange-500 overflow-hidden">
         <img [src]="ticket.imageUrl || 'https://placehold.co/600x400/fef3c7/78350f?text=Billet'" 
              [alt]="ticket.name"
@@ -50,13 +67,11 @@
         </div>
       </div>
       
-      <!-- Contenu -->
       <div class="p-5">
         <div class="flex justify-between items-start mb-2">
           <h3 class="font-bold text-xl text-gray-800 line-clamp-1">{{ ticket.name }}</h3>
         </div>
         
-        <!-- Infos événement -->
         <div *ngIf="ticket.eventName" class="mb-3">
           <p class="text-sm font-semibold text-amber-700">{{ ticket.eventName }}</p>
           <div class="flex items-center gap-2 text-xs text-gray-500 mt-1">
@@ -76,7 +91,6 @@
         
         <p class="text-sm text-gray-600 mb-4 line-clamp-2">{{ ticket.description || 'Venez vivre une expérience unique !' }}</p>
         
-        <!-- Prix et actions -->
         <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
           <div>
             <span class="text-2xl font-extrabold text-gray-900">{{ ticket.price }} <span class="text-sm font-normal">€</span></span>

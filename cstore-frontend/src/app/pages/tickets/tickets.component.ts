@@ -16,6 +16,7 @@ export class TicketsComponent implements OnInit {
   tickets: Product[] = [];
   loading = true;
   searchTerm = '';
+  nextEvent: Product | null = null;
 
   constructor(
     private apiService: ApiService,
@@ -25,6 +26,7 @@ export class TicketsComponent implements OnInit {
 
   ngOnInit() {
     this.loadTickets();
+    this.loadNextEvent();
   }
 
   loadTickets() {
@@ -38,6 +40,13 @@ export class TicketsComponent implements OnInit {
         console.error('Erreur chargement:', err);
         this.loading = false;
       }
+    });
+  }
+
+  loadNextEvent() {
+    this.apiService.getNextUpcomingEvent().subscribe({
+      next: (event) => this.nextEvent = event,
+      error: (err) => console.error('Error loading next event:', err)
     });
   }
 
@@ -58,6 +67,32 @@ export class TicketsComponent implements OnInit {
   buyNow(ticket: Product) {
     this.cartService.addToCart(ticket, 1);
     this.router.navigate(['/cart']);
+  }
+
+  viewEvent(event: Product) {
+    this.router.navigate(['/products', event.id]);
+  }
+
+  formatEventDate(dateValue: any): string {
+    if (!dateValue) return 'Date à confirmer';
+    let date: Date;
+    if (typeof dateValue === 'string') {
+      date = new Date(dateValue);
+    } else if (dateValue instanceof Date) {
+      date = dateValue;
+    } else {
+      return 'Date invalide';
+    }
+    if (isNaN(date.getTime())) return 'Date invalide';
+    return date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }) + ' à ' + date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
   getStockStatus(stock: number): string {
