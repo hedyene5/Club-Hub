@@ -80,6 +80,24 @@
         </div>
       </div>
     </div>
+
+    <!-- ========== CERTIFICATE SECTION (only for CERTIFICATE type) ========== -->
+    <div *ngIf="product?.productType === 'CERTIFICATE'" class="mt-12 p-6 bg-gray-50 rounded-2xl border border-gray-200">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">📜 Votre certificat personnalisé</h2>
+      <div class="flex flex-col md:flex-row gap-4 items-end">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Votre nom complet</label>
+          <input type="text" [(ngModel)]="certificateName" 
+                 placeholder="Ex: Jean Dupont"
+                 class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button (click)="generateCertificate()" 
+                class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-2 rounded-lg font-medium shadow hover:shadow-lg transition">
+          Générer mon certificat PDF
+        </button>
+      </div>
+    </div>
+
   </div>
 
   <div *ngIf="!loading && !product" class="text-center py-16">

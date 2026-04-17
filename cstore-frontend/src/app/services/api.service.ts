@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 export interface Product {
   id: string;
   clubId?: string;
+  clubName?: string;               // <-- ADDED for club name
   name: string;
   description?: string;
   price: number;
