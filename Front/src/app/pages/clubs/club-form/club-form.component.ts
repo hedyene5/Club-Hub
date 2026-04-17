@@ -24,7 +24,7 @@ export class ClubFormComponent implements OnInit {
     { 
       value: CommitteeMembershipMode.MULTIPLE_ALLOWED, 
       label: '✅ Plusieurs comités autorisés',
-      description: 'Un membre peut appartenir à plusieurs comités, mais ne peut être RESPONSABLE que d\'un seul comité (recommandé pour grands clubs)'
+      description: 'Un membre peut appartenir à plusieurs comités. MAIS: un membre ne peut être RESPONSABLE que d\'un seul comité, et un RESPONSABLE ne peut appartenir qu\'à son propre comité.'
     },
     { 
       value: CommitteeMembershipMode.SINGLE_ONLY, 

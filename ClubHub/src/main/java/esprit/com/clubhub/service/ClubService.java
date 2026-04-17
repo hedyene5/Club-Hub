@@ -224,14 +224,16 @@ public class ClubService {
         
         // ✅ RÈGLE 1: Mode SINGLE_ONLY - Un membre ne peut être que dans UN SEUL comité
         if (mode == CommitteeMembershipMode.SINGLE_ONLY) {
-            if (member.getSubGroupId() != null && !member.getSubGroupId().equals(subGroupId)) {
+            // ✅ FIX: Vérifier dans TOUS les sous-groupes, pas seulement member.subGroupId
+            // car en mode MULTIPLE_ALLOWED, subGroupId peut être écrasé
+            SubGroup existingSubGroup = club.getSubGroups().stream()
+                    .filter(sg -> !sg.getId().equals(subGroupId) && sg.getMemberIds().contains(userId))
+                    .findFirst()
+                    .orElse(null);
+            
+            if (existingSubGroup != null) {
                 // Le membre est déjà dans un autre comité
-                SubGroup currentSubGroup = club.getSubGroups().stream()
-                        .filter(sg -> sg.getId().equals(member.getSubGroupId()))
-                        .findFirst()
-                        .orElse(null);
-                
-                String currentSubGroupName = currentSubGroup != null ? currentSubGroup.getName() : "un comité";
+                String currentSubGroupName = existingSubGroup.getName();
                 System.err.println("❌ Mode SINGLE_ONLY: Le membre est déjà dans le comité '" + currentSubGroupName + "'");
                 throw new RuntimeException("Ce club n'autorise qu'un seul comité par membre. Le membre est déjà dans le comité '" + currentSubGroupName + "'. Veuillez d'abord le retirer de ce comité.");
             }
@@ -253,6 +255,22 @@ public class ClubService {
                 String currentSubGroupName = currentResponsableSubGroup != null ? currentResponsableSubGroup.getName() : "un comité";
                 System.err.println("❌ Mode MULTIPLE_ALLOWED: Le membre est déjà RESPONSABLE du comité '" + currentSubGroupName + "'");
                 throw new RuntimeException("Un membre ne peut être RESPONSABLE que d'UN SEUL comité. Ce membre est déjà responsable du comité '" + currentSubGroupName + "'. Il peut rejoindre ce comité en tant que MEMBRE_COMITE.");
+            }
+        }
+        
+        // ✅ RÈGLE 3: Mode MULTIPLE_ALLOWED - Un RESPONSABLE ne peut appartenir qu'à SON comité
+        if (mode == CommitteeMembershipMode.MULTIPLE_ALLOWED) {
+            // Vérifier si le membre est déjà RESPONSABLE d'un autre comité
+            SubGroup responsableSubGroup = club.getSubGroups().stream()
+                    .filter(sg -> userId.equals(sg.getResponsableId()))
+                    .findFirst()
+                    .orElse(null);
+            
+            if (responsableSubGroup != null && !responsableSubGroup.getId().equals(subGroupId)) {
+                // Le membre est responsable d'un autre comité
+                String responsableSubGroupName = responsableSubGroup.getName();
+                System.err.println("❌ Mode MULTIPLE_ALLOWED: Le membre est RESPONSABLE du comité '" + responsableSubGroupName + "' et ne peut pas rejoindre un autre comité");
+                throw new RuntimeException("Un responsable de comité ne peut appartenir qu'à son propre comité. Ce membre est responsable du comité '" + responsableSubGroupName + "'. Pour rejoindre un autre comité, il doit d'abord quitter son rôle de responsable.");
             }
         }
 

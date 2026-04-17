@@ -1,277 +1,153 @@
-# 🚀 Guide de Test Rapide - Permissions des Rôles Personnalisés
+# 🚀 Guide de Test Rapide - Configuration des Comités
 
-## ⚠️ AVANT DE COMMENCER
+## ✅ Tous les Services sont Actifs
 
-Vous devez avoir:
-1. ✅ Des rôles personnalisés dans MongoDB (collection `custom_roles`)
-2. ✅ Le User Service redémarré avec le nouveau code
-
----
-
-## 📝 ÉTAPE 1: Redémarrer le User Service
-
-### Option A: Script Automatique (Recommandé)
-```
-1. Arrêtez le User Service actuel (Ctrl+C dans son terminal)
-2. Double-cliquez sur: CORRIGER_PERMISSIONS_MAINTENANT.bat
-3. Attendez "Started ClubHubApplication"
-```
-
-### Option B: Commandes Manuelles
-```bash
-# Terminal 1: Arrêtez le User Service (Ctrl+C)
-
-# Terminal 2: Redémarrez
-cd Club-Hub-Voice-Channel-Management/User/ClubHub
-./mvnw clean spring-boot:run
-```
+- ✅ User Service: http://localhost:8081
+- ✅ Club Service: http://localhost:8083
+- ✅ Gateway: http://localhost:8084
+- ✅ Frontend: http://localhost:4200
 
 ---
 
-## 🧪 ÉTAPE 2: Vérifier que l'endpoint fonctionne
+## 🎯 Test en 3 Minutes
 
-### Test 1: Via le navigateur
+### Étape 1: Accéder à l'Application
 
-Ouvrez: `http://localhost:8081/api/permissions/user/VOTRE_USER_ID`
-
-Remplacez `VOTRE_USER_ID` par un vrai ID d'utilisateur de MongoDB.
-
-**Résultat attendu**: Un JSON avec une liste de permissions
-```json
-["VIEW_MEMBERS", "DELETE_MEMBERS", "ADD_MEMBERS"]
-```
-
-**Si erreur 403 ou 404**: Le service n'est pas correctement redémarré.
+1. Ouvrez votre navigateur
+2. Allez sur: **http://localhost:4200**
+3. Connectez-vous avec un compte PRESIDENT
 
 ---
 
-## 🎯 ÉTAPE 3: Tester avec un utilisateur réel
+### Étape 2: Créer un Club avec Configuration
 
-### Scénario: Créer un utilisateur "Chef" avec permissions limitées
+1. Cliquez sur **"Créer un club"**
+2. Remplissez les informations de base (nom, description, etc.)
+3. **Descendez jusqu'à la section "Règle d'appartenance aux comités"**
+4. Vous verrez 2 options:
 
-#### 3.1 Vérifier les rôles dans MongoDB
+```
+○ Un membre peut appartenir à plusieurs comités
+   Les membres peuvent rejoindre autant de comités qu'ils le souhaitent,
+   mais ne peuvent être responsables que d'un seul comité.
 
-Ouvrez MongoDB Compass:
-- Base: `User`
-- Collection: `custom_roles`
-- Cherchez un rôle, par exemple "Chef"
+○ Un membre ne peut appartenir qu'à un seul comité
+   Chaque membre ne peut être assigné qu'à un seul comité à la fois.
+```
 
-Vérifiez qu'il a:
+5. **Choisissez une option** (par exemple: "plusieurs comités")
+6. Cliquez sur **"Créer"**
+
+---
+
+### Étape 3: Voir la Configuration Active
+
+1. Allez sur la page de détails du club que vous venez de créer
+2. **Vous verrez une section colorée** qui affiche la règle active:
+
+```
+┌─────────────────────────────────────────────────┐
+│ 📋 Règle d'appartenance aux comités             │
+│                                                  │
+│ Un membre peut appartenir à plusieurs comités   │
+│ (mais ne peut être responsable que d'un seul)   │
+│                                                  │
+│ [Modifier]                                       │
+└─────────────────────────────────────────────────┘
+```
+
+3. Cliquez sur **"Modifier"** pour changer la règle si nécessaire
+
+---
+
+### Étape 4: Tester les Règles
+
+#### Test A: Mode "Plusieurs Comités"
+
+1. Créez 2 comités: "Event" et "Media"
+2. Ajoutez un membre "Alice"
+3. Assignez Alice au comité "Event" comme **RESPONSABLE** → ✅
+4. Assignez Alice au comité "Media" comme **MEMBRE_COMITE** → ✅
+5. Essayez d'assigner Alice au comité "Media" comme **RESPONSABLE** → ❌ Erreur!
+
+**Message attendu:**
+```
+❌ Un membre ne peut être RESPONSABLE que d'UN SEUL comité.
+
+Ce membre est déjà responsable du comité "Event".
+
+Il peut rejoindre ce comité en tant que MEMBRE_COMITE.
+```
+
+#### Test B: Mode "Un Seul Comité"
+
+1. Modifiez le club pour choisir "Un seul comité"
+2. Créez 2 comités: "Event" et "Media"
+3. Ajoutez un membre "Bob"
+4. Assignez Bob au comité "Event" → ✅
+5. Essayez d'assigner Bob au comité "Media" → ❌ Erreur!
+
+**Message attendu:**
+```
+❌ Ce club n'autorise qu'un seul comité par membre.
+
+Le membre est déjà dans le comité "Event".
+
+Veuillez d'abord le retirer de ce comité.
+```
+
+---
+
+## 🎨 Où Trouver la Configuration?
+
+### 1. Lors de la Création d'un Club
+- Formulaire de création → Section "Règle d'appartenance aux comités"
+
+### 2. Lors de la Modification d'un Club
+- Page du club → Bouton "Modifier" → Section "Règle d'appartenance aux comités"
+
+### 3. Affichage sur la Page du Club
+- Page du club → Section colorée en haut avec la règle active
+
+---
+
+## 📊 Tableau Récapitulatif
+
+| Mode | Plusieurs Comités | Plusieurs Responsabilités | Exemple |
+|------|-------------------|---------------------------|---------|
+| **Plusieurs comités** | ✅ Oui | ❌ Non | Alice: RESPONSABLE "Event" + MEMBRE "Media" |
+| **Un seul comité** | ❌ Non | ❌ Non | Bob: MEMBRE "Event" uniquement |
+
+---
+
+## 🔍 Vérification Rapide
+
+Pour vérifier que la configuration est bien enregistrée:
+
+```powershell
+.\check-mongodb.ps1
+```
+
+Ou dans MongoDB Compass, cherchez dans la collection `clubs`:
+
 ```json
 {
-  "_id": "67abc123...",
-  "roleName": "Chef",
-  "permissions": ["VIEW_MEMBERS", "DELETE_MEMBERS"],
-  "isActive": true,
-  "clubId": "69dd..."
+  "name": "Nom du Club",
+  "rules": {
+    "committeeMembershipMode": "MULTIPLE_ALLOWED"  // ou "SINGLE_ONLY"
+  }
 }
 ```
 
-#### 3.2 Créer un utilisateur avec ce rôle
-
-**Connectez-vous en PRESIDENT**, puis:
-
-1. Allez dans **"Clubs"** → Votre club
-2. Cliquez **"Ajouter un membre"**
-3. Remplissez:
-   - Prénom: `Test`
-   - Nom: `Chef`
-   - Email: `chef@test.com`
-   - Password: `test123`
-   - Rôle: Sélectionnez **"Chef"** (votre rôle personnalisé)
-4. Cliquez **"Ajouter"**
-
-#### 3.3 Vérifier dans MongoDB que customRoleId est enregistré
-
-MongoDB Compass:
-- Base: `User`
-- Collection: `users`
-- Cherchez: `chef@test.com`
-
-Vérifiez:
-```json
-{
-  "_id": "69dd...",
-  "email": "chef@test.com",
-  "role": "Chef",
-  "customRoleId": "67abc123...",  ← DOIT ÊTRE PRÉSENT!
-  ...
-}
-```
-
-**Si `customRoleId` est absent ou null**: Le frontend n'envoie pas le customRoleId correctement.
-
-#### 3.4 Tester les permissions
-
-1. **Déconnectez-vous** du compte PRESIDENT
-2. **Connectez-vous** avec:
-   - Email: `chef@test.com`
-   - Password: `test123`
-
-3. **Ouvrez la console du navigateur** (F12)
-   
-   Vous devez voir:
-   ```
-   ✅ Permissions chargées: ["VIEW_MEMBERS", "DELETE_MEMBERS"]
-   ```
-
-4. **Allez dans "Clubs"** → Votre club
-
-5. **Vérifiez les boutons**:
-
-   | Bouton | Doit être |
-   |--------|-----------|
-   | "Ajouter un membre" | ❌ CACHÉ (pas ADD_MEMBERS) |
-   | "✏️ Modifier" | ❌ CACHÉ (pas EDIT_MEMBERS) |
-   | "🗑️ Supprimer" | ✅ VISIBLE (a DELETE_MEMBERS) |
-
 ---
 
-## ✅ RÉSULTAT ATTENDU
+## ✅ C'est Tout!
 
-### Pour un rôle "Chef" avec permissions [VIEW_MEMBERS, DELETE_MEMBERS]:
+La fonctionnalité est maintenant complète et testable. Vous pouvez:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Liste des Membres                                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│ Nom          Email              Rôle        Actions        │
-│ ────────────────────────────────────────────────────────── │
-│ John Doe     john@test.com      PRESIDENT   ✏️ 🗑️         │
-│ Jane Smith   jane@test.com      MEMBRE      ✏️ 🗑️         │
-│                                                             │
-│ [Bouton "Ajouter un membre" est CACHÉ]                     │
-└─────────────────────────────────────────────────────────────┘
-```
+1. ✅ Créer des clubs avec différentes règles
+2. ✅ Modifier les règles des clubs existants
+3. ✅ Voir la règle active sur la page du club
+4. ✅ Le système valide automatiquement les assignations
 
-**L'utilisateur "Chef" peut**:
-- ✅ Voir la liste des membres
-- ✅ Supprimer des membres (bouton 🗑️ visible)
-- ❌ Ajouter des membres (bouton caché)
-- ❌ Modifier des membres (bouton ✏️ caché)
-
----
-
-## 🐛 DÉPANNAGE
-
-### Problème 1: Permissions vides []
-
-**Console navigateur montre**:
-```
-✅ Permissions chargées: []
-```
-
-**Causes possibles**:
-1. `customRoleId` est null dans l'utilisateur MongoDB
-2. Le rôle n'existe pas dans `custom_roles`
-3. Le rôle a `isActive: false`
-
-**Solution**:
-- Vérifiez dans MongoDB que l'utilisateur a bien un `customRoleId`
-- Vérifiez que le rôle existe et est actif
-
----
-
-### Problème 2: Tous les boutons sont visibles
-
-**Causes possibles**:
-1. L'utilisateur est PRESIDENT (a tous les droits)
-2. Les permissions ne sont pas chargées
-3. Le HTML utilise `isAdmin` au lieu de `permissionService.hasPermission()`
-
-**Solution**:
-- Vérifiez que vous êtes connecté avec le bon utilisateur
-- Vérifiez la console: les permissions doivent être chargées
-- Vérifiez que le HTML utilise bien `permissionService.hasPermission()`
-
----
-
-### Problème 3: Erreur 404 sur /api/permissions/user/{userId}
-
-**Cause**: Le User Service n'a pas été redémarré correctement
-
-**Solution**:
-1. Arrêtez le User Service (Ctrl+C)
-2. Supprimez le dossier `target`:
-   ```bash
-   cd Club-Hub-Voice-Channel-Management/User/ClubHub
-   rm -rf target
-   ```
-3. Recompilez et redémarrez:
-   ```bash
-   ./mvnw clean spring-boot:run
-   ```
-
----
-
-### Problème 4: customRoleId est null dans MongoDB
-
-**Cause**: Le frontend n'envoie pas le customRoleId lors de la création
-
-**Solution**:
-1. Ouvrez la console du navigateur (F12)
-2. Créez un nouveau membre avec un rôle personnalisé
-3. Vérifiez les logs:
-   ```
-   ✅ Ajout avec rôle personnalisé: Chef ID: 67abc123...
-   📦 Payload envoyé: { ..., "customRoleId": "67abc123..." }
-   ```
-4. Si `customRoleId` est absent, le frontend a un problème
-5. Rechargez la page et réessayez
-
----
-
-## 📊 FLUX COMPLET
-
-```
-1. PRÉSIDENT crée rôle "Chef"
-   └─> MongoDB: custom_roles
-       {
-         roleName: "Chef",
-         permissions: ["VIEW_MEMBERS", "DELETE_MEMBERS"],
-         isActive: true
-       }
-
-2. PRÉSIDENT crée user avec rôle "Chef"
-   └─> Frontend envoie:
-       {
-         role: "Chef",
-         customRoleId: "67abc123..."
-       }
-   └─> MongoDB: users
-       {
-         email: "chef@test.com",
-         role: "Chef",
-         customRoleId: "67abc123..."
-       }
-
-3. User "Chef" se connecte
-   └─> Frontend appelle:
-       GET /api/permissions/user/{userId}
-   └─> Backend PermissionService:
-       - Lit user.customRoleId
-       - Charge CustomRole depuis MongoDB
-       - Retourne: ["VIEW_MEMBERS", "DELETE_MEMBERS"]
-   └─> Frontend:
-       - Stocke les permissions
-       - Cache/montre les boutons
-
-4. Affichage
-   └─> permissionService.hasPermission('ADD_MEMBERS')
-       → false → Bouton "Ajouter" CACHÉ
-   └─> permissionService.hasPermission('DELETE_MEMBERS')
-       → true → Bouton "Supprimer" VISIBLE
-```
-
----
-
-## 📞 BESOIN D'AIDE?
-
-Si après avoir suivi ce guide ça ne marche toujours pas:
-
-1. Partagez les logs du User Service (terminal backend)
-2. Partagez les logs de la console navigateur (F12)
-3. Partagez une capture d'écran de MongoDB:
-   - Collection `users` → Votre utilisateur "Chef"
-   - Collection `custom_roles` → Le rôle "Chef"
+**Bon test! 🎉**

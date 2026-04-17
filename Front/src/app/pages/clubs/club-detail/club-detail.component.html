@@ -96,7 +96,9 @@
                 Un membre ne peut appartenir qu'à un seul comité à la fois, peu importe son rôle. Pour changer de comité, il doit d'abord être retiré de son comité actuel.
               </span>
               <span *ngIf="!club.rules?.committeeMembershipMode || club.rules?.committeeMembershipMode === 'MULTIPLE_ALLOWED'">
-                Un membre peut appartenir à plusieurs comités simultanément, mais ne peut être RESPONSABLE que d'UN SEUL comité.
+                • Un membre peut appartenir à plusieurs comités<br>
+                • Un membre ne peut être RESPONSABLE que d'UN SEUL comité<br>
+                • Un RESPONSABLE ne peut appartenir qu'à son propre comité
               </span>
             </p>
           </div>

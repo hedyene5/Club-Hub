@@ -598,10 +598,14 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
     
     // ✅ RÈGLE 1: Mode SINGLE_ONLY - Un membre ne peut être que dans UN SEUL comité
     if (mode === 'SINGLE_ONLY') {
-      const member = this.club.members.find(m => m.userId === userId);
-      if (member && member.subGroupId && member.subGroupId !== subGroupId) {
-        const currentSubGroup = this.club.subGroups.find(sg => sg.id === member.subGroupId);
-        const currentSubGroupName = currentSubGroup?.name || 'un comité';
+      // ✅ FIX: Vérifier dans TOUS les sous-groupes, pas seulement member.subGroupId
+      // car en mode MULTIPLE_ALLOWED, subGroupId peut être écrasé
+      const existingSubGroup = this.club.subGroups.find(sg => 
+        sg.id !== subGroupId && sg.memberIds.includes(userId)
+      );
+      
+      if (existingSubGroup) {
+        const currentSubGroupName = existingSubGroup.name;
         alert(`❌ Ce club n'autorise qu'un seul comité par membre.\n\nLe membre est déjà dans le comité "${currentSubGroupName}".\n\nVeuillez d'abord le retirer de ce comité.`);
         return;
       }
@@ -620,6 +624,20 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
         );
         const currentSubGroupName = currentResponsableSubGroup?.name || 'un comité';
         alert(`❌ Un membre ne peut être RESPONSABLE que d'UN SEUL comité.\n\nCe membre est déjà responsable du comité "${currentSubGroupName}".\n\nIl peut rejoindre ce comité en tant que MEMBRE_COMITE.`);
+        return;
+      }
+    }
+    
+    // ✅ RÈGLE 3: Mode MULTIPLE_ALLOWED - Un RESPONSABLE ne peut appartenir qu'à SON comité
+    if (mode === 'MULTIPLE_ALLOWED') {
+      // Vérifier si le membre est déjà RESPONSABLE d'un autre comité
+      const responsableSubGroup = this.club.subGroups.find(sg => 
+        sg.responsableId === userId
+      );
+      
+      if (responsableSubGroup && responsableSubGroup.id !== subGroupId) {
+        const responsableSubGroupName = responsableSubGroup.name;
+        alert(`❌ Un responsable de comité ne peut appartenir qu'à son propre comité.\n\nCe membre est responsable du comité "${responsableSubGroupName}".\n\nPour rejoindre un autre comité, il doit d'abord quitter son rôle de responsable.`);
         return;
       }
     }
