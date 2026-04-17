@@ -4,6 +4,7 @@ import { SidebarService } from '../../../services/sidebar.service';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { SafeHtmlPipe } from '../../pipe/safe-html.pipe';
 import { SidebarWidgetComponent } from './app-sidebar-widget.component';
+import { RecentlyViewedComponent } from '../../../pages/recently-viewed/recently-viewed.component';   // <-- ADD THIS
 import { combineLatest, Subscription } from 'rxjs';
 
 type NavItem = {
@@ -20,7 +21,8 @@ type NavItem = {
     CommonModule,
     RouterModule,
     SafeHtmlPipe,
-    SidebarWidgetComponent
+    SidebarWidgetComponent,
+    RecentlyViewedComponent   // <-- ADD THIS
   ],
   templateUrl: './app-sidebar.component.html',
 })

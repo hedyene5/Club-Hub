@@ -42,10 +42,11 @@
     <p class="text-gray-400 text-sm mt-1">Essayez de modifier vos critères de recherche</p>
   </div>
 
-  <!-- Grille de produits (uniquement produits physiques) -->
+  <!-- Grille de produits -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
     <div *ngFor="let product of filteredProducts" 
-         class="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-gray-100">
+         (click)="viewProduct(product)"
+         class="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden border border-gray-100 cursor-pointer">
       <!-- Image -->
       <div class="relative h-48 bg-gray-100 overflow-hidden">
         <img [src]="product.imageUrl || 'https://placehold.co/400x300/f0f0f0/969696?text=Image'" 
@@ -67,14 +68,14 @@
         <h3 class="font-bold text-lg text-gray-800 mb-1 line-clamp-1">{{ product.name }}</h3>
         <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ product.description || 'Aucune description' }}</p>
         
-        <!-- Uniquement les infos pour produits physiques (taille, couleur) -->
+        <!-- Taille / couleur -->
         <div *ngIf="product.size || product.color" class="text-xs text-gray-500 mb-2">
           <span *ngIf="product.size">Taille: {{ product.size }}</span>
           <span *ngIf="product.size && product.color"> | </span>
           <span *ngIf="product.color">Couleur: {{ product.color }}</span>
         </div>
         
-        <!-- Prix et stock -->
+        <!-- Prix et actions (with stopPropagation) -->
         <div class="flex justify-between items-center mt-3">
           <div>
             <span class="text-2xl font-extrabold text-gray-900">{{ product.price }} <span class="text-sm font-normal">€</span></span>
@@ -83,13 +84,13 @@
             </p>
           </div>
           <div class="flex gap-2">
-            <button (click)="addToCart(product)" 
+            <button (click)="addToCart(product); $event.stopPropagation()" 
                     [disabled]="product.stockQuantity <= 0"
                     class="px-3 py-1.5 rounded-lg text-sm font-medium transition focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed
                            bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow">
               Ajouter
             </button>
-            <button (click)="buyNow(product)" 
+            <button (click)="buyNow(product); $event.stopPropagation()" 
                     [disabled]="product.stockQuantity <= 0"
                     class="px-3 py-1.5 rounded-lg text-sm font-medium transition border border-gray-300 hover:bg-gray-50 text-gray-700">
               Acheter

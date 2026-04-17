@@ -45,6 +45,9 @@
   </div>
 
   <div class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
+    <!-- ========== RECENTLY VIEWED AT THE TOP ========== -->
+    <app-recently-viewed></app-recently-viewed>
+
     <nav class="mb-6">
       <div class="flex flex-col gap-4">
         <!-- CLUBSTORE GROUP (collapsible) -->
@@ -53,14 +56,11 @@
             Club Store
           </h3>
           <ul class="space-y-1">
-            <!-- Accueil (outside clubstore) -->
             <li>
               <a routerLink="/" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                 Accueil
               </a>
             </li>
-
-            <!-- Clubstore parent (collapsible) -->
             <li>
               <button (click)="toggleClubstoreMenu()" class="flex items-center justify-between w-full px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                 <div class="flex items-center gap-3">
@@ -88,8 +88,6 @@
                 </a>
               </div>
             </li>
-
-            <!-- Administration (outside clubstore) -->
             <li>
               <a routerLink="/admin" routerLinkActive="active" class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                 Administration
@@ -498,6 +496,7 @@
         <!-- end other section -->
       </div>
     </nav>
+
     @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
     <app-sidebar-widget />
     }

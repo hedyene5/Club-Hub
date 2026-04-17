@@ -6,6 +6,7 @@ import { TicketsComponent } from './pages/tickets/tickets.component';
 import { CartComponent } from './pages/cart/cart.component';
 import { OrdersComponent } from './pages/orders/orders.component';
 import { AdminComponent } from './pages/admin/admin.component';
+import { ProductDetailComponent } from './pages/product-detail/product-detail.component';  // <-- ADD THIS
 
 export const routes: Routes = [
   {
@@ -17,7 +18,8 @@ export const routes: Routes = [
       { path: 'tickets', component: TicketsComponent },
       { path: 'cart', component: CartComponent },
       { path: 'orders', component: OrdersComponent },
-      { path: 'admin', component: AdminComponent }
+      { path: 'admin', component: AdminComponent },  // <-- ADD COMMA HERE
+      { path: 'products/:id', component: ProductDetailComponent }
     ]
   },
   { path: '**', redirectTo: '' }

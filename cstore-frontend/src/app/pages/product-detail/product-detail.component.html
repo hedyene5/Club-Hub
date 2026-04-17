@@ -1,0 +1,73 @@
+<div class="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+  <div *ngIf="loading" class="flex justify-center items-center py-20">
+    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
+
+  <div *ngIf="!loading && product" class="max-w-4xl mx-auto">
+    <!-- Back button -->
+    <button (click)="goBack()" class="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-800">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+      </svg>
+      Retour aux produits
+    </button>
+
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div class="md:flex">
+        <!-- Image -->
+        <div class="md:w-1/2 bg-gray-100">
+          <img [src]="product.imageUrl || 'https://placehold.co/600x400/f0f0f0/969696?text=Image'" 
+               [alt]="product.name"
+               class="w-full h-full object-cover"
+               (error)="$event.target.src='https://placehold.co/600x400/f0f0f0/969696?text=Image+indisponible'">
+        </div>
+
+        <!-- Détails -->
+        <div class="md:w-1/2 p-6">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+            </svg>
+            <span class="text-sm font-medium text-gray-500">{{ getProductTypeLabel(product.productType) }}</span>
+          </div>
+
+          <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ product.name }}</h1>
+          <p class="text-gray-600 mb-4">{{ product.description || 'Aucune description disponible' }}</p>
+
+          <!-- Prix -->
+          <div class="mb-4">
+            <span class="text-3xl font-extrabold text-gray-900">{{ product.price }} €</span>
+            <p class="text-sm mt-1" [ngClass]="product.stockQuantity > 0 ? 'text-green-600' : 'text-red-500'">
+              {{ product.stockQuantity > 0 ? 'En stock' : 'Rupture de stock' }}
+            </p>
+          </div>
+
+          <!-- Taille / Couleur -->
+          <div *ngIf="product.size || product.color" class="mb-4 p-3 bg-gray-50 rounded-lg">
+            <p *ngIf="product.size" class="text-sm"><span class="font-medium">Taille :</span> {{ product.size }}</p>
+            <p *ngIf="product.color" class="text-sm mt-1"><span class="font-medium">Couleur :</span> {{ product.color }}</p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-3 mt-6">
+            <button (click)="addToCart()" 
+                    [disabled]="product.stockQuantity <= 0"
+                    class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-indigo-700 transition disabled:opacity-50">
+              Ajouter au panier
+            </button>
+            <button (click)="buyNow()" 
+                    [disabled]="product.stockQuantity <= 0"
+                    class="flex-1 border border-blue-500 text-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition disabled:opacity-50">
+              Acheter maintenant
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && !product" class="text-center py-16">
+    <p class="text-gray-500">Produit non trouvé</p>
+    <button (click)="goBack()" class="mt-4 text-blue-600">Retour aux produits</button>
+  </div>
+</div>

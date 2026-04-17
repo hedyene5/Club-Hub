@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, Product } from '../../services/api.service';
 import { CartService } from '../../services/cart.service';
 import { Router } from '@angular/router';
+import { RecentlyViewedService } from '../../services/recently-viewed.service';   // <-- ADD THIS
 
 @Component({
   selector: 'app-products',
@@ -19,7 +20,6 @@ export class ProductsComponent implements OnInit {
   selectedType = 'ALL';
   searchTerm = '';
 
-  // No emojis in labels
   productTypes = [
     { value: 'ALL', label: 'Tous' },
     { value: 'JERSEY', label: 'Maillots' },
@@ -33,7 +33,8 @@ export class ProductsComponent implements OnInit {
   constructor(
     private apiService: ApiService,
     private cartService: CartService,
-    private router: Router
+    private router: Router,
+    private recentlyViewed: RecentlyViewedService   // <-- ADD THIS
   ) {}
 
   ngOnInit() {
@@ -44,7 +45,6 @@ export class ProductsComponent implements OnInit {
     this.loading = true;
     this.apiService.getAllProducts().subscribe({
       next: (data) => {
-        // 🔥 CRITICAL: Exclude all tickets (EVENT_TICKET)
         this.products = data.filter(p => p.productType !== 'EVENT_TICKET');
         this.applyFilters();
         this.loading = false;
@@ -58,11 +58,9 @@ export class ProductsComponent implements OnInit {
 
   applyFilters() {
     let filtered = [...this.products];
-    
     if (this.selectedType !== 'ALL') {
       filtered = filtered.filter(p => p.productType === this.selectedType);
     }
-    
     if (this.searchTerm.trim()) {
       const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(p => 
@@ -70,8 +68,6 @@ export class ProductsComponent implements OnInit {
         (p.description && p.description.toLowerCase().includes(term))
       );
     }
-    
-    // Only show available products
     filtered = filtered.filter(p => p.isAvailable);
     this.filteredProducts = filtered;
   }
@@ -94,9 +90,15 @@ export class ProductsComponent implements OnInit {
     this.router.navigate(['/cart']);
   }
 
-  // No emojis in icons (return empty string or simple text)
+  // NEW: view product – adds to recently viewed and navigates to detail page
+  viewProduct(product: Product) {
+    this.recentlyViewed.addProduct(product);
+    // Navigate to product detail page (create this route later)
+    this.router.navigate(['/products', product.id]);
+  }
+
   getProductTypeIcon(type: string): string {
-    return ''; // SVG icons will be used in HTML instead
+    return '';
   }
 
   getProductTypeLabel(type: string): string {
