@@ -31,7 +31,7 @@ public class ClubService {
     @Autowired
     private RestTemplate restTemplate;
     
-    private String userServiceUrl = "http://localhost:8081/users";
+    private String userServiceUrl = "http://localhost:8081/api/users";  // ✅ Corrigé: ajout de /api
     
     public UserDto getUserById(String userId) {
         try {
@@ -205,7 +205,58 @@ public class ClubService {
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new RuntimeException("Club non trouvé"));
 
-        // ✅ Trouver le nom du sous-groupe
+        // ✅ Récupérer le mode d'appartenance aux comités
+        CommitteeMembershipMode mode = club.getRules() != null && club.getRules().getCommitteeMembershipMode() != null
+                ? club.getRules().getCommitteeMembershipMode()
+                : CommitteeMembershipMode.MULTIPLE_ALLOWED;
+        
+        System.out.println("📋 Mode d'appartenance aux comités: " + mode);
+        
+        // ✅ Trouver le membre
+        Member member = club.getMembers().stream()
+                .filter(m -> m.getUserId().equals(userId))
+                .findFirst()
+                .orElse(null);
+        
+        if (member == null) {
+            throw new RuntimeException("Membre non trouvé dans le club");
+        }
+        
+        // ✅ RÈGLE 1: Mode SINGLE_ONLY - Un membre ne peut être que dans UN SEUL comité
+        if (mode == CommitteeMembershipMode.SINGLE_ONLY) {
+            if (member.getSubGroupId() != null && !member.getSubGroupId().equals(subGroupId)) {
+                // Le membre est déjà dans un autre comité
+                SubGroup currentSubGroup = club.getSubGroups().stream()
+                        .filter(sg -> sg.getId().equals(member.getSubGroupId()))
+                        .findFirst()
+                        .orElse(null);
+                
+                String currentSubGroupName = currentSubGroup != null ? currentSubGroup.getName() : "un comité";
+                System.err.println("❌ Mode SINGLE_ONLY: Le membre est déjà dans le comité '" + currentSubGroupName + "'");
+                throw new RuntimeException("Ce club n'autorise qu'un seul comité par membre. Le membre est déjà dans le comité '" + currentSubGroupName + "'. Veuillez d'abord le retirer de ce comité.");
+            }
+        }
+        
+        // ✅ RÈGLE 2: Mode MULTIPLE_ALLOWED - Un membre peut être RESPONSABLE d'UN SEUL comité
+        if (mode == CommitteeMembershipMode.MULTIPLE_ALLOWED && subGroupRole.equals("RESPONSABLE")) {
+            // Vérifier si le membre est déjà responsable d'un autre comité
+            boolean isAlreadyResponsable = club.getSubGroups().stream()
+                    .anyMatch(sg -> !sg.getId().equals(subGroupId) && userId.equals(sg.getResponsableId()));
+            
+            if (isAlreadyResponsable) {
+                // Trouver le comité dont il est déjà responsable
+                SubGroup currentResponsableSubGroup = club.getSubGroups().stream()
+                        .filter(sg -> !sg.getId().equals(subGroupId) && userId.equals(sg.getResponsableId()))
+                        .findFirst()
+                        .orElse(null);
+                
+                String currentSubGroupName = currentResponsableSubGroup != null ? currentResponsableSubGroup.getName() : "un comité";
+                System.err.println("❌ Mode MULTIPLE_ALLOWED: Le membre est déjà RESPONSABLE du comité '" + currentSubGroupName + "'");
+                throw new RuntimeException("Un membre ne peut être RESPONSABLE que d'UN SEUL comité. Ce membre est déjà responsable du comité '" + currentSubGroupName + "'. Il peut rejoindre ce comité en tant que MEMBRE_COMITE.");
+            }
+        }
+
+        // ✅ Trouver le sous-groupe
         SubGroup subGroup = club.getSubGroups().stream()
                 .filter(sg -> sg.getId().equals(subGroupId))
                 .findFirst()
@@ -213,33 +264,67 @@ public class ClubService {
         
         System.out.println("📋 Sous-groupe trouvé: " + subGroup.getName());
 
-        // ✅ Mettre à jour le membre dans le club avec le subGroupRole
+        // ✅ Mettre à jour le membre dans le club
         club.getMembers().stream()
                 .filter(m -> m.getUserId().equals(userId))
                 .findFirst()
-                .ifPresent(member -> {
-                    System.out.println("👤 Membre trouvé: " + member.getName() + " (rôle actuel: " + member.getRole() + ")");
+                .ifPresent(m -> {
+                    System.out.println("👤 Membre trouvé: " + m.getName() + " (rôle actuel: " + m.getRole() + ")");
                     
                     // ✅ Sauvegarder le rôle initial si c'est la première fois qu'on l'assigne comme responsable
-                    if (subGroupRole.equals("RESPONSABLE") && member.getInitialRole() == null) {
-                        member.setInitialRole(member.getRole());
-                        System.out.println("📝 Rôle initial sauvegardé: " + member.getRole());
+                    if (subGroupRole.equals("RESPONSABLE") && m.getInitialRole() == null) {
+                        m.setInitialRole(m.getRole());
+                        System.out.println("📝 Rôle initial sauvegardé: " + m.getRole());
                     }
                     
-                    member.setSubGroupId(subGroupId);
-                    member.setSubGroupRole(subGroupRole);
+                    m.setSubGroupId(subGroupId);
+                    m.setSubGroupRole(subGroupRole);
                     System.out.println("✅ Membre " + userId + " assigné avec rôle comité: " + subGroupRole);
+                });
+
+        // ✅ Mettre à jour le sous-groupe
+        club.getSubGroups().stream()
+                .filter(sg -> sg.getId().equals(subGroupId))
+                .findFirst()
+                .ifPresent(sg -> {
+                    // Ajouter à la liste des membres si pas déjà présent
+                    if (!sg.getMemberIds().contains(userId)) {
+                        sg.getMemberIds().add(userId);
+                        System.out.println("✅ Membre ajouté à la liste du sous-groupe");
+                    }
+                    
+                    // ✅ Mettre à jour le rôle dans memberRoles
+                    if (sg.getMemberRoles() == null) {
+                        sg.setMemberRoles(new HashMap<>());
+                    }
+                    sg.getMemberRoles().put(userId, subGroupRole);
+                    System.out.println("✅ Rôle du membre mis à jour dans memberRoles: " + subGroupRole);
+                    
+                    // ✅ Si RESPONSABLE, mettre à jour responsableId
+                    if (subGroupRole.equals("RESPONSABLE")) {
+                        sg.setResponsableId(userId);
+                        System.out.println("✅ ResponsableId mis à jour: " + userId);
+                    }
                 });
 
         // ✅ Si RESPONSABLE, mettre à jour aussi dans le service User via REST API
         if (subGroupRole.equals("RESPONSABLE")) {
             System.out.println("🔍 Appel du service User pour mettre à jour le rôle...");
+            System.out.println("📋 SubGroupRole reçu: '" + subGroupRole + "'");
+            System.out.println("📋 Comparaison: subGroupRole.equals(\"RESPONSABLE\") = " + subGroupRole.equals("RESPONSABLE"));
+            
             try {
                 String newRole = "Responsable " + subGroup.getName();
                 String url = userServiceUrl + "/" + userId + "/role";
                 
+                System.out.println("📡 URL complète: " + url);
+                System.out.println("📦 Nouveau rôle: " + newRole);
+                System.out.println("📦 UserId: " + userId);
+                
                 Map<String, String> roleUpdate = new HashMap<>();
                 roleUpdate.put("role", newRole);
+                
+                System.out.println("📤 Envoi de la requête PUT...");
                 
                 HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
                 ResponseEntity<String> response = restTemplate.exchange(
@@ -251,26 +336,14 @@ public class ClubService {
                 
                 System.out.println("✅ Rôle mis à jour dans le service User: " + newRole);
                 System.out.println("📡 Réponse: " + response.getStatusCode());
+                System.out.println("📄 Body: " + response.getBody());
             } catch (Exception e) {
                 System.err.println("❌ Erreur lors de la mise à jour du rôle dans User service: " + e.getMessage());
-                // On continue quand même, le rôle est mis à jour dans le club
+                e.printStackTrace();
             }
         } else {
-            System.out.println("ℹ️ SubGroupRole n'est pas RESPONSABLE, pas de mise à jour du rôle User");
+            System.out.println("⚠️ SubGroupRole n'est PAS 'RESPONSABLE', c'est: '" + subGroupRole + "'");
         }
-
-        // Ajouter le membre à la liste du sous-groupe
-        club.getSubGroups().stream()
-                .filter(sg -> sg.getId().equals(subGroupId))
-                .findFirst()
-                .ifPresent(sg -> {
-                    if (!sg.getMemberIds().contains(userId)) {
-                        sg.getMemberIds().add(userId);
-                        System.out.println("✅ Membre ajouté à la liste du sous-groupe");
-                    } else {
-                        System.out.println("ℹ️ Membre déjà dans la liste du sous-groupe");
-                    }
-                });
 
         Club savedClub = clubRepository.save(club);
         System.out.println("✅ Club sauvegardé");

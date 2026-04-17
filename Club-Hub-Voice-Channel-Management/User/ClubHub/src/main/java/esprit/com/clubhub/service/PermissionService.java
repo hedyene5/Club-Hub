@@ -5,24 +5,67 @@ import esprit.com.clubhub.entity.Permission;
 import esprit.com.clubhub.entity.Role;
 import esprit.com.clubhub.entity.User;
 import esprit.com.clubhub.repository.UserRepo;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class PermissionService {
 
     private final UserRepo userRepo;
     private final CustomRoleService customRoleService;
+    
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    private String clubServiceUrl = "http://localhost:8083/api/clubs";
 
     public PermissionService(UserRepo userRepo, CustomRoleService customRoleService) {
         this.userRepo = userRepo;
         this.customRoleService = customRoleService;
     }
+    
+    /**
+     * ✅ NOUVEAU: Vérifie dynamiquement si l'utilisateur est responsable d'un comité
+     * en interrogeant le Club Service
+     */
+    private boolean isCommitteeResponsable(String userId, String clubId) {
+        try {
+            System.out.println("🔍 Vérification si userId " + userId + " est responsable d'un comité dans club " + clubId);
+            
+            // Appeler le Club Service pour récupérer le club
+            String url = clubServiceUrl + "/" + clubId;
+            Map<String, Object> club = restTemplate.getForObject(url, Map.class);
+            
+            if (club != null && club.containsKey("subGroups")) {
+                List<Map<String, Object>> subGroups = (List<Map<String, Object>>) club.get("subGroups");
+                
+                // Vérifier si userId est responsableId d'un des comités
+                for (Map<String, Object> subGroup : subGroups) {
+                    String responsableId = (String) subGroup.get("responsableId");
+                    if (userId.equals(responsableId)) {
+                        String subGroupName = (String) subGroup.get("name");
+                        System.out.println("✅ Utilisateur est responsable du comité: " + subGroupName);
+                        return true;
+                    }
+                }
+            }
+            
+            System.out.println("❌ Utilisateur n'est responsable d'aucun comité");
+            return false;
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la vérification du statut de responsable: " + e.getMessage());
+            return false;
+        }
+    }
 
     /**
      * Récupère toutes les permissions d'un utilisateur (système + personnalisées)
+     * ✅ MODIFIÉ: Détection dynamique du statut de responsable de comité
      */
     public List<String> getUserPermissions(String userId) {
         User user = userRepo.findById(userId)
@@ -31,26 +74,40 @@ public class PermissionService {
         System.out.println("=== DEBUG PERMISSIONS ===");
         System.out.println("User ID: " + userId);
         System.out.println("User role: " + user.getRole());
+        System.out.println("User clubId: " + user.getClubId());
         System.out.println("User customRoleId: " + user.getCustomRoleId());
         System.out.println("Is system role: " + user.isSystemRole());
 
         List<String> permissions = new ArrayList<>();
 
-        // 1. Permissions du rôle système
+        // ✅ PRIORITÉ 1: Vérifier dynamiquement si c'est un responsable de comité
+        // Cela IGNORE complètement le champ user.role
+        if (user.getClubId() != null && !user.getClubId().isEmpty()) {
+            boolean isResponsable = isCommitteeResponsable(userId, user.getClubId());
+            if (isResponsable) {
+                System.out.println("✅ DÉTECTION DYNAMIQUE: Responsable de comité détecté");
+                permissions.addAll(getCommitteeResponsablePermissions());
+                System.out.println("📋 Permissions finales: " + permissions);
+                System.out.println("========================");
+                return permissions;  // ✅ Retourner immédiatement les permissions de responsable
+            }
+        }
+
+        // ✅ PRIORITÉ 2: Permissions du rôle système
         if (user.isSystemRole()) {
             System.out.println("✅ Rôle système détecté: " + user.getSystemRole());
             permissions.addAll(getSystemRolePermissions(user.getSystemRole()));
         } 
-        // ✅ NOUVEAU: Vérifier si c'est un responsable de comité
+        // ✅ PRIORITÉ 3: Vérifier si le rôle commence par "Responsable " (fallback)
         else if (user.getRole() != null && user.getRole().startsWith("Responsable ")) {
-            System.out.println("✅ Responsable de comité détecté: " + user.getRole());
+            System.out.println("✅ Responsable de comité détecté via role string: " + user.getRole());
             permissions.addAll(getCommitteeResponsablePermissions());
         } 
         else {
             System.out.println("❌ Pas un rôle système ni responsable de comité");
         }
 
-        // 2. Permissions du rôle personnalisé
+        // ✅ PRIORITÉ 4: Permissions du rôle personnalisé
         if (user.getCustomRoleId() != null && !user.getCustomRoleId().isEmpty()) {
             System.out.println("✅ CustomRoleId trouvé: " + user.getCustomRoleId());
             try {
@@ -185,9 +242,9 @@ public class PermissionService {
 
     /**
      * ✅ Permissions pour les responsables de comité
-     * Un responsable de comité peut:
+     * Un responsable de comité peut UNIQUEMENT:
      * - Assigner des membres à SON comité
-     * - Supprimer des membres de SON comité
+     * - Retirer des membres de SON comité (pas supprimer du club)
      */
     private List<String> getCommitteeResponsablePermissions() {
         List<String> permissions = new ArrayList<>();
@@ -201,9 +258,8 @@ public class PermissionService {
         permissions.add("VIEW_CLUB_INFO");
         permissions.add("JOIN_VOICE_CHANNELS");
         
-        // ✅ Permissions spéciales pour gérer SON comité
-        permissions.add("ASSIGN_TO_SUBGROUPS");   // Peut assigner des membres à son comité
-        permissions.add("DELETE_MEMBERS");        // Peut supprimer des membres de son comité
+        // ✅ Permission spéciale: UNIQUEMENT assigner/retirer des membres de son comité
+        permissions.add("ASSIGN_TO_SUBGROUPS");   // Assigner des membres à son comité
         
         System.out.println("📋 Permissions responsable de comité: " + permissions);
         

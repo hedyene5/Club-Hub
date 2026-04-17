@@ -225,4 +225,32 @@ public class ClubController {
             return ResponseEntity.badRequest().build();
         }
     }
+    
+    // ✅ NOUVEAU: Endpoint pour vérifier si un utilisateur est responsable d'un comité
+    @GetMapping("/{clubId}/is-responsable/{userId}")
+    public ResponseEntity<Map<String, Object>> isResponsable(@PathVariable String clubId,
+                                                              @PathVariable String userId) {
+        try {
+            Club club = clubService.getClubById(clubId)
+                    .orElseThrow(() -> new RuntimeException("Club non trouvé"));
+            
+            // Chercher si userId est responsableId d'un comité
+            for (SubGroup subGroup : club.getSubGroups()) {
+                if (userId.equals(subGroup.getResponsableId())) {
+                    Map<String, Object> response = new java.util.HashMap<>();
+                    response.put("isResponsable", true);
+                    response.put("subGroupId", subGroup.getId());
+                    response.put("subGroupName", subGroup.getName());
+                    return ResponseEntity.ok(response);
+                }
+            }
+            
+            // Pas responsable
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("isResponsable", false);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

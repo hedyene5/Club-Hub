@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ClubService } from '../../../services/club.service';
+import { CommitteeMembershipMode } from '../../../models/club.model';
 
 @Component({
   selector: 'app-club-form',
@@ -17,6 +18,20 @@ export class ClubFormComponent implements OnInit {
   clubId: string | null = null;
   loading = false;
   categories = ['Sport', 'Culture', 'Tech', 'Art', 'Musique', 'Science', 'Entrepreneuriat'];
+  
+  // ✅ Options pour le mode d'appartenance aux comités
+  membershipModes = [
+    { 
+      value: CommitteeMembershipMode.MULTIPLE_ALLOWED, 
+      label: '✅ Plusieurs comités autorisés',
+      description: 'Un membre peut appartenir à plusieurs comités, mais ne peut être RESPONSABLE que d\'un seul comité (recommandé pour grands clubs)'
+    },
+    { 
+      value: CommitteeMembershipMode.SINGLE_ONLY, 
+      label: '🔒 Un seul comité par membre',
+      description: 'Un membre ne peut appartenir qu\'à un seul comité à la fois, peu importe son rôle (recommandé pour petits clubs)'
+    }
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -30,7 +45,8 @@ export class ClubFormComponent implements OnInit {
       category: ['', Validators.required],
       visibility: ['PUBLIC'],
       logoUrl: [''],
-      colorPalette: ['#3B82F6']
+      colorPalette: ['#3B82F6'],
+      committeeMembershipMode: [CommitteeMembershipMode.MULTIPLE_ALLOWED]  // ✅ Par défaut: plusieurs comités autorisés
     });
   }
 
@@ -51,7 +67,8 @@ export class ClubFormComponent implements OnInit {
           category: club.category,
           visibility: club.visibility,
           logoUrl: club.logoUrl,
-          colorPalette: club.colorPalette
+          colorPalette: club.colorPalette,
+          committeeMembershipMode: club.rules?.committeeMembershipMode || CommitteeMembershipMode.MULTIPLE_ALLOWED
         });
       },
       error: (err) => console.error('Erreur:', err)
@@ -70,7 +87,13 @@ export class ClubFormComponent implements OnInit {
         category: this.clubForm.get('category')?.value,
         visibility: this.clubForm.get('visibility')?.value,
         logoUrl: this.clubForm.get('logoUrl')?.value,
-        colorPalette: this.clubForm.get('colorPalette')?.value
+        colorPalette: this.clubForm.get('colorPalette')?.value,
+        rules: {
+            about: '',
+            rules: [],
+            requiresApproval: true,
+            committeeMembershipMode: this.clubForm.get('committeeMembershipMode')?.value
+        }
     };
     
     // Supprimer les champs undefined

@@ -72,6 +72,43 @@
       </div>
     </div>
 
+    <!-- ✅ NOUVEAU: Règle d'appartenance aux comités -->
+    <div class="mb-6 p-4 border-2 rounded-lg"
+         [ngClass]="club.rules?.committeeMembershipMode === 'SINGLE_ONLY' ? 'border-orange-300 bg-orange-50' : 'border-green-300 bg-green-50'">
+      <div class="flex items-start justify-between">
+        <div class="flex items-start gap-3">
+          <div class="text-2xl">
+            {{ club.rules?.committeeMembershipMode === 'SINGLE_ONLY' ? '🔒' : '✅' }}
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-800">Règle d'appartenance aux comités</h4>
+            <p class="text-sm mt-1"
+               [ngClass]="club.rules?.committeeMembershipMode === 'SINGLE_ONLY' ? 'text-orange-700' : 'text-green-700'">
+              <strong *ngIf="club.rules?.committeeMembershipMode === 'SINGLE_ONLY'">
+                Un seul comité par membre
+              </strong>
+              <strong *ngIf="!club.rules?.committeeMembershipMode || club.rules?.committeeMembershipMode === 'MULTIPLE_ALLOWED'">
+                Plusieurs comités autorisés
+              </strong>
+            </p>
+            <p class="text-xs mt-1 text-gray-600">
+              <span *ngIf="club.rules?.committeeMembershipMode === 'SINGLE_ONLY'">
+                Un membre ne peut appartenir qu'à un seul comité à la fois, peu importe son rôle. Pour changer de comité, il doit d'abord être retiré de son comité actuel.
+              </span>
+              <span *ngIf="!club.rules?.committeeMembershipMode || club.rules?.committeeMembershipMode === 'MULTIPLE_ALLOWED'">
+                Un membre peut appartenir à plusieurs comités simultanément, mais ne peut être RESPONSABLE que d'UN SEUL comité.
+              </span>
+            </p>
+          </div>
+        </div>
+        <a *ngIf="isAdmin" 
+           [routerLink]="['/clubs', club.id, 'edit']" 
+           class="px-3 py-1 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          Modifier
+        </a>
+      </div>
+    </div>
+
   <!-- SECTION MEMBRES -->
 <div class="mb-6">
   <div class="flex justify-between items-center mb-4">
@@ -320,12 +357,25 @@
                     {{ m.role }}
                   </span>
                 </td>
-                <!-- ✅ NOUVEAU: Rôle dans le comité -->
+                <!-- ✅ Rôle dans le comité - Modifiable par le responsable -->
                 <td class="py-2 px-2">
-                  <span class="px-2 py-0.5 text-xs rounded-full" 
-                        [ngClass]="m.subGroupRole === 'RESPONSABLE' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'">
-                    {{ m.subGroupRole === 'RESPONSABLE' ? '👑 Responsable' : 'Membre' }}
-                  </span>
+                  <!-- Si le responsable peut gérer ce comité, afficher un select -->
+                  <ng-container *ngIf="canManageSubGroupMembers(sg.id!) && memberId !== authService.getCurrentUser()?.userId; else displayRole">
+                    <select 
+                      [value]="m.subGroupRole || 'MEMBRE_COMITE'"
+                      (change)="changeSubGroupRole(sg.id!, memberId, $event)"
+                      class="text-xs border rounded px-2 py-1 bg-white">
+                      <option value="MEMBRE_COMITE">📋 Membre du comité</option>
+                      <option value="RESPONSABLE">👑 Responsable</option>
+                    </select>
+                  </ng-container>
+                  <!-- Sinon, afficher juste le badge -->
+                  <ng-template #displayRole>
+                    <span class="px-2 py-0.5 text-xs rounded-full" 
+                          [ngClass]="m.subGroupRole === 'RESPONSABLE' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'">
+                      {{ m.subGroupRole === 'RESPONSABLE' ? '👑 Responsable' : '📋 Membre du comité' }}
+                    </span>
+                  </ng-template>
                 </td>
                 <td class="py-2 px-2">
                   <span class="px-2 py-0.5 text-xs rounded-full" [ngClass]="getStatusColor(m.status)">
@@ -391,15 +441,15 @@
             </ng-container>
           </select>
           
-          <!-- ✅ NOUVEAU: Rôle dans le comité -->
+          <!-- ✅ Rôle dans le comité: MEMBRE_COMITE ou RESPONSABLE -->
           <div>
             <label class="block text-sm font-medium mb-2 text-gray-700">Rôle dans le comité</label>
             <select formControlName="subGroupRole" class="w-full rounded-lg border px-3 py-2">
-              <option value="MEMBRE">Membre</option>
-              <option value="RESPONSABLE" *ngIf="isAdmin">Responsable</option>
+              <option value="MEMBRE_COMITE">Membre du comité</option>
+              <option value="RESPONSABLE" *ngIf="isAdmin">Responsable du comité</option>
             </select>
             <p class="text-xs text-gray-500 mt-1">
-              <span *ngIf="isAdmin">Le responsable aura des droits d'administration sur ce comité</span>
+              <span *ngIf="isAdmin">Le responsable pourra gérer les membres de ce comité</span>
               <span *ngIf="!isAdmin">Vous pouvez ajouter des membres à votre comité</span>
             </p>
           </div>

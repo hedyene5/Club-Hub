@@ -12,6 +12,7 @@ import { CustomRoleService, CustomRole } from '../../../services/custom-role.ser
 import { filter } from 'rxjs/operators';
 import { PermissionService } from '../../../services/permission.service';
 import { RoleEventsService } from '../../../services/role-events.service';
+import { CommitteeResponsableService } from '../../../services/committee-responsable.service';
 
 @Component({
   selector: 'app-club-detail',
@@ -59,10 +60,11 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
 
   constructor(
     private clubService: ClubService,
-    private authService: AuthService,
+    public authService: AuthService,  // ✅ Changed to public for template access
     private electionService: ElectionService,
     private customRoleService: CustomRoleService,
     public permissionService: PermissionService,
+    public committeeResponsableService: CommitteeResponsableService,  // ✅ NOUVEAU
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder,
@@ -85,7 +87,7 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
     this.assignForm = this.fb.group({
       userId: ['', Validators.required],
       subGroupId: ['', Validators.required],
-      subGroupRole: ['MEMBRE', Validators.required]  // ✅ NOUVEAU: Rôle par défaut = MEMBRE
+      subGroupRole: ['MEMBRE_COMITE', Validators.required]  // ✅ Par défaut: MEMBRE_COMITE
     });
   }
 
@@ -125,6 +127,16 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     });
 
+    // ✅ NOUVEAU: S'abonner aux changements de statut de responsable
+    this.committeeResponsableService.responsableStatus$.subscribe(status => {
+      console.log('🔄 Statut de responsable mis à jour:', status);
+      // Recharger les permissions quand le statut change
+      if (status) {
+        this.permissionService.loadUserPermissions();
+      }
+      this.cdr.detectChanges();
+    });
+
     // ✅ S'abonner aux changements de rôles (création/modification/suppression)
     this.roleChangedSubscription = this.roleEventsService.roleChanged$.subscribe(() => {
       console.log('🔄 Rôles modifiés, rechargement des rôles personnalisés...');
@@ -141,38 +153,43 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
         if (event.url.includes('/clubs/') && this.club?.id) {
           console.log('🔄 Navigation détectée, rechargement des rôles...');
           this.loadCustomRoles(this.club.id);
-          // Recharger aussi les permissions
+          // Recharger aussi les permissions et le statut de responsable
           this.permissionService.loadUserPermissions();
+          this.committeeResponsableService.loadResponsableStatus();
         }
       });
   }
 
   // ✅ Vérifier si l'utilisateur est responsable d'un comité spécifique
+  // UTILISE LA DÉTECTION DYNAMIQUE via committeeResponsableService
   isResponsibleOf(subGroupId: string): boolean {
-    const currentUserId = this.authService.getCurrentUser()?.userId;
-    if (!currentUserId || !this.club) return false;
+    if (!this.club) return false;
     
-    const member = this.club.members.find(m => m.userId === currentUserId);
-    return member?.subGroupId === subGroupId && (member as any).subGroupRole === 'RESPONSABLE';
+    // ✅ Utiliser le service de détection dynamique
+    const mySubGroupId = this.committeeResponsableService.getMySubGroupId();
+    return mySubGroupId === subGroupId;
   }
 
   // ✅ Vérifier si l'utilisateur peut gérer un comité (admin OU responsable de ce comité)
-  // MAIS le responsable ne peut PAS modifier/supprimer le comité, seulement assigner des membres
+  // MAIS le responsable ne peut PAS modifier/supprimer le comité, seulement gérer les membres
   canManageSubGroup(subGroupId: string): boolean {
     // Seuls les admins peuvent modifier/supprimer des comités
     return this.isAdmin;
   }
+  
+  // ✅ Vérifier si l'utilisateur peut gérer les membres d'un comité
+  canManageSubGroupMembers(subGroupId: string): boolean {
+    // Admin peut tout gérer
+    if (this.isAdmin) return true;
+    
+    // Responsable peut gérer les membres de SON comité (détection dynamique)
+    return this.isResponsibleOf(subGroupId);
+  }
 
   // ✅ Obtenir l'ID du comité dont l'utilisateur est responsable
+  // UTILISE LA DÉTECTION DYNAMIQUE
   getMyResponsibleSubGroupId(): string | null {
-    const currentUserId = this.authService.getCurrentUser()?.userId;
-    if (!currentUserId || !this.club) return null;
-    
-    const member = this.club.members.find(m => m.userId === currentUserId);
-    if (member?.subGroupRole === 'RESPONSABLE' && member.subGroupId) {
-      return member.subGroupId;
-    }
-    return null;
+    return this.committeeResponsableService.getMySubGroupId();
   }
 
   // ✅ Vérifier si un membre appartient au comité du responsable
@@ -184,26 +201,11 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
     return member?.subGroupId === mySubGroupId;
   }
 
-  // ✅ Le responsable peut supprimer UNIQUEMENT les membres de SON comité
+  // ✅ Le responsable NE PEUT PAS supprimer des membres du club
+  // Seuls les admins et RH peuvent supprimer
   canDeleteMember(memberId: string): boolean {
-    // Admin peut tout supprimer
-    if (this.isAdmin) {
-      return true;
-    }
-    
-    // Si a la permission DELETE_MEMBERS (RH, etc.)
-    if (this.permissionService.hasPermission('DELETE_MEMBERS')) {
-      // Vérifier si c'est un responsable de comité
-      const mySubGroupId = this.getMyResponsibleSubGroupId();
-      if (mySubGroupId) {
-        // Responsable peut supprimer seulement les membres de son comité
-        return this.isMemberInMySubGroup(memberId);
-      }
-      // Sinon (RH, etc.) peut tout supprimer
-      return true;
-    }
-    
-    return false;
+    // Seuls les admins et ceux avec permission DELETE_MEMBERS (RH) peuvent supprimer
+    return this.isAdmin || this.permissionService.hasPermission('DELETE_MEMBERS');
   }
 
   // ✅ Vérifier si le responsable peut retirer un membre d'un comité spécifique
@@ -214,13 +216,7 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
     }
     
     // Responsable peut retirer seulement de SON comité
-    const mySubGroupId = this.getMyResponsibleSubGroupId();
-    if (mySubGroupId && mySubGroupId === subGroupId) {
-      return true;
-    }
-    
-    // Autres permissions (RH, etc.)
-    return this.permissionService.hasPermission('ASSIGN_TO_SUBGROUPS');
+    return this.isResponsibleOf(subGroupId);
   }
 
   ngOnDestroy(): void {
@@ -294,14 +290,8 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
         this.club = data;
         this.loading = false;
 
-        // Vérifier si l'user est RESPONSABLE d'un sous-groupe → droits admin sur son sous-groupe
-        const currentUserId = this.authService.getCurrentUser()?.userId;
-        if (!this.isAdmin && currentUserId) {
-          const memberInClub = data.members.find(m => m.userId === currentUserId);
-          if (memberInClub && (memberInClub as any).subGroupRole === 'RESPONSABLE') {
-            this.isAdmin = true;
-          }
-        }
+        // ❌ NE PAS donner les droits admin au responsable!
+        // Le responsable a des permissions limitées gérées par les méthodes canManageSubGroupMembers(), etc.
       },
       error: (err) => {
         console.error('Erreur:', err);
@@ -603,8 +593,39 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
 
     const { userId, subGroupId, subGroupRole } = this.assignForm.value;
     
-    // ✅ VALIDATION: Si l'utilisateur est responsable de comité
-    const mySubGroupId = this.getMyResponsibleSubGroupId();
+    // ✅ Récupérer le mode d'appartenance aux comités
+    const mode = this.club.rules?.committeeMembershipMode || 'MULTIPLE_ALLOWED';
+    
+    // ✅ RÈGLE 1: Mode SINGLE_ONLY - Un membre ne peut être que dans UN SEUL comité
+    if (mode === 'SINGLE_ONLY') {
+      const member = this.club.members.find(m => m.userId === userId);
+      if (member && member.subGroupId && member.subGroupId !== subGroupId) {
+        const currentSubGroup = this.club.subGroups.find(sg => sg.id === member.subGroupId);
+        const currentSubGroupName = currentSubGroup?.name || 'un comité';
+        alert(`❌ Ce club n'autorise qu'un seul comité par membre.\n\nLe membre est déjà dans le comité "${currentSubGroupName}".\n\nVeuillez d'abord le retirer de ce comité.`);
+        return;
+      }
+    }
+    
+    // ✅ RÈGLE 2: Mode MULTIPLE_ALLOWED - Un membre peut être RESPONSABLE d'UN SEUL comité
+    if (mode === 'MULTIPLE_ALLOWED' && subGroupRole === 'RESPONSABLE') {
+      // Vérifier si le membre est déjà responsable d'un autre comité
+      const isAlreadyResponsable = this.club.subGroups.some(sg => 
+        sg.id !== subGroupId && sg.responsableId === userId
+      );
+      
+      if (isAlreadyResponsable) {
+        const currentResponsableSubGroup = this.club.subGroups.find(sg => 
+          sg.id !== subGroupId && sg.responsableId === userId
+        );
+        const currentSubGroupName = currentResponsableSubGroup?.name || 'un comité';
+        alert(`❌ Un membre ne peut être RESPONSABLE que d'UN SEUL comité.\n\nCe membre est déjà responsable du comité "${currentSubGroupName}".\n\nIl peut rejoindre ce comité en tant que MEMBRE_COMITE.`);
+        return;
+      }
+    }
+    
+    // ✅ VALIDATION: Si l'utilisateur est responsable de comité (détection dynamique)
+    const mySubGroupId = this.committeeResponsableService.getMySubGroupId();
     if (mySubGroupId && !this.isAdmin) {
       // Vérifier qu'il assigne dans SON comité uniquement
       if (subGroupId !== mySubGroupId) {
@@ -629,7 +650,7 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
     this.clubService.assignToSubGroup(this.club.id!, userId, subGroupId, subGroupRole).subscribe({
       next: () => {
         this.loadClub(this.club!.id!);
-        this.assignForm.reset({ subGroupRole: 'MEMBRE' });
+        this.assignForm.reset({ subGroupRole: 'MEMBRE_COMITE' });
         this.showAssignForm = false;
         
         if (subGroupRole === 'RESPONSABLE') {
@@ -638,15 +659,17 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
           alert(`✅ Membre assigné au comité`);
         }
         
-        // ✅ Recharger les permissions si c'est l'utilisateur actuel
+        // ✅ Recharger les permissions ET le statut de responsable si c'est l'utilisateur actuel
         const currentUserId = this.authService.getCurrentUser()?.userId;
         if (userId === currentUserId) {
           this.permissionService.loadUserPermissions();
+          this.committeeResponsableService.loadResponsableStatus();
         }
       },
       error: (err) => {
         console.error('Erreur:', err);
-        alert('❌ Erreur lors de l\'assignation');
+        const errorMessage = err.error?.message || err.error || 'Erreur lors de l\'assignation';
+        alert('❌ ' + errorMessage);
       }
     });
   }
@@ -691,8 +714,8 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
   removeMemberFromSubGroup(subGroupId: string, userId: string): void {
     if (!this.club || !confirm('Retirer ce membre du sous-groupe ?')) return;
     
-    // ✅ VALIDATION: Si responsable de comité, vérifier que c'est SON comité
-    const mySubGroupId = this.getMyResponsibleSubGroupId();
+    // ✅ VALIDATION: Si responsable de comité, vérifier que c'est SON comité (détection dynamique)
+    const mySubGroupId = this.committeeResponsableService.getMySubGroupId();
     if (mySubGroupId && !this.isAdmin) {
       if (subGroupId !== mySubGroupId) {
         alert('❌ Vous ne pouvez retirer des membres que de votre propre comité');
@@ -704,10 +727,80 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.loadClub(this.club!.id!);
         alert('✅ Membre retiré du comité');
+        
+        // ✅ Recharger les permissions ET le statut si c'est l'utilisateur actuel
+        const currentUserId = this.authService.getCurrentUser()?.userId;
+        if (userId === currentUserId) {
+          this.permissionService.loadUserPermissions();
+          this.committeeResponsableService.loadResponsableStatus();
+        }
       },
       error: (err) => {
         console.error('Erreur:', err);
         alert('❌ Erreur lors du retrait');
+      }
+    });
+  }
+
+  // ✅ NOUVEAU: Changer le rôle d'un membre dans le comité
+  changeSubGroupRole(subGroupId: string, userId: string, event: any): void {
+    if (!this.club) return;
+    
+    const newRole = event.target.value;
+    const currentUserId = this.authService.getCurrentUser()?.userId;
+    
+    // ✅ VALIDATION: Ne peut pas changer son propre rôle
+    if (userId === currentUserId) {
+      alert('❌ Vous ne pouvez pas changer votre propre rôle');
+      event.target.value = this.club.members.find(m => m.userId === userId)?.subGroupRole || 'MEMBRE_COMITE';
+      return;
+    }
+    
+    // ✅ VALIDATION: Si responsable, vérifier que c'est SON comité (détection dynamique)
+    const mySubGroupId = this.committeeResponsableService.getMySubGroupId();
+    if (mySubGroupId && !this.isAdmin) {
+      if (subGroupId !== mySubGroupId) {
+        alert('❌ Vous ne pouvez changer les rôles que dans votre propre comité');
+        event.target.value = this.club.members.find(m => m.userId === userId)?.subGroupRole || 'MEMBRE_COMITE';
+        return;
+      }
+    }
+    
+    // Confirmer le changement
+    const member = this.club.members.find(m => m.userId === userId);
+    const subGroup = this.club.subGroups.find(sg => sg.id === subGroupId);
+    
+    if (!member || !subGroup) return;
+    
+    const action = newRole === 'RESPONSABLE' ? 'promouvoir' : 'rétrograder';
+    const newRoleLabel = newRole === 'RESPONSABLE' ? 'Responsable' : 'Membre du comité';
+    
+    if (!confirm(`Voulez-vous ${action} ${member.name} en tant que ${newRoleLabel} ?`)) {
+      event.target.value = member.subGroupRole || 'MEMBRE_COMITE';
+      return;
+    }
+    
+    // Appeler le service pour changer le rôle
+    this.clubService.assignToSubGroup(this.club.id!, userId, subGroupId, newRole).subscribe({
+      next: () => {
+        this.loadClub(this.club!.id!);
+        
+        if (newRole === 'RESPONSABLE') {
+          alert(`✅ ${member.name} est maintenant Responsable du comité ${subGroup.name}`);
+        } else {
+          alert(`✅ ${member.name} est maintenant Membre du comité ${subGroup.name}`);
+        }
+        
+        // Recharger les permissions ET le statut si c'est l'utilisateur actuel
+        if (userId === currentUserId) {
+          this.permissionService.loadUserPermissions();
+          this.committeeResponsableService.loadResponsableStatus();
+        }
+      },
+      error: (err) => {
+        console.error('Erreur:', err);
+        alert('❌ Erreur lors du changement de rôle');
+        event.target.value = member.subGroupRole || 'MEMBRE_COMITE';
       }
     });
   }
