@@ -9,10 +9,8 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.*;
 import tn.esprit.virtual_event_management.entity.User;
 import tn.esprit.virtual_event_management.entity.VirtualEvent;
-import tn.esprit.virtual_event_management.service.IVirtualEventService;
-import tn.esprit.virtual_event_management.service.UserClientService;
-import tn.esprit.virtual_event_management.service.VirtualEventService;
-import tn.esprit.virtual_event_management.service.PdfService;
+import tn.esprit.virtual_event_management.service.*;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,8 +20,9 @@ public class VirtualEventController {
     private final IVirtualEventService virtualEventService;
     private PdfService pdfService;
 
-    public VirtualEventController(IVirtualEventService virtualEventService) {
+    public VirtualEventController(IVirtualEventService virtualEventService, EventRegistrationService registrationService) {
         this.virtualEventService = virtualEventService;
+        this.registrationService = registrationService;
     }
 
     @PostMapping
@@ -105,11 +104,20 @@ public class VirtualEventController {
         return ResponseEntity.noContent().build();
     }
 
-    @Autowired
-    private UserClientService userClientService;
-
-    @GetMapping("/user/{id}")
-    public User getUserFromUserService(@PathVariable Long id) {
-        return userClientService.getUserById(id);
+    private final EventRegistrationService registrationService;
+    @PostMapping("/{eventId}/register/{userId}")
+    public ResponseEntity<?> register(@PathVariable String eventId,
+                                      @PathVariable String userId) {
+        return ResponseEntity.ok("OK");
     }
+
+    @GetMapping("/{eventId}/can-join/{userId}")
+    public ResponseEntity<Boolean> canJoin(@PathVariable String eventId,
+                                           @PathVariable String userId) {
+        return ResponseEntity.ok(
+                registrationService.canJoin(eventId, userId)
+        );
+    }
+
+
 }

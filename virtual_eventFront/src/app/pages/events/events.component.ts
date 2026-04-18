@@ -96,36 +96,51 @@ export class EventsComponent implements OnInit {
   }
 
   // 🔥 JOIN FINAL (IMPORTANT)
-  joinMeeting(event: any) {
+ joinMeeting(event: any) {
 
-    if (!event.id) return;
+  if (!event.id) return;
 
-    const now = new Date();
-    const eventDate = new Date(event.scheduledAt);
+  const now = new Date();
+  const eventDate = new Date(event.scheduledAt);
 
-    if (now < eventDate) {
-      if (!confirm("⏳ L'événement n'a pas encore commencé. Continuer ?")) return;
-    }
+  if (now < eventDate) {
+    if (!confirm("⏳ This event has not started yet. Do you want to continue?")) return;
+  }
 
-    if (event.status === 'FINISHED') {
-      alert("Cet événement est terminé.");
-      return;
-    }
+  if (event.status === 'FINISHED') {
+    alert("❌ This event has already ended.");
+    return;
+  }
 
-    if (event.currentParticipants! >= event.maxParticipants!) {
-      alert("Événement complet.");
-      return;
-    }
+  if (event.currentParticipants >= event.maxParticipants) {
+    alert("⚠️ This event is full.");
+    return;
+  }
+
+  // 🔥 IMPORTANT PART
+  if (event.type === 'ROOM') {
+
+    // 🎮 3D ROOM
+    this.router.navigate(['/virtual-room', event.id], {
+      state: {
+        avatar: {
+          color: this.selectedColor,
+          type: this.selectedType
+        }
+      }
+    });
+
+  } else {
+
+    // 🎥 JITSI (inside your app)
+    this.router.navigate(['/meeting', event.id]);
+  }
+
 
     // 🔥 SAUVEGARDE AVATAR AVANT ENTRER
     this.selectAvatar();
 
     // 🔥 LOGIQUE TYPE EVENT
-    if (event.type === 'VIRTUAL') {
-      window.open(event.meetingLink, '_blank');
-      return;
-    }
-
    if (event.type === 'ROOM') {
     localStorage.setItem("roomId", event.roomId);
     this.router.navigate(['/lobby']);
@@ -145,6 +160,11 @@ export class EventsComponent implements OnInit {
       case 'ongoing': return 'bg-orange-100 text-orange-700';
       case 'finished': return 'bg-gray-100 text-gray-700';
       default: return 'bg-blue-100 text-blue-700';
-    }
+    } 
   }
+
+  openDetails(eventClick: Event, event: any) {
+  eventClick.stopPropagation();
+  this.openEventDetails(event);
+}
 }

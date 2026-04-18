@@ -58,8 +58,4 @@ public class VirtualEvent {
     private String type;   // VIRTUAL ou ROOM
     private String roomId;
 
-
-
-
-
 }

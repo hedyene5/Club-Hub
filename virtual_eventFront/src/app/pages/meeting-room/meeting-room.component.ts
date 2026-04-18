@@ -35,7 +35,7 @@ export class MeetingRoomComponent implements OnInit {
   ngOnInit(): void {
     this.eventId = this.route.snapshot.paramMap.get('id')!;
 
-    this.http.get(`http://localhost:8081/api/virtual-events/${this.eventId}`)
+    this.http.get(`http://localhost:8082/api/virtual-events/${this.eventId}`)
       .subscribe((event: any) => {
         this.event = event;
         this.initJitsi(event.meetingLink);
@@ -120,7 +120,7 @@ export class MeetingRoomComponent implements OnInit {
       virtualEvent: { id: this.eventId }
     };
 
-    this.http.post<any>('http://localhost:8081/api/records', payload)
+    this.http.post<any>('http://localhost:8082/api/records', payload)
       .subscribe(record => {
 
         this.sendToTranscription(record.id, audioBlob);
@@ -134,7 +134,7 @@ export class MeetingRoomComponent implements OnInit {
     formData.append('audio', audioBlob, 'recording.webm');
 
     this.http.post(
-      `http://localhost:8081/api/transcriptions/${recordId}?language=auto`,
+      `http://localhost:8082/api/transcriptions/${recordId}?language=auto`,
       formData
     ).subscribe(() => {
       alert("🧠 Transcription terminée !");
@@ -142,6 +142,6 @@ export class MeetingRoomComponent implements OnInit {
   }
 
   leaveMeeting() {
-    this.router.navigate(['/']);
+    this.router.navigate(['/events']);
   }
 }
