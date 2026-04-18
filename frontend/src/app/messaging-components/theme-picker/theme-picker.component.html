@@ -1,0 +1,50 @@
+<p>theme-picker works!</p>
+<div class="modal-overlay" (click)="closeModal()">
+    <div class="modal-content" (click)="$event.stopImmediatePropagation()">
+
+        <div class="modal-header">
+            <h2>Changer le thème</h2>
+            <button class="close-btn" (click)="closeModal()">✕</button>
+        </div>
+
+        <!-- PRESETS -->
+        <div class="section">
+            <h3>Thèmes prédéfinis</h3>
+            <div class="presets-grid">
+                <div *ngFor="let preset of presets"
+                     class="preset-card"
+                     [style.backgroundColor]="preset.backgroundColor"
+                     (click)="selectPreset(preset)">
+                    <div class="preview-header" [style.backgroundColor]="preset.primaryColor">
+                        {{ preset.name }}
+                    </div>
+                    <div class="preview-bubble" [style.backgroundColor]="preset.bubbleColor"></div>
+                    <div class="preset-name">{{ preset.name }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI GENERATION -->
+        <div class="section">
+            <h3>🎨 Générer un thème avec l’IA</h3>
+            <textarea [(ngModel)]="aiPrompt"
+                      placeholder="Ex: cyberpunk neon, plage au coucher du soleil, dark luxury gold..."
+                      rows="3"></textarea>
+
+            <button class="generate-btn"
+                    (click)="generateWithAI()"
+                    [disabled]="generating || !aiPrompt.trim()">
+                {{ generating ? 'Génération en cours...' : 'Générer le thème' }}
+            </button>
+
+            <!-- Preview of AI result -->
+            <div *ngIf="generatedTheme" class="ai-preview" (click)="applyGeneratedTheme()">
+                <div class="preview-header" [style.backgroundColor]="generatedTheme.primaryColor">
+                    {{ generatedTheme.name }}
+                </div>
+                <div class="preview-bubble" [style.backgroundColor]="generatedTheme.bubbleColor"></div>
+                <p class="apply-text">Cliquez pour appliquer ce thème</p>
+            </div>
+        </div>
+    </div>
+</div>

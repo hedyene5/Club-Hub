@@ -1,0 +1,26 @@
+<!-- Question Phase -->
+<app-game-question
+        *ngIf="gamePhase === 'QUESTION'"
+        #questionComp
+        [gameId]="gameId"
+        [currentUserId]="currentUserId"
+        (answerSubmitted)="onAnswerSubmitted()">
+</app-game-question>
+
+<!-- Answer Reveal Phase -->
+<app-answer-reveal
+        *ngIf="gamePhase === 'REVEAL'"
+        [event]="revealEvent"
+        [selectedAnswer]="selectedAnswer"
+        [currentUserId]="currentUserId">
+</app-answer-reveal>
+
+<!-- Final Leaderboard Phase -->
+<app-game-leaderboard
+        *ngIf="gamePhase === 'LEADERBOARD'"
+        [event]="leaderboardEvent"
+        [currentUserId]="currentUserId"
+        [conversationId]="conversationId"
+        (playAgain)="onPlayAgain()"
+        (close)="onCloseGame()">
+</app-game-leaderboard>

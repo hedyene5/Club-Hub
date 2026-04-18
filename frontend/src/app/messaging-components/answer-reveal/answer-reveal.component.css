@@ -1,0 +1,5 @@
+/* src/app/components/Game/answer-reveal/answer-reveal.component.css */
+
+:host {
+    display: contents;
+}

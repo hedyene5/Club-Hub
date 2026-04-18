@@ -1,0 +1,146 @@
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 200ms ease;
+}
+
+.modal-content {
+    background: white;
+    width: 100%;
+    max-width: 520px;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    overflow: hidden;
+    animation: slideUp 250ms ease;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f1f1f1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.section {
+    padding: 24px;
+}
+
+.section h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.presets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.preset-card {
+    border-radius: 16px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    position: relative;
+}
+
+.preset-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+.preset-card:active {
+    transform: scale(0.97);
+}
+
+.preview-header {
+    height: 28px;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+}
+
+.preview-bubble {
+    width: 60%;
+    height: 22px;
+    border-radius: 12px;
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+.preset-name {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 8px;
+    color: #1f2937;
+}
+
+textarea {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 16px;
+    font-size: 1rem;
+    resize: none;
+    outline: none;
+}
+
+.generate-btn {
+    margin-top: 12px;
+    width: 100%;
+    padding: 14px;
+    background: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ai-preview {
+    margin-top: 16px;
+    border: 2px dashed #4f46e5;
+    border-radius: 16px;
+    padding: 12px;
+    cursor: pointer;
+}
+
+.apply-text {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #4f46e5;
+    font-weight: 600;
+    margin-top: 8px;
+}

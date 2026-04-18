@@ -1,0 +1,103 @@
+<!-- src/app/components/Game/game-question/game-question.component.html -->
+
+<div class="fixed inset-0 z-50 bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 flex flex-col overflow-hidden">
+
+    <!-- Top Bar -->
+    <div class="px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="text-white/50 text-sm font-bold">Question</span>
+            <!-- ✅ FIXED: Use getter method instead of optional chaining -->
+            <span class="text-white text-2xl font-black">{{ getQuestionNumber() }}</span>
+            <span class="text-white/30 text-sm font-medium">of {{ getTotalQuestions() || '?' }}</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <!-- Players Answered Counter -->
+            <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                <span class="text-white text-sm font-semibold">{{ answeredCount }}/{{ totalPlayers }}</span>
+                <span class="text-white/50 text-xs">answered</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timer Bar -->
+    <div class="px-6 mb-8">
+        <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-1000 ease-linear"
+                 [class]="getTimerColor()"
+                 [style.width.%]="getTimerPercentage()">
+            </div>
+        </div>
+        <div class="flex justify-between mt-2">
+            <span class="text-white/40 text-xs font-medium">Time remaining</span>
+            <span [class]="timeRemaining <= 5 ? 'text-red-400 animate-pulse' : 'text-white/60'"
+                  class="text-sm font-black">
+                {{ timeRemaining }}s
+            </span>
+        </div>
+    </div>
+
+    <!-- Question Text -->
+    <div class="flex-1 flex items-center justify-center px-6">
+        <div class="max-w-3xl w-full text-center">
+            <!-- ✅ FIXED: Use getter method -->
+            <h1 class="text-3xl md:text-4xl font-black text-white leading-tight tracking-tight mb-2">
+                {{ getQuestionText() }}
+            </h1>
+            <p class="text-indigo-300/60 text-sm font-medium">
+                Select the correct answer
+            </p>
+        </div>
+    </div>
+
+    <!-- Answer Options -->
+    <div class="px-6 pb-12">
+        <div class="max-w-4xl mx-auto grid grid-cols-2 gap-4">
+            <!-- ✅ FIXED: Use getOptions() method -->
+            <button *ngFor="let option of getOptions(); let i = index"
+                    (click)="selectAnswer(option)"
+                    [disabled]="hasAnswered"
+                    [class]="selectedAnswer === option
+                        ? answerColors[i].selected + ' ring-4 scale-[1.02] shadow-2xl ' + answerColors[i].shadow
+                        : answerColors[i].bg + ' ' + answerColors[i].hover + ' shadow-lg ' + answerColors[i].shadow"
+                    class="relative p-6 rounded-2xl text-white font-bold text-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden">
+
+                <!-- Letter Badge -->
+                <div class="absolute top-3 left-3 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-sm font-black backdrop-blur-sm">
+                    {{ answerLetters[i] }}
+                </div>
+
+                <!-- Answer Text -->
+                <span class="ml-8">{{ option }}</span>
+
+                <!-- Selected Indicator -->
+                <div *ngIf="selectedAnswer === option" class="absolute top-3 right-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+            </button>
+        </div>
+
+        <!-- Confirm Button -->
+        <div class="max-w-4xl mx-auto mt-6 flex justify-center">
+            <button (click)="confirmAnswer()"
+                    [disabled]="!selectedAnswer || hasAnswered || isSubmitting"
+                    class="px-12 py-4 bg-white text-indigo-600 rounded-2xl font-black text-lg uppercase tracking-wider shadow-2xl shadow-black/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100">
+                <span *ngIf="isSubmitting" class="flex items-center gap-2">
+                    <span class="w-5 h-5 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></span>
+                    Submitting...
+                </span>
+                <span *ngIf="hasAnswered" class="flex items-center gap-2">
+                    ✓ Answer Locked In
+                </span>
+                <span *ngIf="!selectedAnswer && !hasAnswered && !isSubmitting">
+                    Select an answer
+                </span>
+                <span *ngIf="selectedAnswer && !hasAnswered && !isSubmitting">
+                    Lock In Answer →
+                </span>
+            </button>
+        </div>
+    </div>
+</div>

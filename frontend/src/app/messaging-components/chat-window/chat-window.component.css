@@ -1,0 +1,56 @@
+/* ====================== THEME SYSTEM ====================== */
+:root {
+    --primary-color: #0084FF;
+    --accent-color: #0084FF;
+    --bubble-color: #0084FF;
+    --chat-background: #F0F2F5;
+    --gradient-end: #F0F2F5;
+}
+
+/* Main chat container — NO !important so inline styles can override */
+.chat-container {
+    background: var(--chat-background);
+    transition: background 400ms ease-in-out;
+}
+
+/* Gradient support */
+.chat-container.gradient {
+    background: linear-gradient(to bottom, var(--chat-background), var(--gradient-end)) !important;
+}
+
+/* Image background — wins over everything */
+.chat-container.has-bg-image {
+    background: none !important;
+    background-image: var(--bg-image) !important;
+    background-size: cover !important;
+    background-position: center !important;
+}
+
+/* Message bubbles */
+.msg-bubble-mine {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+}
+
+.msg-bubble-other {
+    background-color: var(--bubble-color);
+    color: #1e293b;
+    border: 1px solid rgba(0,0,0,0.06);
+}
+
+.msg-bubble-deleted {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #94a3b8;
+}
+
+.message-bubble-own {
+    background-color: var(--bubble-color) !important;
+    color: white !important;
+    transition: background-color 300ms ease;
+}
+
+.send-button {
+    background-color: var(--accent-color) !important;
+    transition: background-color 300ms ease;
+}

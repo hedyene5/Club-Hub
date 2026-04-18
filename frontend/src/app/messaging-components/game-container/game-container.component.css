@@ -1,0 +1,5 @@
+/* src/app/components/Game/game-container/game-container.component.css */
+
+:host {
+    display: contents;
+}

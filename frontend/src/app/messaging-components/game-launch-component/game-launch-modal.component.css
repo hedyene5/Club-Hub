@@ -1,0 +1,5 @@
+/* src/app/components/Game/game-launch-modal/game-launch-modal.component.css */
+
+:host {
+    display: contents;
+}
