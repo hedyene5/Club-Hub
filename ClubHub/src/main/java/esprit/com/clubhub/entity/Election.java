@@ -24,7 +24,8 @@ public class Election {
     private List<Vote> votes;
     private ElectionResults results;
     private String electionType;  // "PRESIDENT" ou "BUREAU"
-    // Règles de vote pour élection bureau
+    private VotingMode votingMode; // ✅ NOUVEAU: Mode de vote pour élections de bureau
+    // Règles de vote pour élection bureau (DEPRECATED - utiliser votingMode)
     private String voteScope;     // "OWN_SUBGROUP" | "ALL_SUBGROUPS"
     private String voteLimit;     // "ONCE" | "PER_SUBGROUP"
     private List<Position> positions;
@@ -51,6 +52,7 @@ public class Election {
     public List<Vote> getVotes() { return votes; }
     public ElectionResults getResults() { return results; }
     public String getElectionType() { return electionType; }
+    public VotingMode getVotingMode() { return votingMode; }
     public String getVoteScope() { return voteScope; }
     public String getVoteLimit() { return voteLimit; }
     public List<Position> getPositions() { return positions; }
@@ -69,6 +71,7 @@ public class Election {
     public void setVotes(List<Vote> votes) { this.votes = votes; }
     public void setResults(ElectionResults results) { this.results = results; }
     public void setElectionType(String electionType) { this.electionType = electionType; }
+    public void setVotingMode(VotingMode votingMode) { this.votingMode = votingMode; }
     public void setVoteScope(String voteScope) { this.voteScope = voteScope; }
     public void setVoteLimit(String voteLimit) { this.voteLimit = voteLimit; }
     public void setPositions(List<Position> positions) { this.positions = positions; }

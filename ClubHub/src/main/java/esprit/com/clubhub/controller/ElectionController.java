@@ -232,4 +232,15 @@ public class ElectionController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    // ✅ NOUVEAU: Obtenir les comités disponibles pour voter selon le mode
+    @GetMapping("/{id}/available-committees/{userId}")
+    public ResponseEntity<?> getAvailableCommittees(@PathVariable String id, @PathVariable String userId) {
+        try {
+            Map<String, Object> result = electionService.getAvailableCommitteesForVoting(id, userId);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

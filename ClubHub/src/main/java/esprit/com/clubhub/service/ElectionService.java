@@ -6,6 +6,10 @@ import esprit.com.clubhub.repository.ElectionRepository;
 import esprit.com.clubhub.repository.ClubRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -20,6 +24,11 @@ public class ElectionService {
 
     @Autowired
     private EligibilityService eligibilityService;
+    
+    @Autowired
+    private RestTemplate restTemplate;
+    
+    private String userServiceUrl = "http://localhost:8081/api/users";
 
     // ❌ SUPPRIMER cette ligne
     // @Autowired
@@ -180,7 +189,11 @@ public class ElectionService {
     }
 
     /**
-     * Élection bureau : met à jour subGroupRole du gagnant
+     * Élection bureau : met à jour le responsable du comité
+     * - Met à jour subGroupRole dans club.members
+     * - Met à jour responsableId dans subGroup
+     * - Met à jour memberRoles dans subGroup
+     * - Met à jour le rôle dans la collection users via REST API
      */
     private void applyBureauRoleChange(Election election) {
         if (election.getResults() == null) return;
@@ -197,33 +210,156 @@ public class ElectionService {
         winnerBySubGroup.forEach((subGroupName, winnerId) -> {
             System.out.println("🏆 Comité '" + subGroupName + "' → gagnant: " + winnerId);
 
+            // ✅ Trouver le sous-groupe correspondant
             SubGroup targetSg = club.getSubGroups().stream()
                     .filter(sg -> sg.getName().equalsIgnoreCase(subGroupName) ||
                             subGroupName.toLowerCase().contains(sg.getName().toLowerCase()) ||
                             sg.getName().toLowerCase().contains(subGroupName.toLowerCase()))
                     .findFirst().orElse(null);
 
-            String targetSgId = targetSg != null ? targetSg.getId() : null;
+            if (targetSg == null) {
+                System.err.println("❌ Sous-groupe '" + subGroupName + "' non trouvé");
+                return;
+            }
 
-            club.getMembers().forEach(m -> {
-                if (m.getUserId().equals(winnerId)) {
-                    m.setSubGroupRole("RESPONSABLE");
-                    if (targetSgId != null) m.setSubGroupId(targetSgId);
-                    System.out.println("  ✅ " + m.getName() + " → RESPONSABLE " + subGroupName);
-                } else if ("RESPONSABLE".equals(m.getSubGroupRole())
-                        && targetSgId != null
-                        && targetSgId.equals(m.getSubGroupId())) {
-                    m.setSubGroupRole("MEMBRE");
-                    System.out.println("  🔄 " + m.getName() + " → MEMBRE (ancien responsable)");
+            String targetSgId = targetSg.getId();
+            String oldResponsableId = targetSg.getResponsableId();
+
+            // ✅ ÉTAPE 1: Mettre à jour l'ancien responsable (s'il existe)
+            if (oldResponsableId != null && !oldResponsableId.equals(winnerId)) {
+                club.getMembers().stream()
+                        .filter(m -> m.getUserId().equals(oldResponsableId))
+                        .findFirst()
+                        .ifPresent(oldResponsable -> {
+                            // Changer son rôle de comité
+                            oldResponsable.setSubGroupRole("MEMBRE_COMITE");
+                            System.out.println("  🔄 Ancien responsable " + oldResponsable.getName() + " → MEMBRE_COMITE");
+                            
+                            // Restaurer son rôle initial s'il existe
+                            String restoredRole = oldResponsable.getInitialRole();
+                            if (restoredRole != null) {
+                                oldResponsable.setRole(restoredRole);
+                                oldResponsable.setInitialRole(null);
+                                System.out.println("  🔄 Rôle restauré: " + restoredRole);
+                                
+                                // ✅ Mettre à jour dans la collection users via REST API
+                                try {
+                                    String url = userServiceUrl + "/" + oldResponsableId + "/role";
+                                    Map<String, String> roleUpdate = new HashMap<>();
+                                    roleUpdate.put("role", restoredRole);
+                                    
+                                    HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
+                                    restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+                                    
+                                    System.out.println("  ✅ Rôle restauré dans User Service: " + restoredRole);
+                                } catch (Exception e) {
+                                    System.err.println("  ❌ Erreur mise à jour User Service: " + e.getMessage());
+                                }
+                            }
+                        });
+                
+                // Mettre à jour memberRoles pour l'ancien responsable
+                if (targetSg.getMemberRoles() != null) {
+                    targetSg.getMemberRoles().put(oldResponsableId, "MEMBRE_COMITE");
                 }
-            });
+            }
+
+            // ✅ ÉTAPE 2: Retirer le gagnant de TOUS les autres comités
+            // Un responsable ne peut appartenir qu'à SON comité (RÈGLE 3)
+            System.out.println("  🔍 Vérification des autres comités pour le gagnant...");
+            
+            club.getSubGroups().stream()
+                    .filter(sg -> !sg.getId().equals(targetSgId))  // Tous les comités SAUF le comité cible
+                    .forEach(otherSg -> {
+                        // Retirer de la liste memberIds
+                        if (otherSg.getMemberIds().contains(winnerId)) {
+                            otherSg.getMemberIds().remove(winnerId);
+                            System.out.println("  🔄 Gagnant retiré du comité '" + otherSg.getName() + "' (memberIds)");
+                        }
+                        
+                        // Retirer de memberRoles
+                        if (otherSg.getMemberRoles() != null && otherSg.getMemberRoles().containsKey(winnerId)) {
+                            otherSg.getMemberRoles().remove(winnerId);
+                            System.out.println("  🔄 Gagnant retiré du comité '" + otherSg.getName() + "' (memberRoles)");
+                        }
+                        
+                        // Si le gagnant était responsable de cet autre comité, retirer responsableId
+                        if (winnerId.equals(otherSg.getResponsableId())) {
+                            otherSg.setResponsableId(null);
+                            System.out.println("  🔄 Gagnant n'est plus responsable du comité '" + otherSg.getName() + "'");
+                        }
+                    });
+
+            // ✅ ÉTAPE 3: Mettre à jour le nouveau responsable
+            club.getMembers().stream()
+                    .filter(m -> m.getUserId().equals(winnerId))
+                    .findFirst()
+                    .ifPresent(winner -> {
+                        // Sauvegarder le rôle initial si c'est la première fois
+                        if (winner.getInitialRole() == null) {
+                            winner.setInitialRole(winner.getRole());
+                            System.out.println("  📝 Rôle initial sauvegardé: " + winner.getRole());
+                        }
+                        
+                        // Mettre à jour les champs du membre
+                        winner.setSubGroupId(targetSgId);
+                        winner.setSubGroupRole("RESPONSABLE");
+                        String newRole = "Responsable " + targetSg.getName();
+                        winner.setRole(newRole);
+                        System.out.println("  ✅ " + winner.getName() + " → RESPONSABLE " + subGroupName);
+                        
+                        // ✅ Mettre à jour dans la collection users via REST API
+                        try {
+                            String url = userServiceUrl + "/" + winnerId + "/role";
+                            Map<String, String> roleUpdate = new HashMap<>();
+                            roleUpdate.put("role", newRole);
+                            
+                            HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
+                            ResponseEntity<String> response = restTemplate.exchange(
+                                url, 
+                                HttpMethod.PUT, 
+                                request, 
+                                String.class
+                            );
+                            
+                            System.out.println("  ✅ Rôle mis à jour dans User Service: " + newRole);
+                            System.out.println("  📡 Réponse: " + response.getStatusCode());
+                        } catch (Exception e) {
+                            System.err.println("  ❌ Erreur mise à jour User Service: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    });
+
+            // ✅ ÉTAPE 4: Mettre à jour le sous-groupe cible
+            targetSg.setResponsableId(winnerId);
+            
+            // Ajouter le gagnant à la liste des membres s'il n'y est pas
+            if (!targetSg.getMemberIds().contains(winnerId)) {
+                targetSg.getMemberIds().add(winnerId);
+                System.out.println("  ✅ Gagnant ajouté à la liste des membres du comité");
+            }
+            
+            // Mettre à jour memberRoles
+            if (targetSg.getMemberRoles() == null) {
+                targetSg.setMemberRoles(new HashMap<>());
+            }
+            targetSg.getMemberRoles().put(winnerId, "RESPONSABLE");
+            
+            System.out.println("  ✅ SubGroup mis à jour: responsableId=" + winnerId);
         });
 
+        // ✅ ÉTAPE 5: Sauvegarder le club
         clubRepository.save(club);
-        System.out.println("✅ Rôles bureau mis à jour");
+        System.out.println("✅ Rôles bureau mis à jour dans la base de données");
     }
 
     public Election castVote(String electionId, Vote vote) {
+        System.out.println("=== CAST VOTE ===");
+        System.out.println("ElectionId: " + electionId);
+        System.out.println("VoterId: " + vote.getVoterId());
+        System.out.println("CandidateId: " + vote.getCandidateId());
+        System.out.println("SubGroupId: " + vote.getSubGroupId());
+        
         Election election = electionRepository.findById(electionId)
                 .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
 
@@ -231,23 +367,91 @@ public class ElectionService {
             throw new RuntimeException("L'élection n'est pas ouverte");
         }
 
-        boolean alreadyVoted = election.getVotes().stream()
-                .anyMatch(v -> v.getVoterId().equals(vote.getVoterId()));
+        // ✅ Récupérer le club pour vérifier les permissions
+        Club club = clubRepository.findById(election.getClubId())
+                .orElseThrow(() -> new RuntimeException("Club non trouvé"));
 
-        if (alreadyVoted) {
-            throw new RuntimeException("Vous avez déjà voté");
+        // ✅ Vérifier que le voteur est membre du club
+        boolean isMemberOfClub = club.getMembers().stream()
+                .anyMatch(m -> m.getUserId().equals(vote.getVoterId()) && "APPROVED".equals(m.getStatus()));
+        
+        if (!isMemberOfClub) {
+            throw new RuntimeException("Vous devez être membre approuvé du club pour voter");
         }
 
-        boolean candidateExists = election.getCandidates().stream()
-                .anyMatch(c -> c.getUserId().equals(vote.getCandidateId())
-                        && c.getStatus().equals("APPROVED"));
+        // ✅ Trouver le candidat pour obtenir son subGroupTarget
+        Candidate candidate = election.getCandidates().stream()
+                .filter(c -> c.getUserId().equals(vote.getCandidateId()) && "APPROVED".equals(c.getStatus()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Candidat invalide ou non approuvé"));
 
-        if (!candidateExists) {
-            throw new RuntimeException("Candidat invalide");
+        String subGroupTarget = candidate.getSubGroupTarget();
+        
+        // ✅ Trouver le subGroupId correspondant
+        String subGroupId = findSubGroupId(club, subGroupTarget);
+        if (subGroupId == null && election.getElectionType().equals("BUREAU")) {
+            throw new RuntimeException("Comité non trouvé pour ce candidat");
+        }
+        
+        // ✅ Définir le subGroupId dans le vote
+        vote.setSubGroupId(subGroupId);
+
+        // ✅ VALIDATION SELON LE MODE DE VOTE
+        VotingMode votingMode = election.getVotingMode();
+        if (votingMode == null) {
+            // Par défaut: ALL_CLUB_MEMBERS pour compatibilité
+            votingMode = VotingMode.ALL_CLUB_MEMBERS;
+        }
+
+        System.out.println("Mode de vote: " + votingMode);
+
+        if (election.getElectionType().equals("BUREAU")) {
+            if (votingMode == VotingMode.COMMITTEE_MEMBERS_ONLY) {
+                // ✅ OPTION 2: Seuls les membres du comité peuvent voter
+                boolean isInSubGroup = isVoterInSubGroup(club, vote.getVoterId(), subGroupId);
+                if (!isInSubGroup) {
+                    throw new RuntimeException("Vous devez être membre du comité '" + subGroupTarget + "' pour voter pour ce poste");
+                }
+                
+                // Vérifier si le voteur a déjà voté pour CE comité
+                boolean alreadyVotedForThisSubGroup = election.getVotes().stream()
+                        .anyMatch(v -> v.getVoterId().equals(vote.getVoterId()) 
+                                && subGroupId.equals(v.getSubGroupId()));
+                
+                if (alreadyVotedForThisSubGroup) {
+                    throw new RuntimeException("Vous avez déjà voté pour le comité '" + subGroupTarget + "'");
+                }
+                
+                System.out.println("✅ Vote autorisé (COMMITTEE_MEMBERS_ONLY): membre du comité");
+                
+            } else {
+                // ✅ OPTION 1: Tous les membres du club peuvent voter
+                // Vérifier si le voteur a déjà voté pour CE comité
+                boolean alreadyVotedForThisSubGroup = election.getVotes().stream()
+                        .anyMatch(v -> v.getVoterId().equals(vote.getVoterId()) 
+                                && subGroupId.equals(v.getSubGroupId()));
+                
+                if (alreadyVotedForThisSubGroup) {
+                    throw new RuntimeException("Vous avez déjà voté pour le comité '" + subGroupTarget + "'");
+                }
+                
+                System.out.println("✅ Vote autorisé (ALL_CLUB_MEMBERS): membre du club");
+            }
+        } else {
+            // Élection présidentielle: un seul vote par personne
+            boolean alreadyVoted = election.getVotes().stream()
+                    .anyMatch(v -> v.getVoterId().equals(vote.getVoterId()));
+            
+            if (alreadyVoted) {
+                throw new RuntimeException("Vous avez déjà voté");
+            }
         }
 
         election.getVotes().add(vote);
-        return electionRepository.save(election);
+        Election saved = electionRepository.save(election);
+        System.out.println("✅ Vote enregistré");
+        System.out.println("=================");
+        return saved;
     }
 
     private String findSubGroupId(Club club, String subGroupTarget) {
@@ -261,11 +465,11 @@ public class ElectionService {
     }
 
     private boolean isVoterInSubGroup(Club club, String voterId, String subGroupId) {
+        // ✅ FIX: Vérifier UNIQUEMENT dans subGroup.memberIds
+        // La source de vérité pour savoir si un membre est dans un comité est subGroup.memberIds
         return club.getSubGroups().stream()
                 .filter(sg -> sg.getId().equals(subGroupId))
-                .anyMatch(sg -> sg.getMemberIds() != null && sg.getMemberIds().contains(voterId))
-                || club.getMembers().stream()
-                .anyMatch(m -> m.getUserId().equals(voterId) && subGroupId.equals(m.getSubGroupId()));
+                .anyMatch(sg -> sg.getMemberIds() != null && sg.getMemberIds().contains(voterId));
     }
 
     public ElectionResults calculateResults(Election election) {
@@ -418,5 +622,107 @@ public class ElectionService {
         }
 
         return criteria;
+    }
+
+    /**
+     * ✅ NOUVEAU: Obtenir les comités disponibles pour voter selon le mode
+     */
+    public Map<String, Object> getAvailableCommitteesForVoting(String electionId, String userId) {
+        Election election = electionRepository.findById(electionId)
+                .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
+        
+        Club club = clubRepository.findById(election.getClubId())
+                .orElseThrow(() -> new RuntimeException("Club non trouvé"));
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("votingMode", election.getVotingMode() != null ? election.getVotingMode() : VotingMode.ALL_CLUB_MEMBERS);
+        
+        // Vérifier que l'utilisateur est membre du club
+        boolean isMemberOfClub = club.getMembers().stream()
+                .anyMatch(m -> m.getUserId().equals(userId) && "APPROVED".equals(m.getStatus()));
+        
+        if (!isMemberOfClub) {
+            result.put("canVote", false);
+            result.put("reason", "Vous devez être membre approuvé du club");
+            result.put("availableCommittees", new ArrayList<>());
+            return result;
+        }
+        
+        result.put("canVote", true);
+        
+        VotingMode votingMode = election.getVotingMode() != null ? election.getVotingMode() : VotingMode.ALL_CLUB_MEMBERS;
+        
+        // Grouper les candidats par comité
+        Map<String, List<Candidate>> candidatesByCommittee = new HashMap<>();
+        for (Candidate candidate : election.getCandidates()) {
+            if ("APPROVED".equals(candidate.getStatus())) {
+                String committee = candidate.getSubGroupTarget();
+                candidatesByCommittee.computeIfAbsent(committee, k -> new ArrayList<>()).add(candidate);
+            }
+        }
+        
+        List<Map<String, Object>> availableCommittees = new ArrayList<>();
+        
+        for (Map.Entry<String, List<Candidate>> entry : candidatesByCommittee.entrySet()) {
+            String committeeName = entry.getKey();
+            List<Candidate> candidates = entry.getValue();
+            
+            // Trouver le subGroupId
+            String subGroupId = findSubGroupId(club, committeeName);
+            
+            if (subGroupId == null) continue;
+            
+            // Vérifier si l'utilisateur peut voter pour ce comité
+            boolean canVoteForThisCommittee = false;
+            String reason = "";
+            
+            if (votingMode == VotingMode.ALL_CLUB_MEMBERS) {
+                // OPTION 1: Tous les membres peuvent voter
+                // Vérifier si l'utilisateur a déjà voté pour ce comité
+                boolean alreadyVoted = election.getVotes().stream()
+                        .anyMatch(v -> v.getVoterId().equals(userId) && subGroupId.equals(v.getSubGroupId()));
+                
+                if (alreadyVoted) {
+                    canVoteForThisCommittee = false;
+                    reason = "Vous avez déjà voté pour ce comité";
+                } else {
+                    canVoteForThisCommittee = true;
+                    reason = "Vous pouvez voter (tous les membres du club)";
+                }
+            } else {
+                // OPTION 2: Seuls les membres du comité peuvent voter
+                boolean isInSubGroup = isVoterInSubGroup(club, userId, subGroupId);
+                
+                if (!isInSubGroup) {
+                    canVoteForThisCommittee = false;
+                    reason = "Vous devez être membre de ce comité";
+                } else {
+                    // Vérifier si l'utilisateur a déjà voté pour ce comité
+                    boolean alreadyVoted = election.getVotes().stream()
+                            .anyMatch(v -> v.getVoterId().equals(userId) && subGroupId.equals(v.getSubGroupId()));
+                    
+                    if (alreadyVoted) {
+                        canVoteForThisCommittee = false;
+                        reason = "Vous avez déjà voté pour ce comité";
+                    } else {
+                        canVoteForThisCommittee = true;
+                        reason = "Vous pouvez voter (membre du comité)";
+                    }
+                }
+            }
+            
+            Map<String, Object> committeeInfo = new HashMap<>();
+            committeeInfo.put("committeeName", committeeName);
+            committeeInfo.put("subGroupId", subGroupId);
+            committeeInfo.put("candidates", candidates);
+            committeeInfo.put("canVote", canVoteForThisCommittee);
+            committeeInfo.put("reason", reason);
+            
+            availableCommittees.add(committeeInfo);
+        }
+        
+        result.put("availableCommittees", availableCommittees);
+        
+        return result;
     }
 }
