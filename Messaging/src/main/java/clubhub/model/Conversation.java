@@ -1,5 +1,6 @@
 package clubhub.model;
 
+import clubhub.service.ThemePresetService;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
@@ -28,6 +29,10 @@ public class Conversation {
         PRIVATE, GROUP
     }
 
+    private String photoUrl;
+
+    private Theme theme;
+
     // Constructeurs
     public Conversation() {}
 
@@ -53,4 +58,25 @@ public class Conversation {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public String getLastMessageId() { return lastMessageId; }
     public void setLastMessageId(String lastMessageId) { this.lastMessageId = lastMessageId; }
+
+    public String getPhotoUrl() { return photoUrl; }
+    public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
+    /**
+     * Returns the theme or falls back to default if null (lazy migration for existing conversations)
+     */
+    public Theme getEffectiveTheme(ThemePresetService presetService) {
+        if (this.theme == null) {
+            this.theme = presetService.getDefaultTheme();   // sets it for next save
+        }
+        return this.theme;
+    }
+
+    // Standard getter & setter for Spring Data MongoDB + Jackson
+    public Theme getTheme() {
+        return theme;
+    }
+
+    public void setTheme(Theme theme) {
+        this.theme = theme;
+    }
 }

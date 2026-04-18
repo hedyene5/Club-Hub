@@ -7,7 +7,11 @@ import clubhub.repository.ConversationParticipantRepository;
 import clubhub.repository.ConversationRepository;
 import clubhub.repository.MessageRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -237,6 +241,26 @@ public class ConversationService {
         participantRepository.save(participant);
 
         return true;
+    }
+    public Optional<Conversation> updateName(String id, String name) {
+        return conversationRepository.findById(id).map(conv -> {
+            conv.setNom(name);
+            return conversationRepository.save(conv);
+        });
+    }
+
+    public Optional<Conversation> updatePhoto(String id, MultipartFile file) throws IOException {
+        return conversationRepository.findById(id).map(conv -> {
+            // Option A – store as Base64 in MongoDB (simple, no file server needed)
+            try {
+                String base64 = Base64.getEncoder().encodeToString(file.getBytes());
+                String dataUrl = "data:" + file.getContentType() + ";base64," + base64;
+                conv.setPhotoUrl(dataUrl);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return conversationRepository.save(conv);
+        });
     }
 
 

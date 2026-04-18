@@ -5,8 +5,11 @@ import clubhub.service.ConversationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 
 @RestController
@@ -77,6 +80,27 @@ public class ConversationController {
 
         Conversation conv = conversationService.createPrivateConversation(userId1, userId2);
         return ResponseEntity.status(HttpStatus.CREATED).body(conv);
+    }
+    @PatchMapping("/{id}/name")
+    public ResponseEntity<Conversation> updateName(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) {
+
+        String newName = body.get("name");
+        if (newName == null || newName.isBlank()) return ResponseEntity.badRequest().build();
+
+        return conversationService.updateName(id, newName)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+    @PatchMapping("/{id}/photo")
+    public ResponseEntity<Conversation> updatePhoto(
+            @PathVariable String id,
+            @RequestParam("file") MultipartFile file) throws IOException {
+
+        return conversationService.updatePhoto(id, file)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
 
