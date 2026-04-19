@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { EcommerceComponent } from './pages/dashboard/ecommerce/ecommerce.component';
+import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { ProfileComponent } from './pages/profile/profile.component';
 import { FormElementsComponent } from './pages/forms/form-elements/form-elements.component';
 import { BasicTablesComponent } from './pages/tables/basic-tables/basic-tables.component';
@@ -18,6 +18,8 @@ import { VideosComponent } from './pages/ui-elements/videos/videos.component';
 import { SignInComponent } from './pages/auth-pages/sign-in/sign-in.component';
 import { SignUpComponent } from './pages/auth-pages/sign-up/sign-up.component';
 import { CalendarComponent } from './pages/calendar/calendar.component';
+import { ManagementComponent } from './pages/management/management.component';
+import { AnalyticsComponent } from './pages/analytics/analytics.component';
 
 export const routes: Routes = [
 
@@ -32,7 +34,7 @@ export const routes: Routes = [
     path: '',
     component: AppLayoutComponent,
     children: [
-      { path: '', component: EcommerceComponent, pathMatch: 'full', title: 'CLUB HUB' },
+      { path: 'pages/dashboard', component: DashboardComponent },
       { path: 'calendar', component: CalendarComponent, title: 'CLUB HUB Calendar' },
       { path: 'profile', component: ProfileComponent, title: 'CLUB HUB Profile' },
       { path: 'form-elements', component: FormElementsComponent, title: 'CLUB HUB Form Elements' },
@@ -52,6 +54,8 @@ export const routes: Routes = [
       { path: 'meeting/:id', loadComponent: () => import('./pages/meeting-room/meeting-room.component').then(m => m.MeetingRoomComponent), title: 'CLUB HUB Meeting Room' },
       { path: 'virtual-room', loadComponent: () => import('./pages/virtual-room/virtual-room.component').then(m => m.VirtualRoomComponent), title: 'CLUB HUB Virtual Room' },
       { path: 'lobby', loadComponent: () => import('./pages/lobby/lobby.component').then(m => m.LobbyComponent), title: 'CLUB HUB Lobby' },
+      { path: 'pages/management', component: ManagementComponent },
+      { path: 'pages/analytics', component: AnalyticsComponent },
     ]
   },
 

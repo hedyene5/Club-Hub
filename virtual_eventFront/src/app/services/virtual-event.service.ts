@@ -12,12 +12,14 @@ export class VirtualEventService {
 
   constructor(private http: HttpClient) {}
 
-  createEvent(event: Omit<VirtualEvent, 'id'>): Observable<VirtualEvent> {
-    return this.http.post<VirtualEvent>(this.apiUrl, event);
-  }
+  // ================= EVENTS =================
 
   getAllEvents(): Observable<VirtualEvent[]> {
     return this.http.get<VirtualEvent[]>(this.apiUrl);
+  }
+
+  createEvent(event: Omit<VirtualEvent, 'id'>): Observable<VirtualEvent> {
+    return this.http.post<VirtualEvent>(this.apiUrl, event);
   }
 
   updateEvent(id: string, event: Partial<VirtualEvent>): Observable<VirtualEvent> {
@@ -28,7 +30,21 @@ export class VirtualEventService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
-  // 🔥 inscription
+  // ================= REGISTRATION =================
+
+  register(eventId: string, userId: string) {
+    return this.http.post(`${this.apiUrl}/${eventId}/register/${userId}`, {});
+  }
+
+  pay(eventId: string, userId: string) {
+    return this.http.post(`${this.apiUrl}/${eventId}/pay/${userId}`, {});
+  }
+
+  canJoin(eventId: string, userId: string): Observable<boolean> {
+    return this.http.get<boolean>(`${this.apiUrl}/${eventId}/can-join/${userId}`);
+  }
+
+  // (optionnel si tu veux garder)
   joinEvent(id: string): Observable<VirtualEvent> {
     return this.http.put<VirtualEvent>(`${this.apiUrl}/${id}/join`, {});
   }

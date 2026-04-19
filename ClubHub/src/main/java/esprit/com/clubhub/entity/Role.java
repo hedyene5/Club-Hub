@@ -6,5 +6,6 @@ public enum Role {
     SECRETAIRE_GENERALE,
     TRESORIER,
     RH,
-    MEMBRE_SIMPLE
+    MEMBRE_SIMPLE ,
+    EVENT_MANAGER,
 }

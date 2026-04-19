@@ -19,4 +19,6 @@ public class EventRegistration {
 
     private boolean paid;
 
+    private boolean joined = false;
+
 }

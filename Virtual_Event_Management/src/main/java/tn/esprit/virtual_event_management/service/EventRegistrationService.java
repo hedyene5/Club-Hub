@@ -23,12 +23,30 @@ public class EventRegistrationService implements IEventRegistrationService{
             throw new RuntimeException("Déjà inscrit");
         }
 
+        // ❌ event complet
+        if (event.getMaxParticipants() != null &&
+                event.getCurrentParticipants() != null &&
+                event.getCurrentParticipants() >= event.getMaxParticipants()) {
+            throw new RuntimeException("Event complet");
+        }
+
         EventRegistration reg = new EventRegistration();
         reg.setEventId(eventId);
         reg.setUserId(userId);
 
         // 👉 gratuit = payé automatiquement
         reg.setPaid(!event.getIsPaid());
+
+        // 🔥 INITIALISATION SI NULL
+        if (event.getCurrentParticipants() == null) {
+            event.setCurrentParticipants(0);
+        }
+
+        // 🔥 INCREMENTATION
+        event.setCurrentParticipants(event.getCurrentParticipants() + 1);
+
+        // 🔥 SAUVEGARDE EVENT
+        eventService.updateEvent(eventId, event);
 
         return repo.save(reg);
     }
@@ -60,37 +78,53 @@ public class EventRegistrationService implements IEventRegistrationService{
             throw new RuntimeException("Paiement requis");
         }
 
+        // ❌ event terminé
+        if ("FINISHED".equals(event.getStatus())) {
+            throw new RuntimeException("Event terminé");
+        }
+
         // ❌ event complet
         if (event.getMaxParticipants() != null &&
                 event.getCurrentParticipants() >= event.getMaxParticipants()) {
             throw new RuntimeException("Event complet");
         }
 
-        // ❌ event terminé
-        if ("FINISHED".equals(event.getStatus())) {
-            throw new RuntimeException("Event terminé");
+        // ❌ éviter double join (OPTIONNEL mais conseillé)
+        if (reg.isJoined()) {
+            throw new RuntimeException("Déjà rejoint");
         }
-
-        // 🔥 incrément
-        if (event.getCurrentParticipants() == null) {
-            event.setCurrentParticipants(0);
-        }
-
-        event.setCurrentParticipants(event.getCurrentParticipants() + 1);
+        // 🔥 marquer comme rejoint
+        reg.setJoined(true);
+        repo.save(reg);
 
         return eventService.updateEvent(eventId, event);
     }
 
-    // 🔐 CHECK
+    // 🔐 CHECK CORRIGÉ
     @Override
     public boolean canJoin(String eventId, String userId) {
+
+        VirtualEvent event = eventService.getEventById(eventId)
+                .orElse(null);
+
+        if (event == null) return false;
 
         EventRegistration reg = repo.findByEventIdAndUserId(eventId, userId)
                 .orElse(null);
 
         if (reg == null) return false;
 
-        if (!reg.isPaid()) return false;
+        // ❌ event terminé
+        if ("FINISHED".equals(event.getStatus())) return false;
+
+        // ❌ event complet
+        if (event.getMaxParticipants() != null &&
+                event.getCurrentParticipants() >= event.getMaxParticipants()) {
+            return false;
+        }
+
+        // ❌ paiement
+        if (event.getIsPaid() && !reg.isPaid()) return false;
 
         return true;
     }

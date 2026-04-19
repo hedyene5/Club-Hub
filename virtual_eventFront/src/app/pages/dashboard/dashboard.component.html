@@ -1,0 +1,48 @@
+<div class="dashboard">
+
+  <h1>Dashboard</h1>
+
+  <!-- 🔥 CARDS -->
+  <div class="cards">
+
+    <div class="card">
+      <h3>Total Events</h3>
+      <p>{{ totalEvents }}</p>
+    </div>
+
+    <div class="card">
+      <h3>Total Participants</h3>
+      <p>{{ totalParticipants }}</p>
+    </div>
+
+    <div class="card">
+      <h3>Total Revenue</h3>
+      <p>{{ totalRevenue }} DT</p>
+    </div>
+
+  </div>
+
+  <!-- 📅 RECENT EVENTS -->
+  <div class="section">
+    <h2>Recent Events</h2>
+
+    <table>
+      <tr>
+        <th>Title</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Participants</th>
+      </tr>
+
+      @for (e of recentEvents; track e) {
+      <tr>
+        <td>{{ e.title }}</td>
+        <td>{{ e.scheduledAt }}</td>
+        <td>{{ e.status }}</td>
+        <td>{{ e.currentParticipants || 0 }}</td>
+      </tr>
+      }
+    </table>
+  </div>
+
+</div>

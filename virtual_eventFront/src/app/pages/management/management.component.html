@@ -1,0 +1,55 @@
+<h1>Management</h1>
+
+<!-- 🔥 TABS -->
+<div style="display:flex; gap:10px; margin-bottom:20px;">
+  <button (click)="selectedTab='events'">Events</button>
+  <button (click)="selectedTab='participants'">Participants</button>
+</div>
+
+<!-- ================= EVENTS ================= -->
+<div *ngIf="selectedTab === 'events'">
+
+  <h2>Events</h2>
+
+  <table border="1">
+    <tr>
+      <th>Title</th>
+      <th>Status</th>
+      <th>Participants</th>
+      <th>Actions</th>
+    </tr>
+
+    <tr *ngFor="let e of events">
+      <td>{{e.title}}</td>
+      <td>{{e.status}}</td>
+      <td>{{e.currentParticipants}}</td>
+
+      <td>
+        <button (click)="loadRegistrations(e.id)">Participants</button>
+        <button (click)="deleteEvent(e.id)">Delete</button>
+      </td>
+    </tr>
+  </table>
+
+</div>
+
+<!-- ================= PARTICIPANTS ================= -->
+<div *ngIf="selectedTab === 'participants'">
+
+  <h2>Participants</h2>
+
+  <table border="1">
+    <tr>
+      <th>User</th>
+      <th>Paid</th>
+      <th>Joined</th>
+    </tr>
+
+    <tr *ngFor="let r of registrations">
+      <td>{{r.userId}}</td>
+      <td>{{r.paid}}</td>
+      <td>{{r.joined}}</td>
+    </tr>
+  </table>
+
+</div>

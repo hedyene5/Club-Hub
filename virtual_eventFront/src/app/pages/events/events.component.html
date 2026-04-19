@@ -7,184 +7,137 @@
 
     <a routerLink="/calendar" 
        class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-medium transition-all">
-      <i class="lucide lucide-plus w-5 h-5" aria-hidden="true" title="Ajouter"></i>
-      Créer un nouvel événement
+      ➕ Créer un nouvel événement
     </a>
   </div>
 
-  <!-- Liste des événements -->
+  <!-- Liste -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     @for (event of events; track event.id) {
       <div (click)="openEventDetails(event)"
-           class="group bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-gray-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-2xl transition-all duration-300 cursor-pointer">
+           class="group bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border hover:shadow-2xl cursor-pointer">
 
-        <!-- Header -->
-        <div class="h-52 bg-gradient-to-br from-indigo-500 via-purple-600 to-violet-600 relative flex items-center justify-center overflow-hidden">
-          
+        <!-- HEADER -->
+        <div class="h-52 bg-gradient-to-br from-indigo-500 via-purple-600 to-violet-600 relative">
+
           @if (event.imageUrl) {
-            <img 
-                [src]="event.imageUrl"
-                alt="{{ event.title ? event.title : 'Image de l’événement' }}"
-                title="{{ event.title ? event.title : 'Image de l’événement' }}"
-                loading="lazy"
-                class="w-full h-full object-cover">
-          } @else {
-            <div class="text-white text-center">
-              <span class="text-6xl">🎥</span>
-              <p class="mt-3 text-sm opacity-90">
-                {{ event.category || 'Formation Virtuelle' }}
-              </p>
-            </div>
+            <img [src]="event.imageUrl" alt="{{ event.title ? event.title : 'Image de l’événement' }}" title="{{ event.title ? event.title : 'Image de l’événement' }}" loading="lazy" class="w-full h-full object-cover">
           }
 
-          <!-- Badge Prix -->
+          <!-- 💰 -->
           @if (event.price && event.price > 0) {
-            <div class="absolute top-4 right-4 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 font-bold px-4 py-1.5 rounded-2xl shadow-lg text-sm">
+            <div class="absolute top-4 right-4 bg-white px-3 py-1 rounded-xl text-sm font-bold">
               {{ event.price }} TND
             </div>
           } @else {
-            <div class="absolute top-4 right-4 bg-green-500 text-white font-medium px-4 py-1.5 rounded-2xl text-sm">
+            <div class="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-xl text-sm">
               Gratuit
             </div>
           }
+
+          <!-- 🔴 LIVE -->
+          @if (isLive(event)) {
+            <div class="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-xl text-xs">
+              🔴 LIVE
+            </div>
+          }
+
+          <!-- ⏱ COUNTDOWN -->
+          <div class="absolute bottom-3 left-3 bg-black/70 text-white px-3 py-1 rounded-xl text-xs">
+            ⏱ {{ countdowns[event.id!] }}
+          </div>
         </div>
 
         <div class="p-6">
-          <h3 class="font-semibold text-xl leading-tight line-clamp-2 group-hover:text-indigo-600 transition-colors mb-3">
-            {{ event.title }}
-          </h3>
+          <h3 class="font-semibold text-xl mb-3">{{ event.title }}</h3>
 
-          <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-5">
-            <div class="flex items-center gap-2">
-              <i class="lucide lucide-calendar w-4 h-4" aria-hidden="true" title="Date"></i>
-              <span>{{ formatDate(event.scheduledAt) }}</span>
-            </div>
-
-            @if (event.endAt) {
-              <div class="flex items-center gap-2">
-                <i class="lucide lucide-clock w-4 h-4" aria-hidden="true" title="Heure de fin"></i>
-                <span>Fin : {{ formatDate(event.endAt) }}</span>
-              </div>
-            }
-          </div>
-
-          <p class="text-gray-600 dark:text-gray-400 line-clamp-3 text-sm mb-6 min-h-[60px]">
-            {{ event.description || 'Aucune description disponible pour le moment.' }}
+          <p class="text-sm text-gray-500 mb-2">
+            {{ formatDate(event.scheduledAt) }}
           </p>
 
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-medium px-3 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-              {{ event.category || 'Événement' }}
-            </span>
-
-            <button (click)="openEventDetails(event); $event.stopImmediatePropagation()"
-                    class="text-indigo-600 hover:text-indigo-700 font-medium text-sm"
-                    title="Voir les détails de l’événement">
-              Voir détails →
-            </button>
-          </div>
+          <p class="text-gray-600 text-sm line-clamp-3">
+            {{ event.description }}
+          </p>
         </div>
       </div>
     }
   </div>
 </div>
 
-<!-- ====================== MODAL DÉTAILS ====================== -->
+<!-- ================= MODAL ================= -->
 @if (isModalOpen && selectedEvent) {
   <div class="fixed inset-0 bg-black/70 flex items-center justify-center z-[999] p-4">
-    <div class="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col">
+    <div class="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
 
-      <!-- Header -->
-      <div class="px-8 py-6 border-b dark:border-gray-800 flex justify-between items-center">
-        <div>
-          <span class="px-4 py-1 text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-700 rounded-full">
-            {{ selectedEvent.category }}
-          </span>
-          <h2 class="text-2xl font-bold mt-2">{{ selectedEvent.title }}</h2>
-        </div>
-
-        <button (click)="closeModal()" class="text-4xl text-gray-400 hover:text-gray-600">×</button>
+      <!-- HEADER -->
+      <div class="px-8 py-6 border-b flex justify-between">
+        <h2 class="text-xl font-bold">{{ selectedEvent.title }}</h2>
+        <button (click)="closeModal()">✖</button>
       </div>
 
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-8 space-y-6">
+      <!-- CONTENT -->
+      <div class="p-6 space-y-4">
 
-        <p class="text-gray-600 dark:text-gray-300">
-          {{ selectedEvent.description }}
+        <p>{{ selectedEvent.description }}</p>
+
+        <p>
+          📅 {{ formatDate(selectedEvent.scheduledAt) }}
         </p>
 
-        <!-- INFOS -->
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span class="text-gray-500">Date</span>
-            <p class="font-medium">{{ formatDate(selectedEvent.scheduledAt) }}</p>
-          </div>
+        <p>
+          👥 {{ selectedEvent.currentParticipants || 0 }} / {{ selectedEvent.maxParticipants || '∞' }}
+        </p>
 
-          <div>
-            <span class="text-gray-500">Participants</span>
-            <p class="font-medium">
-              {{ selectedEvent.currentParticipants || 0 }} / {{ selectedEvent.maxParticipants || '∞' }}
-            </p>
-          </div>
-        </div>
+        <!-- ⏱ COUNTDOWN -->
+        <p class="text-indigo-600 font-semibold text-center">
+          ⏱ {{ countdowns[selectedEvent.id!] }}
+        </p>
 
-        <!-- 🔥 TYPE EVENT -->
-        <div class="mt-4">
-          <span class="text-gray-500 text-sm">Type d’événement</span>
-          <p class="font-semibold text-indigo-600">
-            {{ selectedEvent.type === 'ROOM' ? '🎮 3D Room' : '🎥 Vidéo (Jitsi)' }}
-          </p>
-        </div>
+        <!-- 💬 MESSAGE -->
+        <p class="text-sm text-center text-gray-500">
+          {{ getJoinMessage(selectedEvent) }}
+        </p>
 
-        <!-- 🎨 AVATAR -->
-        <div class="mt-6 border-t pt-6">
-          <label class="block text-sm font-medium mb-3">Personnaliser Avatar</label>
+        <!-- AVATAR -->
+        <select [(ngModel)]="selectedColor" class="w-full border p-2">
+          <option value="blue">Bleu</option>
+          <option value="red">Rouge</option>
+        </select>
 
-          <select [(ngModel)]="selectedColor"
-                  class="w-full px-4 py-2 border rounded-xl mb-3">
-            <option value="blue">Bleu</option>
-            <option value="red">Rouge</option>
-            <option value="green">Vert</option>
-          </select>
+        <select [(ngModel)]="selectedType" class="w-full border p-2">
+          <option value="cube">Cube</option>
+          <option value="sphere">Sphere</option>
+        </select>
 
-          <select [(ngModel)]="selectedType"
-                  class="w-full px-4 py-2 border rounded-xl">
-            <option value="cube">Cube</option>
-            <option value="sphere">Sphere</option>
-          </select>
-        </div>
+        <!-- BUTTONS -->
+        <div class="flex gap-2">
 
-        <!-- 🔥 JOIN BUTTON -->
-        <div class="mt-6">
-          <button (click)="joinMeeting(selectedEvent)"
-                  class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-2xl font-semibold">
-            
-            @if (selectedEvent.type === 'ROOM') {
-              🎮 Entrer dans la salle 3D
-            } @else {
-              🎥 Rejoindre la réunion
-            }
-
+          <button (click)="registerToEvent(selectedEvent)"
+                  class="flex-1 bg-blue-600 text-white py-2 rounded-xl">
+            S'inscrire
           </button>
+
+          <button (click)="payForEvent(selectedEvent)"
+                  class="flex-1 bg-green-600 text-white py-2 rounded-xl">
+            💰 Payer
+          </button>
+
+          <!-- 🔥 JOIN SMART -->
+          <button 
+            (click)="joinMeeting(selectedEvent)"
+            [disabled]="!canUserJoin(selectedEvent)"
+            [ngClass]="{
+              'bg-gray-400 cursor-not-allowed': !canUserJoin(selectedEvent),
+              'bg-indigo-600': canUserJoin(selectedEvent)
+            }"
+            class="flex-1 text-white py-2 rounded-xl">
+
+            🎥 Join
+          </button>
+
         </div>
 
       </div>
-
-      <!-- Footer -->
-      <div class="p-6 border-t flex gap-3">
-
-        <button (click)="closeModal()"
-                class="flex-1 py-3 border rounded-xl">
-          Fermer
-        </button>
-
-        <button (click)="registerToEvent(selectedEvent)"
-                class="flex-1 py-3 bg-indigo-600 text-white rounded-xl">
-          S'inscrire
-        </button>
-
-      </div>
-
     </div>
   </div>
 }

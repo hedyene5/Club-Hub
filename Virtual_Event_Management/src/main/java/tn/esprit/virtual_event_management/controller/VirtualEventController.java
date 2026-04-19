@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.*;
+import tn.esprit.virtual_event_management.entity.EventRegistration;
 import tn.esprit.virtual_event_management.entity.User;
 import tn.esprit.virtual_event_management.entity.VirtualEvent;
 import tn.esprit.virtual_event_management.service.*;
@@ -20,9 +21,10 @@ public class VirtualEventController {
     private final IVirtualEventService virtualEventService;
     private PdfService pdfService;
 
-    public VirtualEventController(IVirtualEventService virtualEventService, EventRegistrationService registrationService) {
+    public VirtualEventController(IVirtualEventService virtualEventService, EventRegistrationService registrationService, IEventRegistrationService service) {
         this.virtualEventService = virtualEventService;
         this.registrationService = registrationService;
+        this.service = service;
     }
 
     @PostMapping
@@ -106,9 +108,13 @@ public class VirtualEventController {
 
     private final EventRegistrationService registrationService;
     @PostMapping("/{eventId}/register/{userId}")
-    public ResponseEntity<?> register(@PathVariable String eventId,
-                                      @PathVariable String userId) {
-        return ResponseEntity.ok("OK");
+    public ResponseEntity<EventRegistration> register(
+            @PathVariable String eventId,
+            @PathVariable String userId) {
+
+        EventRegistration reg = service.register(eventId, userId);
+
+        return ResponseEntity.ok(reg);
     }
 
     @GetMapping("/{eventId}/can-join/{userId}")
@@ -117,6 +123,19 @@ public class VirtualEventController {
         return ResponseEntity.ok(
                 registrationService.canJoin(eventId, userId)
         );
+    }
+
+    private final IEventRegistrationService service;
+
+    // 💰 PAYMENT
+    @PostMapping("/{eventId}/pay/{userId}")
+    public ResponseEntity<EventRegistration> payEvent(
+            @PathVariable String eventId,
+            @PathVariable String userId) {
+
+        EventRegistration registration = service.markAsPaid(eventId, userId);
+
+        return ResponseEntity.ok(registration);
     }
 
 

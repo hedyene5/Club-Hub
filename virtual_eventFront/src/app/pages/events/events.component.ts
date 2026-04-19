@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { VirtualEventService } from '../../services/virtual-event.service';
 import { VirtualEvent } from '../../models/virtual-event';
@@ -12,15 +12,21 @@ import { FormsModule } from '@angular/forms';
   providers: [DatePipe],
   templateUrl: './events.component.html'
 })
-export class EventsComponent implements OnInit {
+export class EventsComponent implements OnInit, OnDestroy {
 
   events: VirtualEvent[] = [];
   selectedEvent: VirtualEvent | null = null;
   isModalOpen = false;
 
-  // 🔥 AVATAR PAR DEFAUT
   selectedColor = 'blue';
   selectedType = 'cube';
+
+  userId = "1";
+
+  joinAccess: { [key: string]: boolean } = {};
+  countdowns: { [key: string]: string } = {};
+
+  interval: any;
 
   constructor(
     private virtualEventService: VirtualEventService,
@@ -30,13 +36,102 @@ export class EventsComponent implements OnInit {
 
   ngOnInit() {
     this.loadEvents();
+
+    this.interval = setInterval(() => {
+      this.updateCountdowns();
+    }, 1000);
+  }
+
+  ngOnDestroy() {
+    clearInterval(this.interval);
   }
 
   loadEvents() {
     this.virtualEventService.getAllEvents().subscribe({
-      next: (data) => this.events = data,
-      error: (err) => console.error(err)
+      next: (data) => {
+        this.events = data;
+        this.loadJoinAccess();
+        this.updateCountdowns();
+      }
     });
+  }
+
+  loadJoinAccess() {
+    this.events.forEach(event => {
+      if (!event.id) return;
+
+      this.virtualEventService.canJoin(event.id, this.userId)
+        .subscribe(res => {
+          this.joinAccess[event.id!] = res;
+        });
+    });
+  }
+
+  // 🔥 COUNTDOWN
+  updateCountdowns() {
+    const now = new Date().getTime();
+
+    this.events.forEach(event => {
+      const eventTime = new Date(event.scheduledAt).getTime();
+      const diff = eventTime - now;
+
+      if (diff <= 0) {
+        this.countdowns[event.id!] = "🔴 LIVE";
+        return;
+      }
+
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+
+      this.countdowns[event.id!] = `${minutes}m ${seconds}s`;
+    });
+  }
+
+  // 🔥 JOIN CONDITIONS
+  canUserJoin(event: VirtualEvent): boolean {
+    if (!event.id) return false;
+
+    const now = new Date().getTime();
+    const eventTime = new Date(event.scheduledAt).getTime();
+    const fiveMinBefore = eventTime - (5 * 60 * 1000);
+
+    return this.joinAccess[event.id] && now >= fiveMinBefore;
+  }
+
+  // 🔴 LIVE
+  isLive(event: VirtualEvent): boolean {
+    const now = new Date().getTime();
+    const eventTime = new Date(event.scheduledAt).getTime();
+    return now >= eventTime;
+  }
+
+  // 💬 MESSAGE INTELLIGENT
+  getJoinMessage(event: VirtualEvent): string {
+
+    if (!event.id) return "Erreur";
+
+    const now = new Date().getTime();
+    const eventTime = new Date(event.scheduledAt).getTime();
+    const fiveMinBefore = eventTime - (5 * 60 * 1000);
+
+    // ❌ pas inscrit / payé
+    if (!this.joinAccess[event.id]) {
+      return "❌ Vous devez vous inscrire et payer";
+    }
+
+    // ⏳ trop tôt
+    if (now < fiveMinBefore) {
+      const minutesLeft = Math.ceil((fiveMinBefore - now) / 60000);
+      return `⏳ Disponible dans ${minutesLeft} min`;
+    }
+
+    // 🔴 live
+    if (now >= eventTime) {
+      return "🔴 Événement en cours";
+    }
+
+    // ✅ ok
+    return "✅ Vous pouvez rejoindre l'événement";
   }
 
   openEventDetails(event: VirtualEvent) {
@@ -49,122 +144,53 @@ export class EventsComponent implements OnInit {
     this.selectedEvent = null;
   }
 
-  // ✅ AVATAR
+  registerToEvent(event: VirtualEvent) {
+    this.virtualEventService.register(event.id!, this.userId).subscribe({
+      next: () => {
+        alert("✅ Inscription réussie");
+        event.currentParticipants = (event.currentParticipants || 0) + 1;
+        this.loadJoinAccess();
+      }
+    });
+  }
+
+  payForEvent(event: VirtualEvent) {
+    this.virtualEventService.pay(event.id!, this.userId).subscribe({
+      next: () => {
+        alert("💰 Paiement réussi");
+        this.loadJoinAccess();
+      }
+    });
+  }
+
+  joinMeeting(event: VirtualEvent) {
+
+    if (!this.canUserJoin(event)) {
+      alert("❌ Accès refusé");
+      return;
+    }
+
+    this.selectAvatar();
+
+    if (event.type === 'ROOM') {
+      localStorage.setItem("roomId", event.roomId!);
+      this.router.navigate(['/lobby']);
+    } else {
+      this.router.navigate(['/meeting', event.id]);
+    }
+
+    this.closeModal();
+  }
+
   selectAvatar() {
     const avatar = {
       color: this.selectedColor,
       type: this.selectedType
     };
-
     localStorage.setItem("avatar", JSON.stringify(avatar));
-  }
-
-  // 🔥 INSCRIPTION
-  registerToEvent(event: VirtualEvent) {
-
-    if (!event.id) return;
-
-    if (event.currentParticipants! >= event.maxParticipants!) {
-      alert("❌ Événement complet");
-      return;
-    }
-
-    this.virtualEventService.joinEvent(event.id).subscribe({
-      next: (updatedEvent) => {
-
-        event.currentParticipants = updatedEvent.currentParticipants;
-
-        alert(`✅ Inscription confirmée pour : ${event.title}`);
-
-        this.loadEvents();
-        this.closeModal();
-      },
-      error: (err) => {
-        alert(err.error?.message || "Erreur inscription");
-      }
-    });
-  }
-
-  // 💰 PAIEMENT
-  payForEvent(event: VirtualEvent) {
-    if (!event.price || event.price <= 0) {
-      alert("Cet événement est gratuit.");
-      return;
-    }
-    alert(`💰 Paiement pour "${event.title}" - ${event.price} TND`);
-    this.closeModal();
-  }
-
-  // 🔥 JOIN FINAL (IMPORTANT)
- joinMeeting(event: any) {
-
-  if (!event.id) return;
-
-  const now = new Date();
-  const eventDate = new Date(event.scheduledAt);
-
-  if (now < eventDate) {
-    if (!confirm("⏳ This event has not started yet. Do you want to continue?")) return;
-  }
-
-  if (event.status === 'FINISHED') {
-    alert("❌ This event has already ended.");
-    return;
-  }
-
-  if (event.currentParticipants >= event.maxParticipants) {
-    alert("⚠️ This event is full.");
-    return;
-  }
-
-  // 🔥 IMPORTANT PART
-  if (event.type === 'ROOM') {
-
-    // 🎮 3D ROOM
-    this.router.navigate(['/virtual-room', event.id], {
-      state: {
-        avatar: {
-          color: this.selectedColor,
-          type: this.selectedType
-        }
-      }
-    });
-
-  } else {
-
-    // 🎥 JITSI (inside your app)
-    this.router.navigate(['/meeting', event.id]);
-  }
-
-
-    // 🔥 SAUVEGARDE AVATAR AVANT ENTRER
-    this.selectAvatar();
-
-    // 🔥 LOGIQUE TYPE EVENT
-   if (event.type === 'ROOM') {
-    localStorage.setItem("roomId", event.roomId);
-    this.router.navigate(['/lobby']);
-  return;
-}
-
-    this.closeModal();
   }
 
   formatDate(dateStr: string): string {
     return this.datePipe.transform(dateStr, 'EEEE dd MMMM yyyy à HH:mm') || '';
   }
-
-  getStatusColor(status?: string): string {
-    switch (status?.toLowerCase()) {
-      case 'upcoming': return 'bg-green-100 text-green-700';
-      case 'ongoing': return 'bg-orange-100 text-orange-700';
-      case 'finished': return 'bg-gray-100 text-gray-700';
-      default: return 'bg-blue-100 text-blue-700';
-    } 
-  }
-
-  openDetails(eventClick: Event, event: any) {
-  eventClick.stopPropagation();
-  this.openEventDetails(event);
-}
 }
