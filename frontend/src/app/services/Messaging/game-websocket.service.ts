@@ -1,19 +1,14 @@
-// src/app/services/Game/game-websocket.service.ts
-
 import { Injectable, OnDestroy } from '@angular/core';
-import { BehaviorSubject, Subscription } from 'rxjs';
-import { WebSocketService } from '../Messaging/websocket.service';
+import { BehaviorSubject } from 'rxjs';
+import { WebSocketService } from './websocket.service';
 import { StompSubscription } from '@stomp/stompjs';
 import { GameEvent } from '../../models/game.model';
 
-@Injectable({
-    providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class GameWebSocketService implements OnDestroy {
     private gameSubscriptions: Map<string, StompSubscription> = new Map();
     private currentConversationId: string | null = null;
 
-    // BehaviorSubject for game events
     private gameEventSubject = new BehaviorSubject<GameEvent | null>(null);
     public gameEvent$ = this.gameEventSubject.asObservable();
 
@@ -21,30 +16,22 @@ export class GameWebSocketService implements OnDestroy {
         this.webSocketService.connect();
     }
 
-    /**
-     * Subscribe to game events for a specific conversation
-     */
     subscribeToGameEvents(conversationId: string): void {
         this.unsubscribeFromGameEvents();
         this.currentConversationId = conversationId;
         const topic = `/topic/game/${conversationId}`;
 
-        const sub = this.webSocketService.subscribeToTopic(
-            topic,
-            (event: any) => {   // ← use any, not GameEvent
-                console.log('🎮 Game event received:', event);
-                this.gameEventSubject.next(event);
+        this.webSocketService.subscribeToTopicAsync(topic, (event: any) => {
+            console.log('🎮 Game event received:', event);
+            this.gameEventSubject.next(event);
+        }).then(sub => {
+            if (sub) {
+                this.gameSubscriptions.set(conversationId, sub);
+                console.log(`🎮 Subscribed to game topic: ${topic}`);
             }
-        );
-
-        if (sub) {
-            this.gameSubscriptions.set(conversationId, sub);
-        }
+        });
     }
 
-    /**
-     * Unsubscribe from current game events
-     */
     unsubscribeFromGameEvents(): void {
         if (this.currentConversationId) {
             const sub = this.gameSubscriptions.get(this.currentConversationId);
@@ -54,6 +41,11 @@ export class GameWebSocketService implements OnDestroy {
             }
         }
         this.currentConversationId = null;
+    }
+
+    // Expose so ChatWindow can push restored game state into the stream
+    emitEvent(event: GameEvent): void {
+        this.gameEventSubject.next(event);
     }
 
     ngOnDestroy(): void {

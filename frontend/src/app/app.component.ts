@@ -19,8 +19,15 @@ export class AppComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    if (this.authService.isLoggedIn()) {
-      this.sessionGuard.startWatching();
-    }
+    this.authService.restoreSession().subscribe({
+      next: () => {
+        // Cookie is valid — start the periodic session watcher
+        this.sessionGuard.startWatching();
+      },
+      error: () => {
+        // Cookie expired or missing — clear stale data and redirect to login
+        localStorage.removeItem('user');
+      }
+    });
   }
 }

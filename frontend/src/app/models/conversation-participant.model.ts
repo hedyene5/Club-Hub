@@ -6,4 +6,5 @@ export interface ConversationParticipant {
     role: 'ADMIN' | 'MEMBRE' | 'SUPERADMIN';
     joinedAt?: string;
     lastReadMessageId?: string;
+    photoUrl?: string;
 }

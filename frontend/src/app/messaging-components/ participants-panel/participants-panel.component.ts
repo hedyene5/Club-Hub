@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import {Component, Input, Output, EventEmitter, OnInit, NgZone, ChangeDetectorRef} from '@angular/core';
 import { ConversationParticipant, ParticipantService } from '../../services/Messaging/participant.service';
 import { ConversationService } from '../../services/Messaging/conversation.service';
 import { SupabaseService } from '../../services/User/supabase.service';
@@ -36,7 +36,9 @@ export class ParticipantsPanelComponent implements OnInit {
     constructor(
         private participantService: ParticipantService,
         private conversationService: ConversationService,
-        private supabaseService: SupabaseService
+        private supabaseService: SupabaseService,
+        private ngZone: NgZone,
+        private cdr: ChangeDetectorRef
     ) {}
 
     ngOnInit(): void {
@@ -68,6 +70,7 @@ export class ParticipantsPanelComponent implements OnInit {
                 this.groupName = this.newName;
                 this.groupNameChanged.emit(this.newName);
                 this.setView('MENU');
+                this.cdr.detectChanges();
             },
             error: (err) => console.error('Failed to update name', err)
         });
@@ -78,27 +81,38 @@ export class ParticipantsPanelComponent implements OnInit {
         this.isUploadingPhoto = true;
 
         try {
+            console.log('1. Starting upload...');
             const photoUrl = await this.supabaseService.uploadGroupPhoto(
                 this.conversationId,
                 this.selectedFile
             );
+            console.log('2. Supabase upload done, photoUrl:', photoUrl);
 
             this.conversationService.updatePhotoUrl(this.conversationId, photoUrl).subscribe({
-                next: () => {
-                    this.imagePreview = photoUrl;
-                    this.groupPhotoChanged.emit(photoUrl);
+                next: (res) => {
+                    console.log('3. Spring PATCH success:', res);
                     this.selectedFile = null;
                     this.isUploadingPhoto = false;
-                    this.setView('MENU');
+                    this.imagePreview = null;
+                    this.currentView = 'MENU';
+                    this.cdr.markForCheck();
+                    this.cdr.detectChanges();
+                    setTimeout(() => {
+                        this.groupPhotoChanged.emit(photoUrl);
+                    }, 100);
                 },
                 error: (err) => {
-                    console.error('Failed to save photo URL', err);
-                    this.isUploadingPhoto = false;
+                    console.error('3. Spring PATCH failed:', err.status, err.error);
+                    this.ngZone.run(() => {
+                        this.isUploadingPhoto = false;
+                    });
                 }
             });
         } catch (err) {
-            console.error('Supabase upload failed', err);
-            this.isUploadingPhoto = false;
+            console.error('2. Supabase upload failed:', err);
+            this.ngZone.run(() => {
+                this.isUploadingPhoto = false;
+            });
         }
     }
 
@@ -124,11 +138,45 @@ export class ParticipantsPanelComponent implements OnInit {
     onFileSelected(event: any): void {
         const file = event.target.files[0];
         if (file) {
-            this.selectedFile = file;
-            const reader = new FileReader();
-            reader.onload = () => { this.imagePreview = reader.result; };
-            reader.readAsDataURL(file);
+            this.compressImage(file).then(compressed => {
+                this.selectedFile = compressed;
+                const reader = new FileReader();
+                reader.onload = () => { this.imagePreview = reader.result; };
+                reader.readAsDataURL(compressed);
+            });
         }
+    }
+
+    private compressImage(file: File): Promise<File> {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+
+            img.onload = () => {
+                const maxSize = 800;
+                let { width, height } = img;
+
+                if (width > height && width > maxSize) {
+                    height = (height * maxSize) / width;
+                    width = maxSize;
+                } else if (height > maxSize) {
+                    width = (width * maxSize) / height;
+                    height = maxSize;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(blob => {
+                    URL.revokeObjectURL(url);
+                    resolve(new File([blob!], file.name, { type: 'image/jpeg' }));
+                }, 'image/jpeg', 0.8);
+            };
+
+            img.src = url;
+        });
     }
 
     onParticipantAdded() {

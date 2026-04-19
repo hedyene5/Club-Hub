@@ -93,12 +93,15 @@ public class ConversationController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    @PatchMapping("/{id}/photo")
-    public ResponseEntity<Conversation> updatePhoto(
+    @PatchMapping("/{id}/photo-url")
+    public ResponseEntity<Conversation> updatePhotoUrl(
             @PathVariable String id,
-            @RequestParam("file") MultipartFile file) throws IOException {
+            @RequestBody Map<String, String> body) {
 
-        return conversationService.updatePhoto(id, file)
+        String photoUrl = body.get("photoUrl");
+        if (photoUrl == null || photoUrl.isBlank()) return ResponseEntity.badRequest().build();
+
+        return conversationService.updatePhotoUrl(id, photoUrl)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

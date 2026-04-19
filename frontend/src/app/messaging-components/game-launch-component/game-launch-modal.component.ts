@@ -3,7 +3,7 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Difficulty, CreateGameRequest } from '../../models/game.model';
+import {Difficulty, CreateGameRequest, GameSession} from '../../models/game.model';
 import { GameService } from '../../services/Messaging/game.service';
 
 @Component({
@@ -15,30 +15,30 @@ import { GameService } from '../../services/Messaging/game.service';
 })
 export class GameLaunchModalComponent implements OnInit {
     @Output() close = new EventEmitter<void>();
-    @Output() gameCreated = new EventEmitter<string>();
 
+    @Output() gameCreated = new EventEmitter<GameSession>();
     @Input() conversationId: string = '';
     @Input() userId: string = '';
 
-    categories = [
-        { value: 'General Knowledge', icon: '🧠', label: 'General Knowledge' },
+    readonly categories = [
+        { value: 'General Knowledge', icon: '🧠', label: 'General' },
         { value: 'Science', icon: '🔬', label: 'Science' },
         { value: 'History', icon: '📜', label: 'History' },
-        { value: 'Geography', icon: '🌍', label: 'Geography' },
+        { value: 'Geography', icon: '🌍', label: 'Geo' },
         { value: 'Sports', icon: '⚽', label: 'Sports' },
-        { value: 'Entertainment', icon: '🎬', label: 'Entertainment' },
-        { value: 'Technology', icon: '💻', label: 'Technology' },
+        { value: 'Entertainment', icon: '🎬', label: 'Movies' },
+        { value: 'Technology', icon: '💻', label: 'Tech' },
         { value: 'Music', icon: '🎵', label: 'Music' }
     ];
 
-    difficulties = [
-        { value: Difficulty.EASY, label: 'Easy', icon: '🟢', desc: 'More time, simpler questions' },
-        { value: Difficulty.MEDIUM, label: 'Medium', icon: '🟡', desc: 'Balanced challenge' },
-        { value: Difficulty.HARD, label: 'Hard', icon: '🔴', desc: 'Less time, harder questions' }
+    readonly difficulties = [
+        { value: Difficulty.EASY, label: 'Easy', icon: '🌱', desc: 'Relaxed pace with straightforward questions.' },
+        { value: Difficulty.MEDIUM, label: 'Medium', icon: '⚔️', desc: 'Balanced timer and general trivia depth.' },
+        { value: Difficulty.HARD, label: 'Hard', icon: '🔥', desc: 'Rapid-fire questions for trivia masters.' }
     ];
 
-    questionCounts = [5, 10, 15, 20];
-    timeLimits = [10, 15, 20, 30];
+    readonly questionCounts = [5, 10, 15, 20];
+    readonly timeLimits = [10, 15, 20, 30];
 
     selectedCategory = 'General Knowledge';
     selectedDifficulty = Difficulty.MEDIUM;
@@ -49,28 +49,17 @@ export class GameLaunchModalComponent implements OnInit {
 
     constructor(private gameService: GameService) {}
 
-    // ✅ ADD: Log when inputs arrive
     ngOnInit(): void {
-        console.log('🎮 GameLaunchModal ngOnInit');
-        console.log('   conversationId:', this.conversationId);
-        console.log('   userId:', this.userId);
+        console.log('🎮 Game Modal Init:', { conversationId: this.conversationId, userId: this.userId });
     }
 
+    // Helper for template to show correct description
+    getSelectedDifficultyIndex(): number {
+        return this.difficulties.findIndex(d => d.value === this.selectedDifficulty);
+    }
     createGame(): void {
-        console.log('🎮 Create Game clicked');
-        console.log('   conversationId:', this.conversationId);
-        console.log('   userId:', this.userId);
-
-        // ✅ FIXED: Tell user exactly what's missing
-        if (!this.conversationId) {
-            this.error = 'Missing conversation ID. Please close and try again.';
-            console.error('❌ Missing conversationId');
-            return;
-        }
-
-        if (!this.userId) {
-            this.error = 'Missing user ID. Please log in again.';
-            console.error('❌ Missing userId');
+        if (!this.conversationId || !this.userId) {
+            this.error = 'Session data missing. Please restart the app.';
             return;
         }
 
@@ -86,19 +75,24 @@ export class GameLaunchModalComponent implements OnInit {
             timeLimitPerQuestion: this.selectedTimeLimit
         };
 
-        console.log('📤 Sending request:', request);
-
         this.gameService.createGame(request).subscribe({
             next: (game) => {
-                console.log('✅ Game created:', game);
                 this.loading = false;
-                this.gameCreated.emit(game.id);
-
+                if (!game) {
+                    // Should not happen after backend fix, but guard anyway
+                    this.error = 'Unexpected server response. Please try again.';
+                    return;
+                }
+                this.gameCreated.emit(game);
             },
             error: (err) => {
-                console.error('❌ Failed to create game:', err);
                 this.loading = false;
-                this.error = err.error?.message || 'Failed to create game.';
+                if (err.status === 409) {
+                    // Game already exists — close modal, let restoreGameState show the banner
+                    this.close.emit();
+                } else {
+                    this.error = err.error?.error || err.error?.message || 'Server connection failed.';
+                }
             }
         });
     }

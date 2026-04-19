@@ -99,10 +99,11 @@ export class GameBannerComponent implements OnInit, OnDestroy {
 
         this.joining = true;
         this.gameService.joinGame(this.gameData.gameId, this.currentUserId).subscribe({
-            next: () => {
+            next: (game) => {
                 this.joining = false;
                 this.hasJoined = true;
-                this.playerCount++;
+                // Use the actual player count from the server response, not a local increment
+                this.playerCount = game.players.length;
             },
             error: (err) => {
                 console.error('Failed to join game:', err);

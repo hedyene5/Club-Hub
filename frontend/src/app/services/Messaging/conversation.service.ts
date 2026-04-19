@@ -102,7 +102,14 @@ export class ConversationService {
         return this.http.patch(`${this.url}/${conversationId}/name`, { name });
     }
 
-  updatePhotoUrl(conversationId: string, photoUrl: string): Observable<any> {
-        return this.http.patch(`${this.url}/${conversationId}/photo-url`, { photoUrl });
+    updatePhotoUrl(conversationId: string, photoUrl: string): Observable<any> {
+        return this.http.patch(
+            `${this.url}/${conversationId}/photo-url`,
+            { photoUrl },
+            {
+                withCredentials: true,
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
     }
 }

@@ -2,12 +2,30 @@
      (click)="openMenuId = null; showEmojiPickerForId = null">
 
     <!-- HEADER -->
-    <div class="border-b px-6 py-3 flex items-center justify-between bg-white/80 backdrop-blur-xl sticky top-0 z-20 shadow-sm" (click)="$event.stopPropagation()">
+    <div class="border-b px-6 py-3 flex items-center justify-between bg-white/80 backdrop-blur-xl sticky top-0 z-20 shadow-sm"
+         (click)="$event.stopPropagation()">
+
         <div class="flex items-center gap-4">
+
+            <!-- ✅ SAFE GROUP AVATAR - Fixed null error -->
             <div class="relative group cursor-pointer">
-                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-100 transition-transform group-hover:scale-105">
+                <!-- Show photo only if conversation exists and has photoUrl -->
+                <img
+                        *ngIf="conversation && conversation.photoUrl"
+                        [src]="conversation.photoUrl"
+                        class="w-11 h-11 rounded-2xl object-cover shadow-lg shadow-blue-100 transition-transform group-hover:scale-105 border border-white"
+                        alt="Group photo"
+                        (error)="onImageError($event)"
+                />
+
+                <!-- Fallback gradient avatar when no photo or no conversation -->
+                <div
+                        *ngIf="!conversation || !conversation.photoUrl"
+                        class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-100 transition-transform group-hover:scale-105">
                     {{ conversation ? (conversation.nom || 'U').charAt(0).toUpperCase() : 'U' }}
                 </div>
+
+                <!-- Online status indicator -->
                 <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></div>
             </div>
 
@@ -24,7 +42,7 @@
             </div>
         </div>
 
-        <!-- ✅ FIXED: Game button is HERE in the header now -->
+        <!-- Right side buttons -->
         <div class="flex items-center gap-3">
             <!-- Participants Button -->
             <button (click)="showParticipants = !showParticipants"
@@ -35,13 +53,15 @@
                 </svg>
             </button>
 
-            <!-- 🎮 Game Button - ONLY for GROUP chats -->
+            <!-- Game Button - ONLY for GROUP chats -->
             <button *ngIf="conversation && conversation.type === 'GROUP'"
                     (click)="openGameLaunchModal()"
                     class="p-2.5 rounded-xl hover:bg-green-50 transition-all text-slate-500 hover:text-green-600"
                     title="Start Game">
                 <span class="text-lg">🎮</span>
             </button>
+
+            <!-- Theme Button -->
             <button (click)="showThemePicker = true"
                     class="p-2.5 rounded-xl hover:bg-violet-50 transition-all text-slate-500 hover:text-violet-600 flex items-center gap-1 text-sm font-bold">
                 <span class="text-lg">🎨</span>
@@ -56,17 +76,17 @@
         </div>
     </div>
 
-    <!-- Game Banner (shown when GAME_CREATED event fires) -->
+    <!-- Game Banner -->
     <app-game-banner
             *ngIf="gamePhase === 'BANNER' && conversation && conversation.type === 'GROUP'"
-            [conversationId]="conversation.id || ''"
+            class="z-30"
+            [conversationId]="conversation.id"
             [currentUserId]="currentUserId"
             [localGameData]="localGameData"
             (gameStarted)="onGameStarted()"
             (bannerDismissed)="onBannerDismissed()">
     </app-game-banner>
 
-    <!-- Game Container (full screen takeover when game is active) -->
     <app-game-container
             *ngIf="gamePhase === 'PLAYING'"
             [currentUserId]="currentUserId"
@@ -96,7 +116,8 @@
                  [class.items-end]="isMine(msg)"
                  [class.items-start]="!isMine(msg)">
 
-                <p *ngIf="conversation && conversation.type === 'GROUP' && !isMine(msg)" class="text-[10px] font-bold text-slate-400 ml-12 mb-1 uppercase tracking-widest">
+                <p *ngIf="conversation && conversation.type === 'GROUP' && !isMine(msg)"
+                   class="text-[10px] font-bold text-slate-400 ml-12 mb-1 uppercase tracking-widest">
                     {{ msg.senderName }}
                 </p>
 
@@ -133,7 +154,9 @@
                              class="absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-all duration-200">
                             <button (click)="toggleEmojiPicker(msg.id, $event)" class="p-1.5 hover:bg-slate-100 rounded-lg text-sm">😊</button>
                             <button (click)="toggleMenu(msg.id); $event.stopPropagation()" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                                </svg>
                             </button>
                         </div>
 
@@ -181,12 +204,19 @@
             </div>
         </div>
 
-        <!-- ✅ REMOVED the game button from here - it was misplaced -->
+        <!-- Participants Panel -->
         <div *ngIf="showParticipants && conversation" class="w-80 border-l bg-white animate-in slide-in-from-right duration-300">
-            <app-participants-panel [conversationId]="conversation!.id" [currentUserId]="currentUserId" [isGroup]="conversation!.type === 'GROUP'"></app-participants-panel>
+            <app-participants-panel
+                    [conversationId]="conversation!.id"
+                    [currentUserId]="currentUserId"
+                    [isGroup]="conversation!.type === 'GROUP'"
+                    [groupName]="conversation!.nom"
+                    (groupPhotoChanged)="onGroupPhotoChanged($event)">
+            </app-participants-panel>
         </div>
     </div>
 
+    <!-- Message Input Area -->
     <div class="bg-white border-t border-slate-100" (click)="$event.stopPropagation()">
         <div *ngIf="replyingTo" class="px-6 py-3 bg-indigo-50/50 flex items-center justify-between animate-in slide-in-from-bottom duration-200">
             <div class="flex items-center gap-3 min-w-0">
@@ -265,6 +295,7 @@
             </div>
         </div>
     </div>
+
     <!-- Theme Picker Modal -->
     <app-theme-picker *ngIf="showThemePicker"
                       [conversationId]="conversation?.id || ''"

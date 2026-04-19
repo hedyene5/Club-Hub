@@ -2,9 +2,8 @@
 
 export enum GameStatus {
     WAITING = 'WAITING',
-    PLAYING = 'PLAYING',
-    FINISHED = 'FINISHED',
-
+    IN_PROGRESS = 'IN_PROGRESS',  // was PLAYING — must match backend exactly
+    FINISHED = 'FINISHED'
 }
 
 export enum Difficulty {

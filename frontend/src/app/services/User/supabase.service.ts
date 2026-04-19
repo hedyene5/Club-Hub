@@ -10,12 +10,12 @@ export class SupabaseService {
   constructor() {
     this.supabase = createClient(
         environment.supabaseUrl,
-        environment.supabaseKey,
+        environment.supabaseServiceRoleKey,
         {
           auth: {
-            persistSession: true,
-            storageKey: 'sb-auth-token',
-            storage: localStorage,
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false,
             lock: <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => fn()
           }
         }
@@ -23,39 +23,55 @@ export class SupabaseService {
   }
 
   async uploadAvatar(file: File, userId: string): Promise<string> {
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${userId}.${fileExt}`;
+    const ext = file.name.split('.').pop();
+    const path = `${userId}.${ext}`;
+    const url = `${environment.supabaseUrl}/storage/v1/object/avatars/${path}`;
 
-    const { error } = await this.supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
-    if (error) throw error;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${environment.supabaseServiceRoleKey}`,
+          'x-upsert': 'true',
+          'Content-Type': file.type
+        },
+        body: file,
+        signal: controller.signal
+      });
 
-    const { data } = this.supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Upload failed: ${err}`);
+      }
 
-    return data.publicUrl;
+      return `${environment.supabaseUrl}/storage/v1/object/public/avatars/${path}`;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   async uploadGroupPhoto(conversationId: string, file: File): Promise<string> {
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${conversationId}-${Date.now()}.${fileExt}`;
 
-    const ext = file.name.split('.').pop();
-    const path = `${conversationId}/photo.${ext}`;
-
-    const { error } = await this.supabase.storage
-        .from('group-photos')
-        .upload(path, file, { upsert: true });
+    // Upload to Supabase Storage
+    const { data, error } = await this.supabase.storage
+        .from('group-photos')           // ← your bucket name
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
     if (error) throw error;
 
-    const { data } = this.supabase.storage
+    // Get public URL
+    const { data: { publicUrl } } = this.supabase.storage
         .from('group-photos')
-        .getPublicUrl(path);
+        .getPublicUrl(fileName);
 
-    return data.publicUrl;
+    return publicUrl;   // ← e.g. https://your-project.supabase.co/storage/v1/object/public/group-photos/xxx.jpg
   }
 }

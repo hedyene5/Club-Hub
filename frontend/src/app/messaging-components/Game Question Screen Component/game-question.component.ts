@@ -1,6 +1,4 @@
-// src/app/components/Game/game-question/game-question.component.ts
-
-import {Component, Input, Output, EventEmitter, OnDestroy, OnInit} from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GameService } from '../../services/Messaging/game.service';
 import { QuestionEvent, SubmitAnswerRequest } from '../../models/game.model';
@@ -13,11 +11,11 @@ import { QuestionEvent, SubmitAnswerRequest } from '../../models/game.model';
     styleUrls: ['./game-question.component.css']
 })
 export class GameQuestionComponent implements OnInit, OnDestroy {
-
     @Input() gameId: string = '';
     @Input() currentUserId: string = '';
     @Output() answerSubmitted = new EventEmitter<void>();
 
+    // Component State
     question: QuestionEvent | null = null;
     selectedAnswer: string | null = null;
     answeredCount = 0;
@@ -26,14 +24,34 @@ export class GameQuestionComponent implements OnInit, OnDestroy {
     isSubmitting = false;
     hasAnswered = false;
 
-    answerColors = [
-        { bg: 'bg-red-500', hover: 'hover:bg-red-600', selected: 'ring-red-300 bg-red-600', shadow: 'shadow-red-200' },
-        { bg: 'bg-blue-500', hover: 'hover:bg-blue-600', selected: 'ring-blue-300 bg-blue-600', shadow: 'shadow-blue-200' },
-        { bg: 'bg-yellow-500', hover: 'hover:bg-yellow-600', selected: 'ring-yellow-300 bg-yellow-600', shadow: 'shadow-yellow-200' },
-        { bg: 'bg-green-500', hover: 'hover:bg-green-600', selected: 'ring-green-300 bg-green-600', shadow: 'shadow-green-200' }
+    // Visual Configuration (Constants)
+    readonly answerLetters = ['A', 'B', 'C', 'D'];
+    readonly answerColors = [
+        {
+            bg: 'bg-rose-500/10 hover:bg-rose-500/20',
+            hover: 'hover:border-rose-500/50',
+            selected: 'bg-rose-600 ring-rose-400 shadow-[0_0_20px_rgba(225,29,72,0.4)]',
+            shadow: 'shadow-rose-900/20'
+        },
+        {
+            bg: 'bg-blue-500/10 hover:bg-blue-500/20',
+            hover: 'hover:border-blue-500/50',
+            selected: 'bg-blue-600 ring-blue-400 shadow-[0_0_20px_rgba(37,99,235,0.4)]',
+            shadow: 'shadow-blue-900/20'
+        },
+        {
+            bg: 'bg-amber-500/10 hover:bg-amber-500/20',
+            hover: 'hover:border-amber-500/50',
+            selected: 'bg-amber-600 ring-amber-400 shadow-[0_0_20px_rgba(217,119,6,0.4)]',
+            shadow: 'shadow-amber-900/20'
+        },
+        {
+            bg: 'bg-emerald-500/10 hover:bg-emerald-500/20',
+            hover: 'hover:border-emerald-500/50',
+            selected: 'bg-emerald-600 ring-emerald-400 shadow-[0_0_20px_rgba(5,150,105,0.4)]',
+            shadow: 'shadow-emerald-900/20'
+        }
     ];
-
-    answerLetters = ['A', 'B', 'C', 'D'];
 
     private timerInterval: any;
     private questionStartTime: number = 0;
@@ -52,6 +70,7 @@ export class GameQuestionComponent implements OnInit, OnDestroy {
         this.answeredCount = 0;
         this.selectedAnswer = null;
         this.hasAnswered = false;
+        this.isSubmitting = false;
         this.questionStartTime = Date.now();
         this.startTimer(event.timeLimit);
     }
@@ -61,8 +80,9 @@ export class GameQuestionComponent implements OnInit, OnDestroy {
         this.timeRemaining = seconds;
 
         this.timerInterval = setInterval(() => {
-            this.timeRemaining--;
-            if (this.timeRemaining <= 0) {
+            if (this.timeRemaining > 0) {
+                this.timeRemaining--;
+            } else {
                 this.clearTimer();
                 if (!this.hasAnswered) {
                     this.autoSubmit();
@@ -100,7 +120,6 @@ export class GameQuestionComponent implements OnInit, OnDestroy {
             next: () => {
                 this.hasAnswered = true;
                 this.isSubmitting = false;
-                this.clearTimer();
                 this.answerSubmitted.emit();
             },
             error: (err) => {
@@ -115,7 +134,6 @@ export class GameQuestionComponent implements OnInit, OnDestroy {
         this.answerSubmitted.emit();
     }
 
-    // ✅ FIXED: Safe getters for template
     getQuestionNumber(): number {
         return this.question ? this.question.index + 1 : 1;
     }
@@ -125,7 +143,7 @@ export class GameQuestionComponent implements OnInit, OnDestroy {
     }
 
     getQuestionText(): string {
-        return this.question?.text ?? 'Loading question...';
+        return this.question?.text ?? 'Preparing next question...';
     }
 
     getOptions(): string[] {
@@ -133,13 +151,13 @@ export class GameQuestionComponent implements OnInit, OnDestroy {
     }
 
     getTimerPercentage(): number {
-        if (!this.question) return 0;
+        if (!this.question || this.question.timeLimit <= 0) return 0;
         return (this.timeRemaining / this.question.timeLimit) * 100;
     }
 
     getTimerColor(): string {
-        if (this.timeRemaining <= 5) return 'bg-red-500';
-        if (this.timeRemaining <= 10) return 'bg-yellow-500';
-        return 'bg-green-500';
+        if (this.timeRemaining <= 5) return 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.6)]';
+        if (this.timeRemaining <= (this.question?.timeLimit || 20) / 2) return 'bg-amber-500';
+        return 'bg-emerald-500';
     }
 }

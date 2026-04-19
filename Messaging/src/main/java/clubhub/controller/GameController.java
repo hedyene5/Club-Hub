@@ -25,7 +25,7 @@ public class GameController {
 
     // ====================== CREATE GAME ======================
     @PostMapping("/create")
-    public ResponseEntity<GameSession> createGame(@RequestBody CreateGameRequest request) {
+    public ResponseEntity<?> createGame(@RequestBody CreateGameRequest request) {
         try {
             GameSession game = gameService.createGame(
                     request.getConversationId(),
@@ -35,9 +35,12 @@ public class GameController {
                     request.getTotalQuestions(),
                     request.getTimeLimitPerQuestion()
             );
-            return ResponseEntity.ok(game);
+            return ResponseEntity.ok(game); // game is never null here
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(null);
+            // Return 409 Conflict with error message — NOT null body with 400
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to create game: " + e.getMessage()));
         }
     }
 

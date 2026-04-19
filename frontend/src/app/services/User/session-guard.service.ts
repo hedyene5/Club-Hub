@@ -8,30 +8,35 @@ export class SessionGuardService {
   private intervalId: any;
 
   constructor(
-    private authService: AuthService,
-    private router: Router,
-    private ngZone: NgZone
+      private authService: AuthService,
+      private router: Router,
+      private ngZone: NgZone
   ) {}
 
   startWatching(): void {
-    this.intervalId = setInterval(() => {
-      this.authService.checkSession().subscribe({
-        next: () => {
-          console.log('✅ Session still valid');
-        },
-        error: () => {
-          this.ngZone.run(() => {
-            clearInterval(this.intervalId);
-            localStorage.removeItem('user');
-            alert('⚠️ Session expirée ! Veuillez vous reconnecter.');
-            this.router.navigate(['/signin']);
-          });
-        }
-      });
-    }, 30000); // vérifie toutes les 30 secondes
+    // Immediately validate on start, then every 30 seconds
+    this.checkNow();
+    this.intervalId = setInterval(() => this.checkNow(), 30000);
   }
 
   stopWatching(): void {
     if (this.intervalId) clearInterval(this.intervalId);
+  }
+
+  private checkNow(): void {
+    this.authService.checkSession().subscribe({
+      next: (res) => {
+        // Refresh localStorage with latest user data from server
+        console.log('✅ Session still valid');
+      },
+      error: () => {
+        this.ngZone.run(() => {
+          this.stopWatching();
+          localStorage.removeItem('user');
+          alert('⚠️ Session expirée ! Veuillez vous reconnecter.');
+          this.router.navigate(['/signin']);
+        });
+      }
+    });
   }
 }

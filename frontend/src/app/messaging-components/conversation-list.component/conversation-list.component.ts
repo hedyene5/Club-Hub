@@ -140,6 +140,12 @@ export class ConversationListComponent implements OnInit, OnDestroy {
   }toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
   }
+  onConvImageError(event: any): void {
+    console.warn('Failed to load conversation image:', event.target.src);
+    if (event.target) {
+      event.target.style.display = 'none';
+    }
+  }
 
 
 

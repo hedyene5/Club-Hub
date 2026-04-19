@@ -15,4 +15,5 @@ export interface ConversationDTO {
 
     unreadCount: number;
     theme?: Theme;
+    photoUrl?: string;
 }

@@ -9,7 +9,7 @@
 
     <div class="flex-1 flex mx-6 mb-6 bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 overflow-hidden border border-slate-100 relative">
 
-        <!-- SIDEBAR TOGGLE BUTTON (always visible) -->
+        <!-- SIDEBAR TOGGLE BUTTON -->
         <button
                 (click)="toggleSidebar()"
                 class="absolute z-10 flex items-center justify-center w-6 h-12 bg-white border border-slate-100 rounded-r-xl shadow-md text-slate-400 hover:text-indigo-600 hover:shadow-indigo-100 transition-all"
@@ -23,11 +23,10 @@
         </button>
 
         <!-- SIDEBAR -->
-        <div
-                class="border-r border-slate-50 flex flex-col bg-slate-50/20 overflow-hidden transition-all duration-300 ease-in-out"
-                [style.width]="sidebarOpen ? '340px' : '0px'"
-                [style.opacity]="sidebarOpen ? '1' : '0'"
-                [style.min-width]="sidebarOpen ? '340px' : '0px'">
+        <div class="border-r border-slate-50 flex flex-col bg-slate-50/20 overflow-hidden transition-all duration-300 ease-in-out"
+             [style.width]="sidebarOpen ? '340px' : '0px'"
+             [style.opacity]="sidebarOpen ? '1' : '0'"
+             [style.min-width]="sidebarOpen ? '340px' : '0px'">
 
             <div class="w-[340px]">
 
@@ -54,7 +53,7 @@
                     </div>
                 </div>
 
-                <!-- Filter Tabs: All / Private / Groups -->
+                <!-- Filter Tabs -->
                 <div class="px-4 pb-3 flex gap-1 bg-slate-50/20">
                     <button *ngFor="let tab of filterTabs"
                             (click)="activeFilter = tab.value"
@@ -73,9 +72,9 @@
                 <!-- Conversation List -->
                 <div class="overflow-y-auto px-2 pb-4" style="max-height: calc(100vh - 260px);">
                     <div class="px-3 mb-2">
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              {{ activeFilter === 'ALL' ? 'Recent Chats' : activeFilter === 'PRIVATE' ? 'Private Chats' : 'Group Chats' }}
-            </span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            {{ activeFilter === 'ALL' ? 'Recent Chats' : activeFilter === 'PRIVATE' ? 'Private Chats' : 'Group Chats' }}
+                        </span>
                     </div>
 
                     <ng-container *ngFor="let conv of filteredConversations">
@@ -88,22 +87,40 @@
                             <div *ngIf="selectedConversation?.id === conv.id"
                                  class="absolute left-0 w-1 h-6 bg-indigo-600 rounded-r-full"></div>
 
-                            <div [class]="conv.type === 'GROUP' ? 'bg-gradient-to-tr from-indigo-500 to-blue-600' : 'bg-slate-200'"
-                                 class="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold flex-shrink-0 text-lg shadow-sm">
-                                <ng-container *ngIf="conv.type === 'PRIVATE' && (conv.nom === 'Unnamed' || !conv.nom); else avatarInitial">
-                                    <span class="text-slate-500">👤</span>
-                                </ng-container>
-                                <ng-template #avatarInitial>{{ getAvatarInitial(conv.nom) }}</ng-template>
+                            <!-- ✅ IMPROVED AVATAR WITH PHOTO SUPPORT -->
+                            <div class="relative w-12 h-12 flex-shrink-0">
+                                <!-- Group Photo -->
+                                <img
+                                        *ngIf="conv.type === 'GROUP' && conv.photoUrl"
+                                        [src]="conv.photoUrl"
+                                        class="w-12 h-12 rounded-2xl object-cover shadow-sm border border-white"
+                                        alt="Group photo"
+                                        (error)="onConvImageError($event)"
+                                />
+
+                                <!-- Default Avatar (Gradient for groups, gray for private) -->
+                                <div *ngIf="!(conv.type === 'GROUP' && conv.photoUrl)"
+                                     [class]="conv.type === 'GROUP'
+                                        ? 'bg-gradient-to-tr from-indigo-500 to-blue-600'
+                                        : 'bg-slate-200'"
+                                     class="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                                    <ng-container *ngIf="conv.type === 'PRIVATE' && (conv.nom === 'Unnamed' || !conv.nom); else avatarInitial">
+                                        <span class="text-slate-500">👤</span>
+                                    </ng-container>
+                                    <ng-template #avatarInitial>
+                                        {{ getAvatarInitial(conv.nom) }}
+                                    </ng-template>
+                                </div>
                             </div>
 
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center justify-between gap-1">
-                  <span class="font-bold text-slate-900 truncate text-[14px]">
-                    <ng-container *ngIf="conv.type === 'PRIVATE' && (conv.nom === 'Unnamed' || !conv.nom); else normalName">
-                      Private User
-                    </ng-container>
-                    <ng-template #normalName>{{ conv.nom }}</ng-template>
-                  </span>
+                                    <span class="font-bold text-slate-900 truncate text-[14px]">
+                                        <ng-container *ngIf="conv.type === 'PRIVATE' && (conv.nom === 'Unnamed' || !conv.nom); else normalName">
+                                            Private User
+                                        </ng-container>
+                                        <ng-template #normalName>{{ conv.nom }}</ng-template>
+                                    </span>
                                     <span class="text-[10px] font-bold text-slate-400">{{ conv.lastMessageAt | date:'HH:mm' }}</span>
                                 </div>
                                 <div class="flex items-center justify-between gap-2 mt-0.5">
@@ -113,8 +130,8 @@
                                     </p>
                                     <span *ngIf="conv.unreadCount > 0"
                                           class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-lg flex items-center justify-center flex-shrink-0 font-black shadow-sm shadow-indigo-100">
-                    {{ conv.unreadCount }}
-                  </span>
+                                        {{ conv.unreadCount }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -146,13 +163,13 @@
                     </div>
                     <h3 class="text-xl font-black text-slate-900">Welcome to ClubHub Chats</h3>
                     <p class="text-slate-500 text-sm max-w-xs mx-auto font-medium">Select a conversation or start a new one to connect with your organization.</p>
-                    <button (click)="openNewChatModal()" class="mt-4 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
+                    <button (click)="openNewChatModal()"
+                            class="mt-4 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">
                         New Chat
                     </button>
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 

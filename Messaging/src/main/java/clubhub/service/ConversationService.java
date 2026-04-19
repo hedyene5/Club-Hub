@@ -249,31 +249,13 @@ public class ConversationService {
         });
     }
 
-    public Optional<Conversation> updatePhoto(String id, MultipartFile file) throws IOException {
+
+
+
+    public Optional<Conversation> updatePhotoUrl(String id, String photoUrl) {
         return conversationRepository.findById(id).map(conv -> {
-            // Option A – store as Base64 in MongoDB (simple, no file server needed)
-            try {
-                String base64 = Base64.getEncoder().encodeToString(file.getBytes());
-                String dataUrl = "data:" + file.getContentType() + ";base64," + base64;
-                conv.setPhotoUrl(dataUrl);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            conv.setPhotoUrl(photoUrl);   // ← just the clean URL, no data:
             return conversationRepository.save(conv);
         });
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

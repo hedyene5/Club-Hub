@@ -21,7 +21,8 @@ import {GameBannerComponent} from "../Game Banner Component/game-banner.componen
 import { Theme } from "../../models/theme.model";
 import { ThemeService } from "../../services/Messaging/theme.service";
 import {ThemePickerComponent} from "../theme-picker/theme-picker.component";
-
+import { GameService } from '../../services/Messaging/game.service';
+import {GameSession, GameStatus} from '../../models/game.model';
 @Component({
     selector: 'app-chat-window',
     standalone: true,
@@ -30,16 +31,14 @@ import {ThemePickerComponent} from "../theme-picker/theme-picker.component";
     styleUrls: ['./chat-window.component.css'],
     host: { class: 'flex flex-col flex-1 min-h-0 overflow-hidden' }
 })
-export class ChatWindowComponent implements OnChanges,  OnDestroy {
-    // Add this property with your other boolean flags
+export class ChatWindowComponent implements OnChanges, OnDestroy {
+    private gameEventSub?: Subscription
     showThemePicker = false;
-    // Add these properties to the class
     showGameLaunchModal = false;
     gamePhase: 'BANNER' | 'PLAYING' | null = null;
-    // Add these properties
     showReactionsModal = false;
     modalMessage: MessageDTO | null = null;
-    activeReactionFilter: string | null = null; // null = "Tout"
+    activeReactionFilter: string | null = null;
 
     private reactionSubs: StompSubscription[] = [];
     showEmojiPickerForId: string | null = null;
@@ -61,25 +60,25 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
     gameModalConversationId: string = '';
     gameModalUserId: string = '';
 
-
     localGameData: { gameId: string; category: string; totalQuestions: number; timeLimitPerQuestion: number; createdBy: string } | null = null;
     private themeSubscription?: Subscription;
 
     @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
     @ViewChild(GameLaunchModalComponent) gameLaunchModal?: GameLaunchModalComponent;
+
     constructor(
         private messageService: MessageService,
         private conversationService: ConversationService,
         private webSocketService: WebSocketService,
         private reactionService: ReactionService,
-         private cdr: ChangeDetectorRef,
+        private cdr: ChangeDetectorRef,
         private themeService: ThemeService,
-
-        private gameWsService: GameWebSocketService
+        private gameWsService: GameWebSocketService,
+        private gameService: GameService
     ) {
         this.webSocketService.connect();
     }
-    // Emoji map for display
+
     readonly emojiMap: Record<string, string> = {
         LIKE: '👍',
         LOVE: '❤️',
@@ -88,80 +87,71 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
         GREATJOB: '🎉'
     };
 
+
     ngOnChanges(changes: SimpleChanges) {
         if (changes['conversation'] && this.conversation) {
             if (this.wsSub) this.wsSub.unsubscribe();
 
+            // FIX: unsubscribe old game event subscription before creating new one
+            if (this.gameEventSub) this.gameEventSub.unsubscribe();
+
             this.loadMessages();
             this.subscribeToWebSocket(this.conversation.id);
 
-            // Reset game state when switching conversations
             this.gamePhase = null;
             this.localGameData = null;
 
-            // Subscribe to game WebSocket for this conversation
             this.gameWsService.subscribeToGameEvents(this.conversation.id);
 
-            // Listen to game events to drive banner/game for ALL users
-            this.gameWsService.gameEvent$.subscribe((event: any) => {
+            // FIX: store the subscription so it can be unsubscribed on next change
+            this.gameEventSub = this.gameWsService.gameEvent$.subscribe((event: any) => {
                 if (!event) return;
-
                 switch (event.type) {
                     case 'GAME_CREATED':
-                        // Only show banner if no game is currently active
-                        if (this.gamePhase === null) {
-                            this.gamePhase = 'BANNER';
-                        }
+                        if (this.gamePhase === null) this.gamePhase = 'BANNER';
                         break;
-
                     case 'GAME_STARTED':
                         this.gamePhase = 'PLAYING';
                         this.localGameData = null;
                         break;
-
                     case 'GAME_OVER':
-                        // Keep PLAYING so leaderboard screen shows inside game-container
-                        // game-container will handle the LEADERBOARD phase internally
-                        // Reset to null only when user clicks "close" or "play again"
+                        this.gamePhase = null;
                         break;
                 }
             });
+
+            // FIX: restore game state on reload by fetching active game from backend
+            this.restoreGameState(this.conversation.id);
+
             if (this.themeSubscription) this.themeSubscription.unsubscribe();
             this.themeSubscription = this.webSocketService.themeUpdated$.subscribe((newTheme: Theme | null) => {
-                if (newTheme) {
-                    this.themeService.applyTheme(newTheme);
-                }
+                if (newTheme) this.themeService.applyTheme(newTheme);
             });
+
             if (this.conversation.theme) {
                 this.themeService.setInitialTheme(this.conversation.theme);
             }
-
         }
     }
 
-
-
-    // Update ngOnDestroy to unsubscribe from game events
     ngOnDestroy() {
         this.wsSub?.unsubscribe();
+        this.gameEventSub?.unsubscribe(); // ADD this
         this.themeSubscription?.unsubscribe();
         this.reactionSubs.forEach(s => s.unsubscribe());
-        this.gameWsService.unsubscribeFromGameEvents();  // ← ADD THIS
+        this.gameWsService.unsubscribeFromGameEvents();
     }
+
     private subscribeToWebSocket(conversationId: string): void {
         this.webSocketService.subscribeToConversation(conversationId);
 
         this.wsSub = this.webSocketService.message$.subscribe((msg: any) => {
             if (msg.conversationId !== conversationId) return;
 
-            // Check if this is an edit (message already exists)
             const existingIndex = this.messages.findIndex(m => m.id === msg.id);
-
             if (existingIndex !== -1) {
-                // ← UPDATE existing message (edit/delete)
                 this.messages[existingIndex] = msg;
             } else {
-                // ← NEW message — skip if it's our own (already added optimistically)
                 const isOwnMessage = msg.senderId === this.currentUserId;
                 if (!isOwnMessage) {
                     this.messages.push(msg);
@@ -175,7 +165,6 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
 
     private loadMessages() {
         if (!this.conversation?.id || !this.currentUserId) return;
-
         this.loading = true;
 
         this.messageService.getMessagesByConversation(this.conversation.id, this.currentUserId)
@@ -183,12 +172,11 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
                 next: (msgs) => {
                     this.messages = msgs || [];
                     this.loading = false;
-                    setTimeout(() => {         // ← ensure messages are rendered before loading reactions
+                    setTimeout(() => {
                         this.loadAllReactions();
                         this.subscribeToReactions();
                         this.forceScrollToBottom();
                     }, 0);
-
                 },
                 error: (err) => {
                     console.error('Failed to load messages:', err);
@@ -215,19 +203,18 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
 
         this.messages.push(optimisticMsg);
         this.forceScrollToBottom();
-        this.replyingTo = null; // ← clear reply
+        this.replyingTo = null;
 
         this.messageService.sendMessage(
             this.conversation.id,
             this.currentUserId,
             content,
-            parentId  // ← pass it
+            parentId
         ).subscribe({
             next: (realMsg) => {
                 const index = this.messages.findIndex(m => m.id.startsWith('temp-'));
                 if (index !== -1) this.messages[index] = realMsg;
                 this.loadReactionsForMessage(realMsg.id);
-                // Also subscribe to future reaction updates
                 this.subscribeToSingleReaction(realMsg.id);
             },
             error: (err) => {
@@ -239,30 +226,24 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
 
     private scrollToBottom(): void {
         if (!this.messagesContainer) return;
-
         const container = this.messagesContainer.nativeElement;
-
-        // Only auto-scroll if user is at the bottom or just sent a message
         if (!this.userIsScrolling) {
             setTimeout(() => {
-                container.scrollTo({
-                    top: container.scrollHeight,
-                    behavior: 'smooth'
-                });
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
             }, 10);
         }
     }
+
     onMessagesScroll() {
         const container = this.messagesContainer.nativeElement;
         const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-
         this.shouldAutoScroll = isAtBottom;
     }
-
 
     isMine(msg: MessageDTO): boolean {
         return msg.senderId === this.currentUserId;
     }
+
     deleteConversationForMe() {
         if (!this.conversation?.id || !this.currentUserId) return;
 
@@ -276,8 +257,8 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
         this.conversationService.hideMessagesForUser(this.conversation.id, this.currentUserId)
             .subscribe({
                 next: () => {
-                    this.messages = [];                    // ← Clear old messages immediately
-                    this.loadMessages();                   // ← Reload visible messages
+                    this.messages = [];
+                    this.loadMessages();
                 },
                 error: (err) => {
                     console.error(err);
@@ -285,22 +266,24 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
                 }
             });
     }
+
     onScroll() {
         const container = this.messagesContainer.nativeElement;
         const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-
-        this.userIsScrolling = distanceFromBottom > 150;   // User scrolled up more than 150px
+        this.userIsScrolling = distanceFromBottom > 150;
     }
+
     private forceScrollToBottom() {
         this.userIsScrolling = false;
         this.scrollToBottom();
     }
+
     startEditing(msg: MessageDTO) {
         if (msg.senderId !== this.currentUserId) return;
-
         this.editingMessageId = msg.id;
         this.editContent = msg.content;
     }
+
     saveEdit() {
         if (!this.editingMessageId || !this.editContent.trim() || !this.conversation) return;
 
@@ -310,11 +293,8 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
         this.messageService.updateMessage(this.conversation.id, messageId, newContent)
             .subscribe({
                 next: (updatedMsg) => {
-                    // Update local list immediately
                     const index = this.messages.findIndex(m => m.id === messageId);
-                    if (index !== -1) {
-                        this.messages[index] = updatedMsg;
-                    }
+                    if (index !== -1) this.messages[index] = updatedMsg;
                     this.cancelEdit();
                 },
                 error: (err) => {
@@ -324,17 +304,15 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
                 }
             });
     }
+
     cancelEdit() {
         this.editingMessageId = null;
         this.editContent = '';
     }
 
-
     toggleMenu(messageId: string) {
         this.openMenuId = this.openMenuId === messageId ? null : messageId;
     }
-
-
 
     deleteMessage(messageId: string) {
         if (!this.conversation) return;
@@ -343,18 +321,13 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
         this.messageService.deleteMessage(this.conversation.id, messageId)
             .subscribe({
                 next: (deletedMsg) => {
-                    // Update locally — backend does soft delete, content becomes "Ce message a été supprimé."
                     const index = this.messages.findIndex(m => m.id === messageId);
-                    if (index !== -1) {
-                        this.messages[index] = deletedMsg;
-                    }
+                    if (index !== -1) this.messages[index] = deletedMsg;
                     this.openMenuId = null;
-
-                    // Broadcast via WebSocket so others see it deleted in real time
                     this.webSocketService.sendMessage(
                         this.conversation!.id,
                         this.currentUserId,
-                        deletedMsg.content  // "Ce message a été supprimé."
+                        deletedMsg.content
                     );
                 },
                 error: (err) => {
@@ -363,28 +336,30 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
                 }
             });
     }
+
     replyTo(msg: MessageDTO) {
         this.replyingTo = msg;
         this.openMenuId = null;
     }
+
     cancelReply() {
         this.replyingTo = null;
     }
+
     scrollToMessage(messageId: string) {
         const element = document.getElementById('msg-' + messageId);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // Optional: Add a brief highlight effect like Messenger
             element.classList.add('bg-blue-50/50');
             setTimeout(() => element.classList.remove('bg-blue-50/50'), 1500);
         }
     }
+
     toggleEmojiPicker(messageId: string, event: Event) {
         event.stopPropagation();
-        this.showEmojiPickerForId =
-            this.showEmojiPickerForId === messageId ? null : messageId;
+        this.showEmojiPickerForId = this.showEmojiPickerForId === messageId ? null : messageId;
     }
+
     react(msg: MessageDTO, emoji: string) {
         if (!this.conversation) return;
 
@@ -392,29 +367,23 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
             this.conversation.id, msg.id, this.currentUserId, emoji
         ).subscribe({
             next: (reactions) => {
-                console.log('✅ Reaction toggle success for message', msg.id, reactions);
                 msg.reactions = reactions;
                 this.showEmojiPickerForId = null;
-                // Force UI update
                 this.messages = [...this.messages];
             },
             error: (err) => console.error('❌ Failed to toggle reaction', err)
         });
     }
+
     getGroupedReactions(msg: MessageDTO): { emoji: string, count: number, hasMe: boolean }[] {
         if (!msg.reactions || msg.reactions.length === 0) return [];
 
         const groups: Record<string, { count: number, hasMe: boolean }> = {};
-
         for (const r of msg.reactions) {
             const key = r.emoji;
-            if (!groups[key]) {
-                groups[key] = { count: 0, hasMe: false };
-            }
+            if (!groups[key]) groups[key] = { count: 0, hasMe: false };
             groups[key].count++;
-            if (r.userId === this.currentUserId) {
-                groups[key].hasMe = true;
-            }
+            if (r.userId === this.currentUserId) groups[key].hasMe = true;
         }
 
         return Object.entries(groups).map(([emoji, data]) => ({
@@ -423,45 +392,29 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
             hasMe: data.hasMe
         }));
     }
+
     getEmojiKey(emojiChar: string): string {
-        return Object.entries(this.emojiMap)
-            .find(([, v]) => v === emojiChar)?.[0] ?? emojiChar;
+        return Object.entries(this.emojiMap).find(([, v]) => v === emojiChar)?.[0] ?? emojiChar;
     }
+
     private subscribeToReactions(): void {
-        // Clean old subscriptions
         this.reactionSubs.forEach(s => s.unsubscribe());
         this.reactionSubs = [];
 
         this.messages.forEach(msg => {
             if (!msg.id) return;
-
             const topic = `/topic/reactions/${msg.id}`;
-
-            const sub = this.webSocketService.subscribeToTopic(
-                topic,
-                (data: any) => {                    // ← data is already parsed!
-                    console.log('🔴 LIVE REACTION UPDATE received:', data);
-
-                    const target = this.messages.find(m => m.id === data.messageId);
-                    if (target) {
-                        target.reactions = data.reactions || [];
-                        console.log('✅ Reactions updated on message', data.messageId);
-                    } else {
-                        console.warn('Target message not found:', data.messageId);
-                    }
-                }
-            );
-
+            const sub = this.webSocketService.subscribeToTopic(topic, (data: any) => {
+                const target = this.messages.find(m => m.id === data.messageId);
+                if (target) target.reactions = data.reactions || [];
+            });
             if (sub) this.reactionSubs.push(sub);
         });
     }
+
     getMessageBubbleClass(msg: MessageDTO): string {
         const isMine = msg.senderId === this.currentUserId;
-
-        if (msg.deleted) {
-            return 'msg-bubble-deleted rounded-2xl px-4 py-2';
-        }
-
+        if (msg.deleted) return 'msg-bubble-deleted rounded-2xl px-4 py-2';
         return isMine
             ? 'msg-bubble-mine rounded-2xl rounded-tr-sm px-4 py-2.5'
             : 'msg-bubble-other rounded-2xl rounded-tl-sm px-4 py-2.5';
@@ -469,45 +422,31 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
 
     private subscribeToSingleReaction(messageId: string): void {
         const topic = `/topic/reactions/${messageId}`;
-        const sub = this.webSocketService.subscribeToTopic(
-            topic,
-            (data: any) => {                    // ← data is already parsed object
-                console.log('🔴 LIVE REACTION UPDATE received (already parsed):', data);
-
-                if (!data || !data.messageId) {
-                    console.warn('Invalid reaction data received');
-                    return;
-                }
-
-                const target = this.messages.find(m => m.id === data.messageId);
-                if (target) {
-                    target.reactions = data.reactions || [];
-                    console.log('✅ Reactions updated on message', data.messageId, data.reactions);
-                } else {
-                    console.warn('Target message not found for reaction update:', data.messageId);
-                }
-            }
-        );
+        const sub = this.webSocketService.subscribeToTopic(topic, (data: any) => {
+            if (!data || !data.messageId) return;
+            const target = this.messages.find(m => m.id === data.messageId);
+            if (target) target.reactions = data.reactions || [];
+        });
         if (sub) this.reactionSubs.push(sub);
     }
+
     private loadAllReactions() {
         const validMessages = this.messages.filter(m => m.id && !m.id.startsWith('temp-'));
         if (!validMessages.length || !this.conversation?.id) return;
 
         const requests = validMessages.map(msg =>
-            this.reactionService.getReactions(this.conversation!.id, msg.id).pipe(
-                catchError(() => of([]))
-            )
+            this.reactionService.getReactions(this.conversation!.id, msg.id).pipe(catchError(() => of([])))
         );
 
         forkJoin(requests).subscribe(allReactions => {
             allReactions.forEach((reactions, i) => {
                 validMessages[i].reactions = reactions || [];
             });
-            this.messages = [...this.messages]; // new reference = Angular re-renders
+            this.messages = [...this.messages];
             this.cdr.detectChanges();
         });
     }
+
     private loadReactionsForMessage(messageId: string): void {
         if (!this.conversation?.id) return;
 
@@ -516,16 +455,17 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
                 const targetMsg = this.messages.find(m => m.id === messageId);
                 if (targetMsg) {
                     targetMsg.reactions = reactions || [];
-                    // trigger change detection (immutable update)
                     this.messages = [...this.messages];
                 }
             },
             error: (err) => console.error(`Failed to load reactions for message ${messageId}`, err)
         });
     }
+
     trackByMessageId(index: number, msg: MessageDTO) {
         return msg.id;
     }
+
     openReactionsModal(msg: MessageDTO, event: Event) {
         event.stopPropagation();
         this.modalMessage = msg;
@@ -538,11 +478,13 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
         this.modalMessage = null;
         this.activeReactionFilter = null;
     }
+
     getFilteredReactions() {
         if (!this.modalMessage?.reactions) return [];
         if (!this.activeReactionFilter) return this.modalMessage.reactions;
         return this.modalMessage.reactions.filter(r => r.emoji === this.activeReactionFilter);
     }
+
     getModalTabs() {
         if (!this.modalMessage?.reactions) return [];
         const groups: Record<string, number> = {};
@@ -556,50 +498,69 @@ export class ChatWindowComponent implements OnChanges,  OnDestroy {
         }));
     }
 
-
     closeGameLaunchModal(): void {
         this.showGameLaunchModal = false;
     }
 
     onGameStarted(): void {
         this.gamePhase = 'PLAYING';
-        this.localGameData = null; // Clear local data when game starts
+        this.localGameData = null;
     }
 
     onBannerDismissed(): void {
         this.gamePhase = null;
         this.localGameData = null;
     }
-    // In chat-window.component.ts
 
     openGameLaunchModal(): void {
-        // ✅ FIXED: Store values in local variables FIRST
         this.gameModalConversationId = this.conversation?.id || '';
         this.gameModalUserId = this.currentUserId;
-
-        console.log('🎮 Opening game modal');
-        console.log('   Stored conversationId:', this.gameModalConversationId);
-        console.log('   Stored userId:', this.gameModalUserId);
-
-        if (!this.gameModalConversationId || !this.gameModalUserId) {
-            console.error('❌ Cannot open - missing IDs');
-            return;
-        }
-
+        if (!this.gameModalConversationId || !this.gameModalUserId) return;
         this.showGameLaunchModal = true;
     }
-    onGameCreated(gameId: string): void {
+
+    onGameCreated(game: GameSession): void {
         this.localGameData = {
-            gameId: gameId,
-            category: 'General Knowledge',
-            totalQuestions: 10,        // ← was totalQ
-            timeLimitPerQuestion: 20,  // ← was timeLimit
-            createdBy: this.currentUserId
+            gameId: game.id,
+            category: game.category,
+            totalQuestions: game.totalQuestions,
+            timeLimitPerQuestion: game.timeLimitPerQuestion,
+            createdBy: game.createdBy
         };
         this.gamePhase = 'BANNER';
         this.showGameLaunchModal = false;
     }
 
-
+    onGroupPhotoChanged(photoUrl: string): void {
+        if (this.conversation) {
+            this.conversation.photoUrl = photoUrl;  // mutate in place, no new reference
+        }
+    }
+    onImageError(event: any) {
+        console.warn('Image failed to load:', event.target.src);
+        event.target.src = 'https://via.placeholder.com/150?text=Group'; // fallback
+    }
+    // Fix restoreGameState — use enum values that match backend
+    private restoreGameState(conversationId: string): void {
+        this.gameService.getActiveGame(conversationId).subscribe({
+            next: (game) => {
+                if (!game) return;
+                if (game.status === GameStatus.WAITING) {
+                    this.localGameData = {
+                        gameId: game.id,
+                        category: game.category,
+                        totalQuestions: game.totalQuestions,
+                        timeLimitPerQuestion: game.timeLimitPerQuestion,
+                        createdBy: game.createdBy
+                    };
+                    this.gamePhase = 'BANNER';
+                } else if (game.status === GameStatus.IN_PROGRESS) {
+                    this.gamePhase = 'PLAYING';
+                    this.localGameData = null;
+                }
+            },
+            error: () => {} // no active game, do nothing
+        });
+    }
 
 }
