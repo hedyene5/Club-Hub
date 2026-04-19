@@ -20,6 +20,9 @@ export class ElectionDetailComponent implements OnInit {
   clubId: string | null = null;
   loading = true;
   
+  // Cache pour les candidats groupés par comité
+  private candidatesByCommitteeCache: Array<{key: string, value: Candidate[]}> = [];
+  
   // Formulaires existants
   candidateForm: FormGroup;
   voteForm: FormGroup;
@@ -70,7 +73,9 @@ export class ElectionDetailComponent implements OnInit {
   isAdmin: boolean = false;  // PRESIDENT, RH, SECRETAIRE_GENERALE
   currentUserId: string = '';
   hasAlreadyApplied: boolean = false;
-  hasAlreadyVoted: boolean = false;
+  votedCommittees: Set<string> = new Set(); // Comités pour lesquels l'utilisateur a déjà voté
+  availableCommittees: any[] = [];
+  votingMode: string = '';
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -82,6 +87,7 @@ export class ElectionDetailComponent implements OnInit {
     if (id) {
       this.loadElection(id);
       this.loadCurrentUser();
+      // loadAvailableCommittees sera appelé dans loadElection() après avoir les données
     }
   }
 
@@ -92,13 +98,32 @@ export class ElectionDetailComponent implements OnInit {
         this.clubId = data.clubId;
         this.loading = false;
         
-        // Vérifier si déjà candidat ou déjà voté
+        // Vérifier si déjà candidat
         this.hasAlreadyApplied = data.candidates?.some(c => c.userId === this.currentUserId) || false;
-        this.hasAlreadyVoted = data.votes?.some((v: any) => v.voterId === this.currentUserId) || false;
+        
+        // Identifier les comités pour lesquels l'utilisateur a déjà voté
+        this.votedCommittees.clear();
+        if (data.votes) {
+          data.votes.forEach((vote: any) => {
+            if (vote.voterId === this.currentUserId && vote.subGroupId) {
+              this.votedCommittees.add(vote.subGroupId);
+            }
+          });
+        }
+        
+        console.log('Comités déjà votés:', Array.from(this.votedCommittees));
 
         if (this.clubId) {
           this.loadClubSubGroups(this.clubId);
         }
+        
+        // Charger les comités disponibles APRÈS avoir chargé l'élection
+        if (this.currentUserId) {
+          this.loadAvailableCommittees(id);
+        }
+        
+        // Mettre à jour le cache des candidats groupés
+        this.updateCandidatesByCommitteeCache();
       },
       error: (err) => {
         console.error('Erreur:', err);
@@ -131,6 +156,26 @@ export class ElectionDetailComponent implements OnInit {
         this.clubSubGroups = club.subGroups || [];
       },
       error: (err) => console.error('Erreur chargement sous-groupes:', err)
+    });
+  }
+
+  loadAvailableCommittees(electionId: string): void {
+    if (!this.currentUserId) {
+      console.error('currentUserId est vide, impossible de charger les comités');
+      return;
+    }
+    
+    this.electionService.getAvailableCommittees(electionId, this.currentUserId).subscribe({
+      next: (result) => {
+        this.votingMode = result.votingMode || 'ALL_CLUB_MEMBERS';
+        this.availableCommittees = result.availableCommittees || [];
+        
+        // Mettre à jour le cache après avoir chargé les comités disponibles
+        this.updateCandidatesByCommitteeCache();
+      },
+      error: (err) => {
+        console.error('Erreur chargement comités disponibles:', err);
+      }
     });
   }
 
@@ -204,21 +249,122 @@ export class ElectionDetailComponent implements OnInit {
   }
 
   // ========== Gestion des votes ==========
-  castVote(): void {
-    if (this.voteForm.invalid || !this.election) return;
+  castVoteForCandidate(candidateId: string, committeeName: string): void {
+    if (!this.election) {
+      alert('❌ Erreur: Élection non chargée');
+      return;
+    }
     
-    this.electionService.castVote(this.election.id!, this.voteForm.value).subscribe({
+    if (!this.currentUserId) {
+      alert('❌ Erreur: Utilisateur non identifié');
+      return;
+    }
+    
+    const vote = {
+      voterId: this.currentUserId,
+      candidateId: candidateId
+    };
+    
+    this.electionService.castVote(this.election.id!, vote).subscribe({
       next: () => {
+        alert('✅ Vote enregistré pour le comité ' + committeeName);
         this.loadElection(this.election!.id!);
-        this.voteForm.reset();
-        this.showVoteForm = false;
-        this.hasAlreadyVoted = true;
       },
       error: (err) => {
+        console.error('Erreur lors du vote:', err);
         const msg = err.error || err.message || 'Erreur lors du vote';
         alert('❌ ' + msg);
       }
     });
+  }
+
+  getCandidatesByCommittee(): Array<{key: string, value: Candidate[]}> {
+    return this.candidatesByCommitteeCache;
+  }
+
+  private updateCandidatesByCommitteeCache(): void {
+    if (!this.election || !this.election.candidates) {
+      this.candidatesByCommitteeCache = [];
+      return;
+    }
+    
+    // Grouper les candidats approuvés par comité
+    const map = new Map<string, Candidate[]>();
+    this.election.candidates
+      .filter(c => c.status === 'APPROVED')
+      .forEach(candidate => {
+        const committee = candidate.subGroupTarget || 'Autre';
+        if (!map.has(committee)) {
+          map.set(committee, []);
+        }
+        map.get(committee)!.push(candidate);
+      });
+    
+    // Filtrer selon le mode de vote
+    let filteredEntries: Array<[string, Candidate[]]>;
+    
+    if (this.votingMode === 'COMMITTEE_MEMBERS_ONLY') {
+      // Mode COMMITTEE_ONLY : Afficher seulement les comités dont l'utilisateur est membre
+      const userCommitteeNames = this.availableCommittees
+        .filter(c => c.canVote)
+        .map(c => c.committeeName);
+      
+      filteredEntries = Array.from(map.entries()).filter(([committeeName]) => 
+        userCommitteeNames.includes(committeeName)
+      );
+    } else {
+      // Mode ALL_CLUB_MEMBERS : Afficher tous les comités
+      filteredEntries = Array.from(map.entries());
+    }
+    
+    // Convertir en Array pour compatibilité Angular
+    this.candidatesByCommitteeCache = filteredEntries.map(([key, value]) => ({key, value}));
+  }
+
+  canVoteForCommittee(committeeName: string): boolean {
+    if (!this.availableCommittees || this.availableCommittees.length === 0) {
+      return false;
+    }
+    
+    const committee = this.availableCommittees.find(c => c.committeeName === committeeName);
+    return committee ? committee.canVote : false;
+  }
+
+  hasVotedForCommittee(committeeName: string): boolean {
+    if (!this.availableCommittees || this.availableCommittees.length === 0) {
+      return false;
+    }
+    
+    const committee = this.availableCommittees.find(c => c.committeeName === committeeName);
+    if (!committee) return false;
+    
+    return this.votedCommittees.has(committee.subGroupId);
+  }
+
+  getVotableCandidates(): Candidate[] {
+    if (!this.election || !this.election.candidates) {
+      return [];
+    }
+    
+    // Si pas de comités disponibles chargés, retourner tous les candidats approuvés
+    if (!this.availableCommittees.length) {
+      return this.election.candidates.filter(c => c.status === 'APPROVED');
+    }
+    
+    // En mode COMMITTEE_MEMBERS_ONLY, filtrer par comités disponibles
+    if (this.votingMode === 'COMMITTEE_MEMBERS_ONLY') {
+      const votableCommittees = this.availableCommittees
+        .filter(c => c.canVote)
+        .map(c => c.committeeName);
+      
+      return this.election.candidates.filter(candidate => 
+        candidate.status === 'APPROVED' && 
+        votableCommittees.includes(candidate.subGroupTarget)
+      );
+    }
+    
+    // En mode ALL_CLUB_MEMBERS, tous les candidats approuvés
+    return this.election.candidates.filter(c => c.status === 'APPROVED');
   }
 
   // ========== Gestion de l'élection ==========

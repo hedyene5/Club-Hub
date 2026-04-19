@@ -90,4 +90,9 @@ export class ElectionService {
   getEligibilityCriteria(electionId: string): Observable<EligibilityCriteria> {
     return this.http.get<EligibilityCriteria>(`${this.apiUrl}/${electionId}/eligibility-criteria`);
   }
+
+  // Obtenir les comités disponibles pour voter selon le mode
+  getAvailableCommittees(electionId: string, userId: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/${electionId}/available-committees/${userId}`);
+  }
 }

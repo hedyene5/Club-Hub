@@ -61,8 +61,8 @@
       </div>
     </div>
 
-    <!-- SECTION CANDIDATURE (visible si élection PLANNED ou OPEN, pas encore candidat) -->
-    <div class="mb-6" *ngIf="election.status !== 'CLOSED' && !hasAlreadyApplied">
+    <!-- SECTION CANDIDATURE (visible uniquement si élection PLANNED, pas encore candidat) -->
+    <div class="mb-6" *ngIf="election.status === 'PLANNED' && !hasAlreadyApplied">
       <div class="flex justify-between items-center mb-3">
         <h3 class="text-lg font-semibold text-gray-800">📝 Postuler comme candidat</h3>
         <button (click)="showApplicationForm = !showApplicationForm"
@@ -137,10 +137,21 @@
       ✅ Vous avez déjà soumis votre candidature pour cette élection.
     </div>
 
-    <!-- SECTION CANDIDATS -->
-    <div class="mb-6">
+    <!-- Message si élection en cours (postulation fermée) -->
+    <div *ngIf="election.status === 'OPEN' && !hasAlreadyApplied"
+         class="mb-6 p-3 bg-orange-50 border border-orange-200 rounded-lg text-orange-700 text-sm">
+      ⏳ L'élection est en cours. Les candidatures sont fermées.
+    </div>
+
+    <!-- SECTION CANDIDATS (cachée pendant le vote pour les membres normaux) -->
+    <div class="mb-6" *ngIf="election.status !== 'OPEN' || isAdmin">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-800">👥 Candidats ({{ election.candidates ? election.candidates.length : 0 }})</h3>
+        <!-- Message explicatif pendant le vote pour les admins -->
+        <span *ngIf="election.status === 'OPEN' && isAdmin" 
+              class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+          👑 Vue admin
+        </span>
       </div>
 
       <div *ngIf="!election.candidates || !election.candidates.length" class="text-gray-400 text-sm">Aucun candidat pour le moment.</div>
@@ -175,41 +186,67 @@
       </div>
     </div>
 
-    <!-- SECTION VOTE (élection OPEN, pas encore voté) -->
-    <div class="mb-6" *ngIf="election.status === 'OPEN' && !hasAlreadyVoted">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-semibold text-gray-800">🗳️ Voter</h3>
-        <button (click)="showVoteForm = !showVoteForm"
-                class="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
-          {{ showVoteForm ? 'Annuler' : 'Voter maintenant' }}
-        </button>
+    <!-- SECTION VOTE (élection OPEN) -->
+    <div class="mb-6" *ngIf="election.status === 'OPEN'">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">🗳️ Voter pour les Responsables</h3>
+      
+      <!-- Message selon le mode -->
+      <div *ngIf="votingMode === 'COMMITTEE_MEMBERS_ONLY'" 
+           class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+        ℹ️ Vous ne pouvez voter que pour votre propre comité. Seuls les comités dont vous êtes membre sont affichés ci-dessous.
       </div>
-
-      <div *ngIf="showVoteForm" class="p-4 border rounded-lg bg-gray-50">
-        <form [formGroup]="voteForm" (ngSubmit)="castVote()" class="space-y-3">
-          <select formControlName="candidateId" class="w-full rounded-lg border px-3 py-2">
-            <option value="">Choisir un candidat</option>
-            <option *ngFor="let c of election.candidates"
-                    [value]="c.userId"
-                    [disabled]="c.status !== 'APPROVED'">
-              {{ c.name }} {{ c.status !== 'APPROVED' ? '(non validé)' : '' }}
-            </option>
-          </select>
-          <div class="flex space-x-2">
-            <button type="submit" [disabled]="voteForm.invalid"
-                    class="px-4 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50">
-              🗳️ Confirmer mon vote
-            </button>
-            <button type="button" (click)="showVoteForm = false" class="px-4 py-2 border rounded-lg">Annuler</button>
+      <div *ngIf="votingMode === 'ALL_CLUB_MEMBERS'" 
+           class="mb-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700">
+        ℹ️ Vous pouvez voter pour tous les comités (un vote par comité). Tous les comités de l'élection sont affichés ci-dessous.
+      </div>
+      
+      <!-- Liste des comités avec leurs candidats -->
+      <div class="space-y-4">
+        <div *ngFor="let entry of getCandidatesByCommittee()" 
+             class="border rounded-lg p-4 bg-white border-gray-200">
+          
+          <!-- En-tête du comité -->
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="font-semibold text-gray-800">📋 Comité {{ entry.key }}</h4>
+            <span *ngIf="hasVotedForCommittee(entry.key)" 
+                  class="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full">
+              ✅ Vous avez déjà voté
+            </span>
           </div>
-        </form>
+          
+          <!-- Message si déjà voté -->
+          <div *ngIf="hasVotedForCommittee(entry.key)" 
+               class="text-sm text-gray-600 italic">
+            Vous avez déjà voté pour ce comité
+          </div>
+          
+          <!-- Candidats du comité -->
+          <div *ngIf="!hasVotedForCommittee(entry.key)" class="space-y-2">
+            <div *ngFor="let candidate of entry.value" 
+                 class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50">
+              <div class="flex-1">
+                <p class="font-medium text-gray-800">{{ candidate.name }}</p>
+                <p class="text-sm text-gray-500" *ngIf="candidate.motivation">
+                  {{ candidate.motivation }}
+                </p>
+              </div>
+              
+              <button type="button" 
+                      (click)="castVoteForCandidate(candidate.userId, candidate.subGroupTarget || entry.key)"
+                      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                Voter
+              </button>
+            </div>
+          </div>
+          
+        </div>
       </div>
-    </div>
-
-    <!-- Message si déjà voté -->
-    <div *ngIf="hasAlreadyVoted && election.status === 'OPEN'"
-         class="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-      ✅ Vous avez déjà voté pour cette élection.
+      
+      <!-- Message si aucun comité disponible -->
+      <div *ngIf="getCandidatesByCommittee().length === 0" 
+           class="text-center py-8 text-gray-400">
+        Aucun candidat disponible pour le moment
+      </div>
     </div>
 
     <!-- RÉSULTATS (élection CLOSED) -->

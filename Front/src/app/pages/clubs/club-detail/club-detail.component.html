@@ -116,10 +116,6 @@
   <div class="flex justify-between items-center mb-4">
     <h3 class="text-lg font-semibold text-gray-800">Membres du club</h3>
     <div class="flex gap-2">
-      <button (click)="debugPermissions()" 
-              class="px-3 py-1 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600">
-        🐛 Debug Permissions
-      </button>
       <!-- ✅ Seuls les admins peuvent ajouter des membres au club -->
       <button *ngIf="isAdmin || permissionService.hasPermission('ADD_MEMBERS')" (click)="openMemberForm()" 
               class="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
@@ -210,8 +206,8 @@
             <td class="py-3 px-4 font-medium">{{ member.name }}</td>
             <td class="py-3 px-4">{{ member.email }}</td>
             <td class="py-3 px-4">
-              <span class="px-2 py-1 text-xs rounded-full" [ngClass]="getRoleColor(member.role)">
-                {{ member.role }}
+              <span class="px-2 py-1 text-xs rounded-full" [ngClass]="getRoleColor(getDisplayRole(member))">
+                {{ getDisplayRole(member) }}
               </span>
             </td>
             <td class="py-3 px-4">
@@ -462,11 +458,6 @@
           </div>
         </form>
       </div>
-    </div>
-
-    <!-- Bouton retour -->
-    <div class="mt-6 pt-4 border-t">
-      <button routerLink="/clubs" class="text-blue-600 hover:underline">← Retour à la liste des clubs</button>
     </div>
   </div>
 

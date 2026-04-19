@@ -219,6 +219,34 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
     return this.isResponsibleOf(subGroupId);
   }
 
+  // ✅ Obtenir le rôle d'affichage d'un membre (avec appartenance aux comités)
+  getDisplayRole(member: any): string {
+    // 1. PRESIDENT a la priorité absolue
+    if (member.role === 'PRESIDENT') {
+      return 'PRESIDENT';
+    }
+    
+    // 2. Vérifier si le membre est RESPONSABLE d'un comité
+    if (this.club?.subGroups) {
+      for (const subGroup of this.club.subGroups) {
+        if (subGroup.responsableId === member.userId) {
+          return `Responsable ${subGroup.name}`;
+        }
+      }
+    }
+    
+    // 3. Vérifier si le membre appartient à un comité (MEMBRE_COMITE)
+    if (this.club?.subGroups && member.subGroupId) {
+      const subGroup = this.club.subGroups.find(sg => sg.id === member.subGroupId);
+      if (subGroup) {
+        return `Membre du comité ${subGroup.name}`;
+      }
+    }
+    
+    // 4. Sinon, afficher le rôle de base
+    return member.role;
+  }
+
   ngOnDestroy(): void {
     this.userProfileSubscription?.unsubscribe();
     this.routerSubscription?.unsubscribe();
@@ -332,19 +360,6 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
     console.log('Custom roles:', this.customRoles);
     console.log('All roles:', this.allRoles);
     console.log('==================');
-  }
-
-  debugPermissions(): void {
-    console.log('=== DEBUG PERMISSIONS ===');
-    console.log('isAdmin:', this.isAdmin);
-    console.log('Current role:', this.authService.getCurrentRole());
-    console.log('Permissions:', this.permissionService.getPermissions());
-    console.log('Has ADD_MEMBERS:', this.permissionService.hasPermission('ADD_MEMBERS'));
-    console.log('Has EDIT_MEMBERS:', this.permissionService.hasPermission('EDIT_MEMBERS'));
-    console.log('Has DELETE_MEMBERS:', this.permissionService.hasPermission('DELETE_MEMBERS'));
-    console.log('Has ASSIGN_TO_SUBGROUPS:', this.permissionService.hasPermission('ASSIGN_TO_SUBGROUPS'));
-    console.log('Has CREATE_SUBGROUPS:', this.permissionService.hasPermission('CREATE_SUBGROUPS'));
-    console.log('========================');
   }
 
   addMember(): void {
@@ -703,12 +718,24 @@ export class ClubDetailComponent implements OnInit, OnDestroy {
   }
 
   getRoleColor(role: string): string {
-    switch(role) {
-      case 'CEO': return 'bg-purple-100 text-purple-800';
-      case 'SECRETARY': return 'bg-blue-100 text-blue-800';
-      case 'TREASURER': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+    // Rôles de base du club
+    if (role === 'PRESIDENT') return 'bg-purple-100 text-purple-800';
+    if (role === 'VICE_PRESIDENT') return 'bg-indigo-100 text-indigo-800';
+    if (role === 'SECRETAIRE_GENERALE') return 'bg-blue-100 text-blue-800';
+    if (role === 'TRESORIER') return 'bg-green-100 text-green-800';
+    if (role === 'RH') return 'bg-orange-100 text-orange-800';
+    
+    // Rôles de responsable de comité
+    if (role.startsWith('Responsable ')) return 'bg-red-100 text-red-800';
+    
+    // Rôles de membre de comité
+    if (role.startsWith('Membre du comité ')) return 'bg-yellow-100 text-yellow-800';
+    
+    // Rôles par défaut
+    if (role === 'MEMBRE_SIMPLE') return 'bg-gray-100 text-gray-800';
+    
+    // Rôles personnalisés ou autres
+    return 'bg-cyan-100 text-cyan-800';
   }
 
   deleteClub(): void {

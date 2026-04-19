@@ -47,7 +47,8 @@ export interface Election {
   title: string;
   description: string;
   type: string;
-  electionType: string;     // ← AJOUTER "PRESIDENT" ou "BUREAU"
+  electionType: string;     // "PRESIDENT" ou "BUREAU"
+  votingMode?: string;      // "COMMITTEE_MEMBERS_ONLY" ou "ALL_CLUB_MEMBERS"
   startDate: Date;
   endDate: Date;
   status: string;
@@ -55,7 +56,7 @@ export interface Election {
   candidates: Candidate[];
   votes: Vote[];
   results?: ElectionResults;
-  positions?: Position[];   // ← AJOUTER
+  positions?: Position[];
 }
 
 // NOUVELLES INTERFACES

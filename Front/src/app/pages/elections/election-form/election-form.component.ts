@@ -41,9 +41,7 @@ export class ElectionFormComponent implements OnInit {
       startDate: ['', Validators.required],
       endDate: ['', Validators.required],
       anonymous: [true],
-      // Options bureau
-      voteScope: ['OWN_SUBGROUP'],   // OWN_SUBGROUP | ALL_SUBGROUPS
-      voteLimit: ['ONCE'],           // ONCE | PER_SUBGROUP
+      votingMode: ['COMMITTEE_MEMBERS_ONLY'], // Mode de vote pour élections bureau
       committees: this.fb.array([])  // Comités inclus dans l'élection
     });
   }
@@ -81,13 +79,6 @@ export class ElectionFormComponent implements OnInit {
         this.clearCommittees();
       }
     });
-
-    // Propager la règle globale voteScope vers tous les comités
-    this.electionForm.get('voteScope')?.valueChanges.subscribe(value => {
-      this.committeesArray.controls.forEach(ctrl => {
-        ctrl.get('voteScope')?.setValue(value, { emitEvent: false });
-      });
-    });
   }
 
   get committeesArray(): FormArray {
@@ -96,14 +87,12 @@ export class ElectionFormComponent implements OnInit {
 
   initCommittees(): void {
     this.clearCommittees();
-    const globalVoteScope = this.electionForm.get('voteScope')?.value || 'OWN_SUBGROUP';
     this.clubSubGroups.forEach(sg => {
       this.committeesArray.push(this.fb.group({
         subGroupId: [sg.id],
         subGroupName: [sg.name],
         included: [true],
-        maxCandidates: [5],
-        voteScope: [globalVoteScope]  // ← valeur globale par défaut
+        maxCandidates: [5]
       }));
     });
   }
@@ -126,8 +115,7 @@ export class ElectionFormComponent implements OnInit {
           startDate: election.startDate.toString().slice(0, 16),
           endDate: election.endDate.toString().slice(0, 16),
           anonymous: election.anonymous,
-          voteScope: (election as any).voteScope || 'OWN_SUBGROUP',
-          voteLimit: (election as any).voteLimit || 'ONCE'
+          votingMode: election.votingMode || 'COMMITTEE_MEMBERS_ONLY'
         });
       },
       error: (err) => console.error('Erreur:', err)
@@ -149,8 +137,7 @@ export class ElectionFormComponent implements OnInit {
             description: 'Responsable du comité ' + c.subGroupName,
             maxCandidates: c.maxCandidates,
             subGroupId: c.subGroupId,
-            subGroupName: c.subGroupName,
-            voteScope: c.voteScope
+            subGroupName: c.subGroupName
           }))
       : [];
 

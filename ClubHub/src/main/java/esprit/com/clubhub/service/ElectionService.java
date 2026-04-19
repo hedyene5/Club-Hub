@@ -371,13 +371,23 @@ public class ElectionService {
         Club club = clubRepository.findById(election.getClubId())
                 .orElseThrow(() -> new RuntimeException("Club non trouvé"));
 
-        // ✅ Vérifier que le voteur est membre du club
-        boolean isMemberOfClub = club.getMembers().stream()
-                .anyMatch(m -> m.getUserId().equals(vote.getVoterId()) && "APPROVED".equals(m.getStatus()));
-        
-        if (!isMemberOfClub) {
-            throw new RuntimeException("Vous devez être membre approuvé du club pour voter");
+        // ✅ Vérifier que le voteur est membre du club OU président
+        Member voter = club.getMembers().stream()
+                .filter(m -> m.getUserId().equals(vote.getVoterId()))
+                .findFirst()
+                .orElse(null);
+
+        if (voter == null) {
+            throw new RuntimeException("Vous devez être membre du club pour voter");
         }
+
+        // Le président peut toujours voter, les autres doivent être APPROVED
+        boolean canVote = "PRESIDENT".equals(voter.getRole()) || "APPROVED".equals(voter.getStatus());
+        if (!canVote) {
+            throw new RuntimeException("Votre adhésion doit être approuvée pour voter");
+        }
+
+        System.out.println("Voteur: " + voter.getName() + " (Rôle: " + voter.getRole() + ", Status: " + voter.getStatus() + ")");
 
         // ✅ Trouver le candidat pour obtenir son subGroupTarget
         Candidate candidate = election.getCandidates().stream()
@@ -407,10 +417,13 @@ public class ElectionService {
 
         if (election.getElectionType().equals("BUREAU")) {
             if (votingMode == VotingMode.COMMITTEE_MEMBERS_ONLY) {
-                // ✅ OPTION 2: Seuls les membres du comité peuvent voter
+                // ✅ OPTION 2: Seuls les membres du comité peuvent voter POUR LEUR PROPRE COMITÉ
+                // EXCEPTION: Le président peut voter pour tous les comités
+                boolean isPresident = "PRESIDENT".equals(voter.getRole());
                 boolean isInSubGroup = isVoterInSubGroup(club, vote.getVoterId(), subGroupId);
-                if (!isInSubGroup) {
-                    throw new RuntimeException("Vous devez être membre du comité '" + subGroupTarget + "' pour voter pour ce poste");
+                
+                if (!isPresident && !isInSubGroup) {
+                    throw new RuntimeException("Vous ne pouvez voter que pour votre propre comité. Vous n'êtes pas membre du comité '" + subGroupTarget + "'");
                 }
                 
                 // Vérifier si le voteur a déjà voté pour CE comité
@@ -422,7 +435,8 @@ public class ElectionService {
                     throw new RuntimeException("Vous avez déjà voté pour le comité '" + subGroupTarget + "'");
                 }
                 
-                System.out.println("✅ Vote autorisé (COMMITTEE_MEMBERS_ONLY): membre du comité");
+                String voteReason = isPresident ? "président" : "membre du comité " + subGroupTarget;
+                System.out.println("✅ Vote autorisé (COMMITTEE_MEMBERS_ONLY): " + voteReason);
                 
             } else {
                 // ✅ OPTION 1: Tous les membres du club peuvent voter
@@ -637,16 +651,29 @@ public class ElectionService {
         Map<String, Object> result = new HashMap<>();
         result.put("votingMode", election.getVotingMode() != null ? election.getVotingMode() : VotingMode.ALL_CLUB_MEMBERS);
         
-        // Vérifier que l'utilisateur est membre du club
-        boolean isMemberOfClub = club.getMembers().stream()
-                .anyMatch(m -> m.getUserId().equals(userId) && "APPROVED".equals(m.getStatus()));
-        
-        if (!isMemberOfClub) {
+        // Trouver le membre
+        Member member = club.getMembers().stream()
+                .filter(m -> m.getUserId().equals(userId))
+                .findFirst()
+                .orElse(null);
+
+        if (member == null) {
             result.put("canVote", false);
-            result.put("reason", "Vous devez être membre approuvé du club");
+            result.put("reason", "Vous devez être membre du club");
             result.put("availableCommittees", new ArrayList<>());
             return result;
         }
+
+        // Le président peut toujours voter, les autres doivent être APPROVED
+        boolean canVote = "PRESIDENT".equals(member.getRole()) || "APPROVED".equals(member.getStatus());
+        if (!canVote) {
+            result.put("canVote", false);
+            result.put("reason", "Votre adhésion doit être approuvée pour voter");
+            result.put("availableCommittees", new ArrayList<>());
+            return result;
+        }
+
+        System.out.println("Membre: " + member.getName() + " (Rôle: " + member.getRole() + ") peut voter");
         
         result.put("canVote", true);
         
@@ -691,9 +718,11 @@ public class ElectionService {
                 }
             } else {
                 // OPTION 2: Seuls les membres du comité peuvent voter
+                // EXCEPTION: Le président peut voter pour tous les comités
+                boolean isPresident = "PRESIDENT".equals(member.getRole());
                 boolean isInSubGroup = isVoterInSubGroup(club, userId, subGroupId);
                 
-                if (!isInSubGroup) {
+                if (!isPresident && !isInSubGroup) {
                     canVoteForThisCommittee = false;
                     reason = "Vous devez être membre de ce comité";
                 } else {
@@ -706,7 +735,7 @@ public class ElectionService {
                         reason = "Vous avez déjà voté pour ce comité";
                     } else {
                         canVoteForThisCommittee = true;
-                        reason = "Vous pouvez voter (membre du comité)";
+                        reason = isPresident ? "Vous pouvez voter (président)" : "Vous pouvez voter (membre du comité)";
                     }
                 }
             }

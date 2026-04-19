@@ -124,5 +124,15 @@ export class ClubFormComponent implements OnInit {
             }
         });
     }
-}
+  }
+
+  onCancel(): void {
+    if (this.isEditMode && this.clubId) {
+      // En mode édition, retourner à la page du club
+      this.router.navigate(['/clubs', this.clubId]);
+    } else {
+      // En mode création, retourner à la liste des clubs
+      this.router.navigate(['/clubs']);
+    }
+  }
 }
