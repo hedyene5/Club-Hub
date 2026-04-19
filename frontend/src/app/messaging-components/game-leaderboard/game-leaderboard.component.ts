@@ -31,25 +31,21 @@ export class GameLeaderboardComponent implements OnInit, OnDestroy, OnChanges {
     sortedLeaderboard: LeaderboardEntry[] = [];
 
     ngOnInit(): void {
-        if (this.event) {
-            this.processLeaderboard();
-            this.startSummaryTypewriter(this.event.aiSummary || 'Great game everyone!');
 
-            setTimeout(() => {
-                this.showConfetti = false;
-            }, 5000);
-        }
     }
 
     // ✅ FIXED: Add OnChanges to handle input changes
     ngOnChanges(changes: SimpleChanges): void {
+        console.log('📊 Leaderboard ngOnChanges:', changes['event']?.currentValue);
         if (changes['event'] && this.event) {
             this.processLeaderboard();
-            this.startSummaryTypewriter(this.event.aiSummary || 'Great game everyone!');
             this.showConfetti = true;
+            setTimeout(() => { this.showConfetti = false; }, 5000);
             setTimeout(() => {
-                this.showConfetti = false;
-            }, 5000);
+                const summary = this.event?.aiSummary || 'Great game everyone!';
+                console.log('📊 Starting typewriter with:', summary.substring(0, 50));
+                this.startSummaryTypewriter(summary);
+            }, 300);
         }
     }
 

@@ -1,41 +1,15 @@
-/* src/app/components/Game/game-leaderboard/game-leaderboard.component.css */
-
 :host {
-    display: contents;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;  /* was overflow: hidden */
+    overflow-x: hidden;
 }
 
-@keyframes confetti-fall {
-    0% {
-        transform: translateY(-100vh) rotate(0deg);
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(100vh) rotate(720deg);
-        opacity: 0;
-    }
-}
-
-.confetti-piece {
-    position: absolute;
-    top: -20px;
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    animation: confetti-fall 3s ease-in-out forwards;
-}
-
-.z-60 {
-    z-index: 60;
-}
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+@keyframes fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
 }
 
 .confetti-piece {
@@ -51,12 +25,9 @@
 .confetti-piece:nth-child(odd) { background: #6366f1; }
 .confetti-piece:nth-child(3n) { background: #ec4899; }
 
-@keyframes fall {
-    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-}
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
 }

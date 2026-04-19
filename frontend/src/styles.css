@@ -884,3 +884,14 @@ pre[class*="language-"].line-numbers {
   background-size: cover !important;
   background-position: center !important;
 }
+
+
+body.game-active app-sidebar,
+body.game-active app-backdrop,
+body.game-active app-header {
+  display: none !important;
+}
+
+body.game-active .min-h-screen {
+  overflow: hidden;
+}

@@ -1,28 +1,38 @@
-import { Component, Input, OnChanges, SimpleChanges, ViewChild, ElementRef, Output, EventEmitter, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ConversationDTO } from "../../models/conversation.model";
-import { MessageDTO } from "../../models/message.model";
-import { MessageService } from "../../services/Messaging/message.service";
-import { MessageInputComponent } from "../message-input/message-input.component";
-import { ParticipantsPanelComponent } from "../ participants-panel/participants-panel.component";
-import { ConversationService } from "../../services/Messaging/conversation.service";
-import { WebSocketService } from "../../services/Messaging/websocket.service";
-import { Subscription } from 'rxjs';
-import { FormsModule } from '@angular/forms';
+import {
+    ChangeDetectorRef,
+    Component,
+    ElementRef,
+    EventEmitter,
+    Input,
+    OnChanges,
+    OnDestroy,
+    Output,
+    SimpleChanges,
+    ViewChild
+} from '@angular/core';
+import {CommonModule} from '@angular/common';
+import {ConversationDTO} from "../../models/conversation.model";
+import {MessageDTO} from "../../models/message.model";
+import {MessageService} from "../../services/Messaging/message.service";
+import {MessageInputComponent} from "../message-input/message-input.component";
+import {ParticipantsPanelComponent} from "../ participants-panel/participants-panel.component";
+import {ConversationService} from "../../services/Messaging/conversation.service";
+import {WebSocketService} from "../../services/Messaging/websocket.service";
+import {forkJoin, of, Subscription} from 'rxjs';
+import {FormsModule} from '@angular/forms';
 import {ReactionService} from "../../services/Messaging/ReactionService";
-import {IMessage, StompSubscription} from "@stomp/stompjs";
-import { ChangeDetectorRef } from '@angular/core';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import {StompSubscription} from "@stomp/stompjs";
+import {catchError} from 'rxjs/operators';
 import {GameWebSocketService} from "../../services/Messaging/game-websocket.service";
 import {GameContainerComponent} from "../game-container/game-container.component";
 import {GameLaunchModalComponent} from "../game-launch-component/game-launch-modal.component";
 import {GameBannerComponent} from "../Game Banner Component/game-banner.component";
-import { Theme } from "../../models/theme.model";
-import { ThemeService } from "../../services/Messaging/theme.service";
+import {Theme} from "../../models/theme.model";
+import {ThemeService} from "../../services/Messaging/theme.service";
 import {ThemePickerComponent} from "../theme-picker/theme-picker.component";
-import { GameService } from '../../services/Messaging/game.service';
+import {GameService} from '../../services/Messaging/game.service';
 import {GameSession, GameStatus} from '../../models/game.model';
+
 @Component({
     selector: 'app-chat-window',
     standalone: true,
@@ -35,7 +45,8 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
     private gameEventSub?: Subscription
     showThemePicker = false;
     showGameLaunchModal = false;
-    gamePhase: 'BANNER' | 'PLAYING' | null = null;
+    gamePhase: 'BANNER' | 'PLAYING' | 'LEADERBOARD'| null = null;
+
     showReactionsModal = false;
     modalMessage: MessageDTO | null = null;
     activeReactionFilter: string | null = null;
@@ -46,7 +57,7 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
     openMenuId: string | null = null;
     editingMessageId: string | null = null;
     editContent = '';
-    private shouldAutoScroll = true;
+
     private userIsScrolling = false;
     @Input() conversation: ConversationDTO | null = null;
     @Input() currentUserId: string = '';
@@ -234,11 +245,7 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
         }
     }
 
-    onMessagesScroll() {
-        const container = this.messagesContainer.nativeElement;
-        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-        this.shouldAutoScroll = isAtBottom;
-    }
+
 
     isMine(msg: MessageDTO): boolean {
         return msg.senderId === this.currentUserId;
@@ -267,11 +274,7 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
             });
     }
 
-    onScroll() {
-        const container = this.messagesContainer.nativeElement;
-        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-        this.userIsScrolling = distanceFromBottom > 150;
-    }
+
 
     private forceScrollToBottom() {
         this.userIsScrolling = false;
@@ -462,7 +465,7 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
         });
     }
 
-    trackByMessageId(index: number, msg: MessageDTO) {
+    trackByMessageId(_index: number, msg: MessageDTO) {
         return msg.id;
     }
 

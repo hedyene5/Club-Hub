@@ -1,37 +1,106 @@
-<div #fullscreenContainer class="relative w-full h-full">
+<div #gameRoot class="game-root">
 
-    <button (click)="toggleFullscreen()"
-            *ngIf="gamePhase"
-            class="fixed top-4 right-4 z-[100] p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl text-white transition-all shadow-xl border border-white/10 group">
-        <svg *ngIf="!isFullscreen" class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
-        </svg>
-        <svg *ngIf="isFullscreen" class="w-6 h-6 group-hover:scale-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9L4 4m0 0h4M4 4v4m5 11l-5-5m0 0v4m0-4h4m11 5l-5-5m0 0h4m0 0v4m-5-11l5-5m0 0h-4m4 0v4"/>
-        </svg>
-    </button>
+    <!-- GAME AREA -->
+    <div class="game-area" [class.chat-open]="showChat">
 
-    <app-game-question
-            *ngIf="gamePhase === 'QUESTION'"
-            #questionComp
-            [gameId]="gameId"
-            [currentUserId]="currentUserId"
-            (answerSubmitted)="onAnswerSubmitted()">
-    </app-game-question>
+        <!-- Top bar -->
+        <div class="game-topbar">
+            <div class="game-topbar-left">
+                <span class="game-logo">🎮</span>
+                <span class="game-title">Quiz Arena</span>
+            </div>
+            <div class="game-topbar-right">
+                <button class="topbar-btn chat-btn" (click)="toggleChat()" *ngIf="gamePhase">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    <span *ngIf="unreadCount > 0" class="badge">{{ unreadCount }}</span>
+                </button>
+                <button class="topbar-btn" (click)="toggleFullscreen()" *ngIf="gamePhase">
+                    <svg *ngIf="!isFullscreen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                    </svg>
+                    <svg *ngIf="isFullscreen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 9L4 4m0 0h4M4 4v4m5 11l-5-5m0 0v4m0-4h4m11 5l-5-5m0 0h4m0 0v4m-5-11l5-5m0 0h-4m4 0v4"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
 
-    <app-answer-reveal
-            *ngIf="gamePhase === 'REVEAL'"
-            [event]="revealEvent"
-            [selectedAnswer]="selectedAnswer"
-            [currentUserId]="currentUserId">
-    </app-answer-reveal>
+        <!-- Game content — children fill this area -->
+        <div class="game-content">
+            <app-game-question
+                    *ngIf="gamePhase === 'QUESTION'"
+                    #questionComp
+                    [gameId]="gameId"
+                    [currentUserId]="currentUserId"
+                    (answerSubmitted)="onAnswerSubmitted()">
+            </app-game-question>
 
-    <app-game-leaderboard
-            *ngIf="gamePhase === 'LEADERBOARD'"
-            [event]="leaderboardEvent"
-            [currentUserId]="currentUserId"
-            [conversationId]="conversationId"
-            (playAgain)="onPlayAgain()"
-            (close)="onCloseGame()">
-    </app-game-leaderboard>
+            <app-answer-reveal
+                    *ngIf="gamePhase === 'REVEAL'"
+                    [event]="revealEvent"
+                    [selectedAnswer]="selectedAnswer"
+                    [currentUserId]="currentUserId">
+            </app-answer-reveal>
+
+            <app-game-leaderboard
+                    *ngIf="gamePhase === 'LEADERBOARD'"
+                    [event]="leaderboardEvent"
+                    [currentUserId]="currentUserId"
+                    [conversationId]="conversationId"
+                    (playAgain)="onPlayAgain()"
+                    (close)="onCloseGame()">
+            </app-game-leaderboard>
+        </div>
+    </div>
+
+    <!-- CHAT PANEL -->
+    <div class="chat-panel" [class.open]="showChat">
+        <div class="chat-header">
+            <span class="chat-header-title">💬 Game Chat</span>
+            <button class="chat-close-btn" (click)="toggleChat()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- FIX: renamed from #chatMessages to #chatScroll to avoid collision -->
+        <div class="chat-messages" #chatScroll>
+            <div *ngIf="messages.length === 0" class="chat-empty">
+                No messages yet. Say hi! 👋
+            </div>
+            <div *ngFor="let msg of messages"
+                 class="chat-msg"
+                 [class.mine]="isMine(msg.senderId)">
+                <div class="chat-bubble" [class.mine]="isMine(msg.senderId)">
+                    <p class="chat-sender" *ngIf="!isMine(msg.senderId)">
+                        {{ msg.senderId.slice(-6) }}
+                    </p>
+                    <p class="chat-text">{{ msg.content }}</p>
+                    <p class="chat-time">{{ msg.time }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <input
+                    [(ngModel)]="chatInput"
+                    (keydown)="onChatKeydown($event)"
+                    placeholder="Message..."
+                    class="chat-input"
+                    maxlength="200"/>
+            <button class="chat-send-btn" (click)="sendChatMessage()" [disabled]="!chatInput.trim()">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
 </div>
