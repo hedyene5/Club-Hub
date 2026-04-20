@@ -29,8 +29,13 @@ public class AuthController {
             AuthResponse auth = authService.register(request);
             setJwtCookie(response, auth.getToken());
 
-            // On retourne les infos user SANS le token
-            auth.setToken(null);
+            // We DELIBERATELY keep the JWT in the response body. The cookie
+            // alone is not enough because the Angular dev server runs on
+            // :4200 while the API gateway is on :8084 — that's a cross-origin
+            // request, and SameSite=Lax cookies are NOT sent on cross-origin
+            // XHR/fetch. The frontend stores the token in localStorage and
+            // the JwtInterceptor sends it back as `Authorization: Bearer …`,
+            // which the Backend's SessionService also understands.
             return ResponseEntity.ok(auth);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -44,7 +49,9 @@ public class AuthController {
             AuthResponse auth = authService.login(request);
             setJwtCookie(response, auth.getToken());
 
-            auth.setToken(null);
+            // See comment in #register — we keep the token in the body so
+            // the SPA can use it on cross-origin XHR calls where the
+            // SameSite=Lax cookie would not be transmitted.
             return ResponseEntity.ok(auth);
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(e.getMessage());

@@ -103,3 +103,16 @@ export const treasurerGuard: CanActivateFn = () => {
   router.navigate(['/']);
   return false;
 };
+
+/** Réservé au SECRETAIRE_GENERALE (rédaction des PV des événements). */
+export const secretaryGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.getCurrentRole() === 'SECRETAIRE_GENERALE') {
+    return true;
+  }
+
+  router.navigate(['/']);
+  return false;
+};
