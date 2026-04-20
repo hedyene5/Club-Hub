@@ -20,7 +20,6 @@
 
 /* Image background — wins over everything */
 .chat-container.has-bg-image {
-    background: none !important;
     background-image: var(--bg-image) !important;
     background-size: cover !important;
     background-position: center !important;
@@ -28,8 +27,9 @@
 
 /* Message bubbles */
 .msg-bubble-mine {
-    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-    color: white;
+    box-shadow:
+            inset 0 1px 1px rgba(255,255,255,0.4),
+            0 4px 15px rgba(0, 0, 0, 0.05) !important;
 }
 
 .msg-bubble-other {
@@ -53,4 +53,112 @@
 .send-button {
     background-color: var(--accent-color) !important;
     transition: background-color 300ms ease;
+}
+/* 1. Add perspective to the container to enable 3D */
+.chat-container {
+    perspective: 1000px;
+    overflow-x: hidden; /* Prevent horizontal scroll during 3D rotations */
+}
+
+/* 2. The "Impressive" Entry for your bubbles */
+.msg-bubble-mine, .msg-bubble-other {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+}
+
+/* My messages slide in and rotate slightly from the right */
+.msg-bubble-mine {
+    transform-origin: bottom right;
+    animation: springInRight 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+}
+
+/* Others slide in and rotate slightly from the left */
+.msg-bubble-other {
+    transform-origin: bottom left;
+    animation: springInLeft 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+}
+
+@keyframes springInRight {
+    0% { opacity: 0; transform: translateX(50px) scale(0.8) rotateY(-20deg); }
+    100% { opacity: 1; transform: translateX(0) scale(1) rotateY(0deg); }
+}
+
+@keyframes springInLeft {
+    0% { opacity: 0; transform: translateX(-50px) scale(0.8) rotateY(20deg); }
+    100% { opacity: 1; transform: translateX(0) scale(1) rotateY(0deg); }
+}
+/* --- HEADER GLASS EFFECT --- */
+.bg-white\/80.backdrop-blur-xl {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(15px) saturate(160%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+}
+
+/* --- MESSAGE CONTAINER DEPTH --- */
+/* This makes the background feel less like a "flat gray" and more like a 3D room */
+.bg-slate-50\/30 {
+    background: radial-gradient(
+            circle at 50% 50%,
+            rgba(248, 250, 252, 1) 0%,
+            rgba(226, 232, 240, 0.5) 100%
+    ) !important;
+}
+
+/* --- REPLIES 3D TILT --- */
+/* Makes replied messages look like they are physically "tucked" behind the main bubble */
+.mb-\[-12px\].pb-4.pt-2 {
+    transform: translateZ(-10px);
+    filter: brightness(0.95);
+    border-radius: 18px 18px 0 0;
+}
+/* Tactile Button Feedback */
+button {
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.05);
+    filter: brightness(1.1);
+}
+
+button:active:not(:disabled) {
+    transform: translateY(0px) scale(0.95);
+}
+/* Target the Emoji Picker and the Message Menu */
+.animate-in.fade-in.zoom-in,
+.animate-in.fade-in.slide-in-from-top-2 {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px) saturate(150%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow:
+            0 10px 25px -5px rgba(0, 0, 0, 0.1),
+            0 8px 10px -6px rgba(0, 0, 0, 0.1),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.5) !important;
+    border-radius: 20px !important;
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+/* Add a subtle "tilt" to the menu buttons on hover */
+.animate-in button {
+    transition: all 0.2s ease;
+    border-radius: 12px;
+    margin: 2px 4px;
+}
+
+.animate-in button:hover {
+    background: rgba(99, 102, 241, 0.1) !important; /* Subtle indigo tint */
+    transform: translateZ(10px); /* Moves the text "toward" the user */
+    color: #4f46e5 !important;
+}
+@keyframes customSpringZoom {
+    0% { opacity: 0; transform: scale(0.5) translateY(10px); }
+    70% { transform: scale(1.05) translateY(-2px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Apply this to your modals/menus */
+.animate-in {
+    animation: customSpringZoom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }

@@ -1,6 +1,4 @@
-// src/app/components/Game/game-leaderboard/game-leaderboard.component.ts
-
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GameOverEvent, LeaderboardEntry } from '../../models/game.model';
 
@@ -11,41 +9,41 @@ import { GameOverEvent, LeaderboardEntry } from '../../models/game.model';
     templateUrl: './game-leaderboard.component.html',
     styleUrls: ['./game-leaderboard.component.css']
 })
-export class GameLeaderboardComponent implements OnInit, OnDestroy, OnChanges {
+export class GameLeaderboardComponent implements  OnDestroy, OnChanges {
+
     @Input() event: GameOverEvent | null = null;
     @Input() currentUserId: string = '';
     @Input() conversationId: string = '';
+
     @Output() playAgain = new EventEmitter<void>();
     @Output() close = new EventEmitter<void>();
 
     displayedSummary = '';
     isTypingSummary = false;
     showConfetti = true;
-    private typingInterval: any;
 
     podiumPlayers: [LeaderboardEntry | null, LeaderboardEntry | null, LeaderboardEntry | null] = [null, null, null];
-    otherPlayers: LeaderboardEntry[] = [];
-    myRank: LeaderboardEntry | null = null;
-
-    // ✅ FIXED: Add a sorted property to use in template
     sortedLeaderboard: LeaderboardEntry[] = [];
 
-    ngOnInit(): void {
+    private typingInterval: any;
 
-    }
+    constructor(private cdr: ChangeDetectorRef) {}
 
-    // ✅ FIXED: Add OnChanges to handle input changes
     ngOnChanges(changes: SimpleChanges): void {
-        console.log('📊 Leaderboard ngOnChanges:', changes['event']?.currentValue);
-        if (changes['event'] && this.event) {
+        if (changes['event'] && this.event?.leaderboard) {
+            console.log('📊 Leaderboard ngOnChanges - processing data');
+
             this.processLeaderboard();
+
+            // Reset and start confetti + typewriter
             this.showConfetti = true;
-            setTimeout(() => { this.showConfetti = false; }, 5000);
+            setTimeout(() => this.showConfetti = false, 6000);
+
+            // Start typewriter with a small delay to let DOM settle
             setTimeout(() => {
-                const summary = this.event?.aiSummary || 'Great game everyone!';
-                console.log('📊 Starting typewriter with:', summary.substring(0, 50));
+                const summary = this.event?.aiSummary?.trim() || "What an incredible match! Well played everyone.";
                 this.startSummaryTypewriter(summary);
-            }, 300);
+            }, 400);
         }
     }
 
@@ -54,45 +52,42 @@ export class GameLeaderboardComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private processLeaderboard(): void {
-        if (!this.event?.leaderboard) {
+        if (!this.event?.leaderboard?.length) {
             this.sortedLeaderboard = [];
+            this.podiumPlayers = [null, null, null];
             return;
         }
 
-        const sorted = [...this.event.leaderboard].sort((a, b) => a.rank - b.rank);
+        // Sort by rank (safest)
+        this.sortedLeaderboard = [...this.event.leaderboard].sort((a, b) => a.rank - b.rank);
 
-        // ✅ FIXED: Store the sorted array
-        this.sortedLeaderboard = sorted;
-
-        // Podium: [2nd, 1st, 3rd] for visual display
+        // Podium: 2nd, 1st, 3rd (as you designed)
         this.podiumPlayers = [
-            sorted.find(p => p.rank === 2) || null,
-            sorted.find(p => p.rank === 1) || null,
-            sorted.find(p => p.rank === 3) || null
+            this.sortedLeaderboard.find(p => p.rank === 2) || null,
+            this.sortedLeaderboard.find(p => p.rank === 1) || null,
+            this.sortedLeaderboard.find(p => p.rank === 3) || null
         ];
-
-        // Other players (rank > 3)
-        this.otherPlayers = sorted.filter(p => p.rank > 3);
-
-        // Find current user's rank
-        this.myRank = sorted.find(p => p.userId === this.currentUserId) || null;
     }
 
     private startSummaryTypewriter(text: string): void {
         this.clearTypingInterval();
         this.displayedSummary = '';
         this.isTypingSummary = true;
+
         let index = 0;
+        const speed = 30; // ms per character
 
         this.typingInterval = setInterval(() => {
             if (index < text.length) {
                 this.displayedSummary += text[index];
                 index++;
+                this.cdr.markForCheck();   // ← CRITICAL for typewriter
             } else {
                 this.isTypingSummary = false;
                 this.clearTypingInterval();
+                this.cdr.markForCheck();
             }
-        }, 25);
+        }, speed);
     }
 
     private clearTypingInterval(): void {

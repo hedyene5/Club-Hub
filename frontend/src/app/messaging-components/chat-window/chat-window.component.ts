@@ -126,7 +126,7 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
                         this.localGameData = null;
                         break;
                     case 'GAME_OVER':
-                        this.gamePhase = null;
+                        console.log('🎮 GAME_OVER received in ChatWindow - keeping PLAYING so leaderboard can show');
                         break;
                 }
             });

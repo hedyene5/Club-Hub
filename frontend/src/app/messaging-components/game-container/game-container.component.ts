@@ -144,17 +144,24 @@ export class GameContainerComponent implements OnInit, OnDestroy {
         this.gamePhase = 'REVEAL';
         this.cdr.detectChanges();
     }
-
     private handleGameOverPhase(event: any): void {
-        console.log('🏆 GAME OVER - setting LEADERBOARD phase');
+        console.log('🏆 GAME OVER - setting LEADERBOARD phase', event);
+
         this.leaderboardEvent = {
             type: 'GAME_OVER',
-            leaderboard: event.leaderboard,
-            aiSummary: event.aiSummary
+            leaderboard: event.leaderboard || [],
+            aiSummary: event.aiSummary || ''
         };
+
         this.gamePhase = 'LEADERBOARD';
-        this.cdr.detectChanges(); // force Angular to re-render
-        console.log('🏆 phase:', this.gamePhase, 'event:', this.leaderboardEvent);
+
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
+
+        setTimeout(() => {
+            this.cdr.markForCheck();
+            this.cdr.detectChanges();
+        }, 10);
     }
 
     toggleChat(): void {
@@ -189,7 +196,8 @@ export class GameContainerComponent implements OnInit, OnDestroy {
     }
 
     onPlayAgain(): void { this.resetState(); }
-    onCloseGame(): void { this.resetState(); }
+    onCloseGame(): void { this.resetState();
+        this.gamePhase = null;}
 
     private resetState(): void {
         this.gamePhase = null;

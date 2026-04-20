@@ -19,6 +19,13 @@ public class Theme {
     private String gradientEndColor;
     private String backgroundImageUrl;
 
-    public Theme(String classicBlue, String hashtag, String hashtag1, String hashtag2, String hashtag3, boolean b, Object o) {
+    public Theme(String name, String primaryColor, String accentColor, String bubbleColor, String backgroundColor, boolean isGradient, String gradientEndColor) {
+        this.name = name;
+        this.primaryColor = primaryColor;
+        this.accentColor = accentColor;
+        this.bubbleColor = bubbleColor;
+        this.backgroundColor = backgroundColor;
+        this.isGradient = isGradient;
+        this.gradientEndColor = gradientEndColor;
     }
 }

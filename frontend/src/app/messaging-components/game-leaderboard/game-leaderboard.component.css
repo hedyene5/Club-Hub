@@ -1,33 +1,172 @@
+/* ==================== HOST (Game Container) ==================== */
 :host {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;  /* was overflow: hidden */
-    overflow-x: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99999;
+    display: block;
+    background: #0a0f1e;
+    overflow: hidden;               /* Prevent body scroll leak */
 }
 
+/* ==================== GAME ROOT ==================== */
+.game-root {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    background: #0a0f1e;
+    overflow: hidden;
+}
+
+/* ==================== GAME AREA ==================== */
+.game-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    transition: margin-right 0.3s ease;
+}
+
+.game-area.chat-open {
+    margin-right: 320px;
+}
+
+/* Top Bar - Fixed */
+.game-topbar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    z-index: 10;
+}
+
+/* ==================== GAME CONTENT - SCROLLABLE AREA ==================== */
+.game-content {
+    flex: 1 1 auto;
+    overflow-y: auto;               /* Main scrolling area */
+    overflow-x: hidden;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;                  /* Critical for flex scrolling */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Make sure leaderboard, question, etc. can grow and scroll internally if needed */
+.game-content > * {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+}
+
+/* Confetti Container */
+.confetti-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    overflow: hidden;
+}
+
+/* Confetti Pieces */
 @keyframes fall {
-    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    0% {
+        transform: translateY(-100px) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
 }
 
 .confetti-piece {
     position: absolute;
-    width: 8px;
+    width: 10px;
     height: 16px;
     background: #ffd700;
     top: -20px;
     opacity: 0;
-    animation: fall 3s linear forwards;
+    animation: fall 4s linear forwards;
+    border-radius: 2px;
 }
 
-.confetti-piece:nth-child(odd) { background: #6366f1; }
-.confetti-piece:nth-child(3n) { background: #ec4899; }
+.confetti-piece:nth-child(odd) {
+    background: #6366f1;
+    height: 12px;
+}
 
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.confetti-piece:nth-child(3n) {
+    background: #ec4899;
+    width: 6px;
+}
+
+.confetti-piece:nth-child(4n) {
+    background: #22d3ee;
+}
+
+/* Chat Panel */
+.chat-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 320px;
+    height: 100%;
+    background: #0d1425;
+    border-left: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    z-index: 10000;
+}
+
+.chat-panel.open {
+    transform: translateX(0);
+}
+
+/* Chat Messages */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scrollbar-width: thin;
+}
+
+/* Scrollbar Styling */
+.game-content::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.game-content::-webkit-scrollbar-track,
+.chat-messages::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.game-content::-webkit-scrollbar-thumb,
+.chat-messages::-webkit-scrollbar-thumb,
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.18);
     border-radius: 10px;
 }
+
+.game-content::-webkit-scrollbar-thumb:hover,
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.3);
+}
+.confetti-container { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
+.confetti-piece { position: absolute; width: 10px; height: 16px; background: #ffd700; top: -30px; opacity: 0; animation: fall 4s linear forwards; border-radius: 2px; }
+@keyframes fall { 0% { transform: translateY(-100px) rotate(0deg); opacity: 1; } 100% { transform: translateY(120vh) rotate(720deg); opacity: 0; } }
