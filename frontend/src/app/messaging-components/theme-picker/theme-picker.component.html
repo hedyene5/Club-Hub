@@ -6,8 +6,8 @@
                 <div class="section-header-flex">
                     <h3>Thèmes prédéfinis</h3>
                     <button class="close-icon-only" (click)="closeModal()">
-                        <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                        <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24">
+                            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
@@ -15,18 +15,18 @@
                 <div class="presets-grid">
                     @for (preset of presets; track $index) {
                         <div class="preset-card" (click)="selectPreset(preset)">
-                            <div class="card-inner" [style.backgroundColor]="preset.backgroundColor || '#ffffff'">
-                                <div class="preview-header" [style.backgroundColor]="preset.primaryColor || '#6366f1'">
+                            <div class="card-inner" [style.background-color]="preset.backgroundColor">
+                                <div class="preview-header" [style.background-color]="preset.primaryColor">
                                     <div class="mock-dots">
                                         <span></span><span></span><span></span>
                                     </div>
                                 </div>
                                 <div class="preview-content">
-                                    <div class="mock-bubble other" [style.backgroundColor]="preset.bubbleColor || '#e2e8f0'"></div>
-                                    <div class="mock-bubble mine" [style.backgroundColor]="preset.primaryColor || '#6366f1'"></div>
+                                    <div class="mock-bubble other" [style.background-color]="preset.bubbleColor"></div>
+                                    <div class="mock-bubble mine" [style.background-color]="preset.primaryColor"></div>
                                 </div>
                             </div>
-                            <div class="preset-name">{{ preset.name || 'Thème sans nom' }}</div>
+                            <div class="preset-name">{{ preset.name }}</div>
                         </div>
                     }
                 </div>
@@ -34,38 +34,28 @@
 
             <div class="section ai-studio">
                 <div class="ai-header">
-                    <h3>🎨 Générer avec l’IA</h3>
-                    <div class="sparkle-badge">Powered by Lyria</div>
-                </div>
-
-                <div class="input-wrapper">
-          <textarea [(ngModel)]="aiPrompt"
-                    placeholder="Ex: cyberpunk neon, dark luxury gold..."
-                    rows="3"></textarea>
-                </div>
-
-                <button class="generate-btn"
-                        (click)="generateWithAI()"
-                        [disabled]="generating || !aiPrompt.trim()">
-                    @if (generating) {
-                        <span class="loader"></span> Génération...
-                    } @else {
-                        Générer le thème
-                    }
-                </button>
-
-                @if (generatedTheme) {
-                    <div class="ai-preview" (click)="applyGeneratedTheme()">
-                        <div class="preview-mini-chat" [style.backgroundColor]="generatedTheme.backgroundColor">
-                            <div class="mini-header" [style.backgroundColor]="generatedTheme.primaryColor"></div>
-                            <div class="mini-bubble" [style.backgroundColor]="generatedTheme.bubbleColor"></div>
-                        </div>
-                        <div class="ai-info">
-                            <p class="ai-theme-name">{{ generatedTheme.name }}</p>
-                            <p class="apply-text">Cliquer pour appliquer</p>
-                        </div>
+                    <div class="ai-title">
+                        <span class="sparkle">✨</span>
+                        <h4>GÉNÉRER AVEC L'IA</h4>
                     </div>
-                }
+                    <span class="lyria-badge">Powered by Lyria</span>
+                </div>
+
+                <div class="prompt-container">
+    <textarea
+            [(ngModel)]="aiPrompt"
+            placeholder="Ex: cyberpunk neon, plage au coucher du soleil, dark luxury gold..."
+            class="ai-textarea">
+    </textarea>
+
+                    <button
+                            (click)="generateWithAI()"
+                            [disabled]="generating || !aiPrompt.trim()"
+                            class="generate-btn">
+                        <span *ngIf="!generating">Générer le thème</span>
+                        <span *ngIf="generating" class="loader"></span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -9,7 +9,7 @@ import { GameOverEvent, LeaderboardEntry } from '../../models/game.model';
     templateUrl: './game-leaderboard.component.html',
     styleUrls: ['./game-leaderboard.component.css']
 })
-export class GameLeaderboardComponent implements  OnDestroy, OnChanges {
+export class GameLeaderboardComponent implements OnInit, OnDestroy, OnChanges {
 
     @Input() event: GameOverEvent | null = null;
     @Input() currentUserId: string = '';
@@ -18,32 +18,31 @@ export class GameLeaderboardComponent implements  OnDestroy, OnChanges {
     @Output() playAgain = new EventEmitter<void>();
     @Output() close = new EventEmitter<void>();
 
+    // UI State
     displayedSummary = '';
     isTypingSummary = false;
-    showConfetti = true;
+    showConfetti = false;
+    isChatOpen: boolean = false;
+    newMessages: boolean = true;
 
-    podiumPlayers: [LeaderboardEntry | null, LeaderboardEntry | null, LeaderboardEntry | null] = [null, null, null];
+    // Processed Data
+    podiumPlayers: (LeaderboardEntry | null)[] = [null, null, null];
     sortedLeaderboard: LeaderboardEntry[] = [];
 
     private typingInterval: any;
 
     constructor(private cdr: ChangeDetectorRef) {}
 
+    ngOnInit(): void {
+        // Initial setup if data is already present
+        if (this.event) {
+            this.triggerVictorySequence();
+        }
+    }
+
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['event'] && this.event?.leaderboard) {
-            console.log('📊 Leaderboard ngOnChanges - processing data');
-
-            this.processLeaderboard();
-
-            // Reset and start confetti + typewriter
-            this.showConfetti = true;
-            setTimeout(() => this.showConfetti = false, 6000);
-
-            // Start typewriter with a small delay to let DOM settle
-            setTimeout(() => {
-                const summary = this.event?.aiSummary?.trim() || "What an incredible match! Well played everyone.";
-                this.startSummaryTypewriter(summary);
-            }, 400);
+            this.triggerVictorySequence();
         }
     }
 
@@ -51,17 +50,31 @@ export class GameLeaderboardComponent implements  OnDestroy, OnChanges {
         this.clearTypingInterval();
     }
 
-    private processLeaderboard(): void {
-        if (!this.event?.leaderboard?.length) {
-            this.sortedLeaderboard = [];
-            this.podiumPlayers = [null, null, null];
-            return;
-        }
+    /**
+     * Orchestrates the entrance: Data Processing -> Confetti -> Typewriter
+     */
+    private triggerVictorySequence(): void {
+        this.processLeaderboard();
 
-        // Sort by rank (safest)
+        // 1. Start Confetti
+        this.showConfetti = true;
+        setTimeout(() => this.showConfetti = false, 5000);
+
+        // 2. Start Typewriter with a small delay for the "Wow" feel
+        setTimeout(() => {
+            const summary = this.event?.aiSummary?.trim() || "What an incredible match! Well played everyone.";
+            this.startSummaryTypewriter(summary);
+        }, 600);
+    }
+
+    private processLeaderboard(): void {
+        if (!this.event?.leaderboard?.length) return;
+
+        // 1. Sort the full list for the sidebar
         this.sortedLeaderboard = [...this.event.leaderboard].sort((a, b) => a.rank - b.rank);
 
-        // Podium: 2nd, 1st, 3rd (as you designed)
+        // 2. Map Podium: [2nd Place, 1st Place, 3rd Place]
+        // This matches your HTML structure for alignment
         this.podiumPlayers = [
             this.sortedLeaderboard.find(p => p.rank === 2) || null,
             this.sortedLeaderboard.find(p => p.rank === 1) || null,
@@ -75,13 +88,13 @@ export class GameLeaderboardComponent implements  OnDestroy, OnChanges {
         this.isTypingSummary = true;
 
         let index = 0;
-        const speed = 30; // ms per character
+        const speed = 30;
 
         this.typingInterval = setInterval(() => {
             if (index < text.length) {
                 this.displayedSummary += text[index];
                 index++;
-                this.cdr.markForCheck();   // ← CRITICAL for typewriter
+                this.cdr.markForCheck(); // Ensure UI updates character-by-character
             } else {
                 this.isTypingSummary = false;
                 this.clearTypingInterval();
@@ -94,6 +107,13 @@ export class GameLeaderboardComponent implements  OnDestroy, OnChanges {
         if (this.typingInterval) {
             clearInterval(this.typingInterval);
             this.typingInterval = null;
+        }
+    }
+
+    toggleChat(): void {
+        this.isChatOpen = !this.isChatOpen;
+        if (this.isChatOpen) {
+            this.newMessages = false;
         }
     }
 

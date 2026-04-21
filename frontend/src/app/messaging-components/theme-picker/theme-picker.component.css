@@ -186,3 +186,76 @@ textarea:focus {
     from { opacity: 0; transform: scale(0.95) translateY(10px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
+.ai-studio {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.ai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.ai-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.lyria-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6366f1;
+    background: #eef2ff;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.ai-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 2px solid #f1f5f9;
+    background: #f8fafc;
+    font-size: 13px;
+    resize: none;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+}
+
+.ai-textarea:focus {
+    outline: none;
+    border-color: #6366f1;
+    background: white;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+}
+
+.generate-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #a78bfa, #6366f1);
+    color: white;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.generate-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+}
+
+.generate-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

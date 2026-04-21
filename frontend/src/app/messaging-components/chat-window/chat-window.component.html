@@ -131,20 +131,23 @@
 
                         <div *ngIf="msg.parentMessageId && msg.parentMessageContent && !msg.deleted"
                              (click)="scrollToMessage(msg.parentMessageId)"
-                             [class]="isMine(msg) ? 'bg-blue-600/50 border-blue-400' : 'bg-slate-200 border-slate-300'"
-                             class="mb-[-12px] pb-4 pt-2 px-4 rounded-t-2xl text-[11px] italic opacity-80 cursor-pointer border-l-2 truncate max-w-xs transition-all hover:opacity-100">
+                             [style.backgroundColor]="isMine(msg) ? 'var(--primary-color)' : 'var(--bubble-color)'"
+                             [style.opacity]="0.6"
+                             class="mb-[-12px] pb-4 pt-2 px-4 rounded-t-2xl text-[11px] italic cursor-pointer border-l-2 truncate max-w-xs transition-all hover:opacity-100">
                             <span class="font-bold not-italic block mb-0.5">Replying to:</span>
                             {{ msg.parentMessageContent }}
                         </div>
 
-                        <div [class]="getMessageBubbleClass(msg)" class="shadow-sm transition-all duration-200 relative">
+                        <div [class]="getMessageBubbleClass(msg)"
+                             [style.backgroundColor]="isMine(msg) ? 'var(--primary-color)' : 'var(--bubble-color)'"
+                             [style.color]="isMine(msg) ? 'white' : '#1e293b'"
+                             class="shadow-sm transition-all duration-200 relative">
                             <p [class]="msg.deleted ? 'text-[13px] italic opacity-60' : 'text-[14px] leading-relaxed break-words font-medium'">
                                 {{ msg.deleted ? 'This message was unsent' : msg.content }}
                             </p>
 
                             <div *ngIf="!msg.deleted"
-                                 [class]="isMine(msg) ? 'text-blue-200' : 'text-slate-400'"
-                                 class="text-[9px] mt-1 text-right font-medium">
+                                 class="text-[9px] mt-1 text-right font-medium opacity-70">
                                 {{ msg.createdAt | date:'HH:mm' }}
                             </div>
                         </div>

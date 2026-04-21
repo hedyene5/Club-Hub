@@ -1,70 +1,61 @@
-/* Container positioning */
+/* Positioning the floating picker */
 .emoji-mart-wrapper {
-    display: block !important;
-    width: 350px !important;
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 12px;
+    z-index: 1000;
+    width: 320px !important;
     height: 350px !important;
-    border-radius: 1.5rem !important;
+    border-radius: 20px !important;
     overflow: hidden !important;
-    background: white !important;
-    box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.2) !important;
-    border: 1px solid #f1f5f9 !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Force the library to use a clean column layout */
-::ng-deep .emoji-mart {
-    display: flex !important;
-    flex-direction: column !important;
-    height: 350px !important;
-    width: 100% !important;
-    border: none !important;
-    background: white !important;
+/* FIX: Redundant Library Labels */
+::ng-deep .emoji-mart-search label,
+::ng-deep .emoji-mart-search-icon {
+    display: none !important;
 }
 
-/* FIX: Forces navigation icons to stay in one horizontal row */
-::ng-deep .emoji-mart-anchors {
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: space-around !important;
-    align-items: center !important;
-    height: 40px !important;
-    padding: 0 10px !important;
-    border-bottom: 1px solid #f8fafc !important;
-}
-
-/* FIX: Prevents search bar area from collapsing */
 ::ng-deep .emoji-mart-search {
-    display: flex !important;
-    padding: 8px 10px !important;
+    padding: 12px !important;
 }
 
 ::ng-deep .emoji-mart-search input {
     width: 100% !important;
+    background: #f1f5f9 !important;
+    border: none !important;
+    padding: 8px 12px !important;
+    border-radius: 12px !important;
     font-size: 14px !important;
-    padding: 8px !important;
-    border-radius: 10px !important;
-    border: 1px solid #e2e8f0 !important;
 }
 
-/* FIX: Corrects the Category List grid */
-::ng-deep .emoji-mart-category-list {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr) !important;
+/* Emoji Grid Layout */
+::ng-deep .emoji-mart {
+    display: flex !important;
+    flex-direction: column !important;
+    border: none !important;
+    background: transparent !important;
     width: 100% !important;
 }
 
-/* Scroll area adjustment */
-::ng-deep .emoji-mart-scroll {
-    height: 240px !important;
-    overflow-y: auto !important;
+::ng-deep .emoji-mart-anchors {
+    border-bottom: 1px solid #f1f5f9 !important;
     padding: 0 10px !important;
 }
 
-/* Hide the preview bar at the bottom to save more space */
-::ng-deep .emoji-mart-bar {
-    display: none !important;
+::ng-deep .emoji-mart-category-list {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
 }
 
-/* Shrink navigation icons */
-::ng-deep .emoji-mart-anchor-icon {
-    transform: scale(0.85);
+::ng-deep .emoji-mart-scroll {
+    height: 250px !important;
+}
+
+::ng-deep .emoji-mart-bar {
+    display: none !important; /* Hide bottom preview bar to save space */
 }

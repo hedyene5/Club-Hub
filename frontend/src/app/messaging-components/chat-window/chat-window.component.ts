@@ -5,7 +5,7 @@ import {
     EventEmitter,
     Input,
     OnChanges,
-    OnDestroy,
+    OnDestroy, OnInit,
     Output,
     SimpleChanges,
     ViewChild
@@ -41,7 +41,7 @@ import {GameSession, GameStatus} from '../../models/game.model';
     styleUrls: ['./chat-window.component.css'],
     host: { class: 'flex flex-col flex-1 min-h-0 overflow-hidden' }
 })
-export class ChatWindowComponent implements OnChanges, OnDestroy {
+export class ChatWindowComponent implements OnInit ,OnChanges, OnDestroy {
     private gameEventSub?: Subscription
     showThemePicker = false;
     showGameLaunchModal = false;
@@ -90,6 +90,12 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
         this.webSocketService.connect();
     }
 
+    ngOnInit(): void {
+        if (this.conversation && this.conversation.theme) {
+            this.themeService.applyTheme(this.conversation.theme);
+        }
+    }
+
     readonly emojiMap: Record<string, string> = {
         LIKE: '👍',
         LOVE: '❤️',
@@ -100,7 +106,8 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
 
 
     ngOnChanges(changes: SimpleChanges) {
-        if (changes['conversation'] && this.conversation) {
+        if (changes['conversation'] && this.conversation && this.conversation?.theme) {
+            this.themeService.applyTheme(this.conversation.theme);
             if (this.wsSub) this.wsSub.unsubscribe();
 
             // FIX: unsubscribe old game event subscription before creating new one
@@ -513,12 +520,14 @@ export class ChatWindowComponent implements OnChanges, OnDestroy {
     onBannerDismissed(): void {
         this.gamePhase = null;
         this.localGameData = null;
+        this.cdr.detectChanges();
     }
 
     openGameLaunchModal(): void {
         this.gameModalConversationId = this.conversation?.id || '';
         this.gameModalUserId = this.currentUserId;
         if (!this.gameModalConversationId || !this.gameModalUserId) return;
+        document.body.classList.add('game-modal-open');
         this.showGameLaunchModal = true;
     }
 

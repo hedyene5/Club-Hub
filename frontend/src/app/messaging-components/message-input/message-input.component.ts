@@ -39,4 +39,17 @@ export class MessageInputComponent {
       this.onSend();
     }
   }
+  adjustHeight(el: HTMLTextAreaElement) {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  handleEnter(event: any) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.onSend();
+      // Reset height after sending
+      event.target.style.height = 'auto';
+    }
+  }
 }

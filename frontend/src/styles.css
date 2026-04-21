@@ -895,3 +895,6 @@ body.game-active app-header {
 body.game-active .min-h-screen {
   overflow: hidden;
 }
+body.game-modal-open header {
+  display: none !important;
+}

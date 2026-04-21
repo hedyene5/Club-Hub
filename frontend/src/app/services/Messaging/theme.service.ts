@@ -32,10 +32,11 @@ export class ThemeService {
         }
 
         if (theme.backgroundImageUrl) {
-            root.style.setProperty('--bg-image', `url(${theme.backgroundImageUrl})`);
+            root.style.setProperty('--bg-image', `url('${theme.backgroundImageUrl}')`);
             container.classList.add('has-bg-image');
             container.classList.remove('gradient');
             root.style.setProperty('--gradient-end', theme.backgroundColor);
+            container.style.backgroundImage = `url('${theme.backgroundImageUrl}')`;
         } else if (theme.isGradient && theme.gradientEndColor) {
             root.style.setProperty('--bg-image', 'none');
             container.classList.remove('has-bg-image');
