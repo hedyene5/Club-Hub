@@ -122,6 +122,18 @@
               }
             </a>
           </li>
+          <!-- Email -->
+           <!-- Inbox -->
+<li>
+  <a routerLink="/inbox"
+     routerLinkActive="menu-item-active"
+     class="menu-item group flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+    <i class="lucide lucide-mail w-5 h-5"></i>
+    @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) {
+      <span>Inbox</span>
+    }
+  </a>
+</li>
 
           <li>
   <a routerLink="/pages/management"

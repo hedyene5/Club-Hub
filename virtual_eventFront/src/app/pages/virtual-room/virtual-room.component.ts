@@ -10,7 +10,14 @@ import SockJS from 'sockjs-client';
 
 interface AvatarData { id: string; name: string; color: string; skinColor: string; hairColor: string; }
 interface PlayerState { id: string; name: string; color: string; x: number; y: number; z: number; rotY: number; }
-interface ChatMessage  { roomId: string; user: string; message: string; timestamp?: number; }
+interface ChatMessage  { roomId: string; user: string; message: string; timestamp?: number; visible?: boolean; senderId?: string; }
+
+// Bulle 3D au-dessus d'un avatar
+interface ChatBubble3D {
+  sprite: THREE.Sprite;
+  expiresAt: number;        // timestamp de disparition
+  userId: string;
+}
 interface SignalMessage { type: 'offer'|'answer'|'candidate'|'join'|'leave'; from: string; to?: string; payload?: any; }
 
 @Component({
@@ -50,6 +57,10 @@ export class VirtualRoomComponent implements AfterViewInit, OnDestroy {
   chatOpen = true;
   connected = false;
   roomId = 'room_main';
+
+  // Bulles 3D flottantes au-dessus des avatars
+  chatBubbles = new Map<string, ChatBubble3D>(); // userId -> bulle active
+  readonly BUBBLE_DURATION = 30000; // 30 secondes
 
   // Voix WebRTC
   micActive = false;
@@ -270,10 +281,23 @@ export class VirtualRoomComponent implements AfterViewInit, OnDestroy {
           this.ngZone.run(() => {
             const cm: ChatMessage = JSON.parse(msg.body);
             cm.timestamp = Date.now();
+            cm.visible = true;
             this.chatMessages.push(cm);
             if (this.chatMessages.length > 100) this.chatMessages.shift();
             this.cdr.detectChanges();
             setTimeout(() => this.scrollChatToBottom(), 30);
+
+            // Afficher bulle 3D au-dessus de l'avatar émetteur
+            this.showChatBubble3D(cm.senderId || '', cm.user, cm.message);
+
+            // Masquer le message du panel après 30s
+            const idx = this.chatMessages.indexOf(cm);
+            setTimeout(() => {
+              this.ngZone.run(() => {
+                cm.visible = false;
+                this.cdr.detectChanges();
+              });
+            }, this.BUBBLE_DURATION);
           });
         });
 
@@ -335,7 +359,12 @@ export class VirtualRoomComponent implements AfterViewInit, OnDestroy {
     if (!this.chatInput.trim() || !this.connected) return;
     this.stompClient.publish({
       destination: '/app/chat',
-      body: JSON.stringify({ roomId: this.roomId, user: this.avatarData.name || 'Guest', message: this.chatInput.trim() } as ChatMessage)
+      body: JSON.stringify({
+        roomId: this.roomId,
+        user: this.avatarData.name || 'Guest',
+        message: this.chatInput.trim(),
+        senderId: this.myId          // ← pour identifier l'émetteur
+      } as ChatMessage)
     });
     this.chatInput = '';
   }
@@ -502,6 +531,139 @@ export class VirtualRoomComponent implements AfterViewInit, OnDestroy {
   broadcastSignal(signal: SignalMessage) {
     if (!this.stompClient?.connected) return;
     this.stompClient.publish({ destination: '/app/signal/broadcast', body: JSON.stringify(signal) });
+  }
+
+  // ─── BULLES 3D ──────────────────────────────────────────────────────────────
+
+  showChatBubble3D(senderId: string, userName: string, message: string) {
+    // Trouver l'avatar cible (myAvatar si c'est moi, sinon otherAvatars)
+    const isMe = senderId === this.myId;
+    const targetAvatar = isMe ? this.myAvatar : this.otherAvatars.get(senderId);
+    if (!targetAvatar && !isMe) return;
+    const avatar = targetAvatar || this.myAvatar;
+
+    // Supprimer ancienne bulle de cet user
+    const existing = this.chatBubbles.get(senderId || 'me');
+    if (existing) {
+      avatar.remove(existing.sprite);
+      existing.sprite.material.map?.dispose();
+      existing.sprite.material.dispose();
+    }
+
+    // Créer la texture canvas de la bulle
+    const sprite = this.createBubbleSprite(userName, message);
+    sprite.position.set(0, 2.6, 0); // au-dessus du label nom
+    avatar.add(sprite);
+
+    const bubble: ChatBubble3D = {
+      sprite,
+      expiresAt: Date.now() + this.BUBBLE_DURATION,
+      userId: senderId || 'me'
+    };
+    this.chatBubbles.set(senderId || 'me', bubble);
+
+    // Auto-suppression après 30s
+    setTimeout(() => {
+      this.removeChatBubble3D(senderId || 'me', avatar);
+    }, this.BUBBLE_DURATION);
+  }
+
+  createBubbleSprite(userName: string, message: string): THREE.Sprite {
+    const maxChars = 30;
+    const lines = this.wrapText(message, maxChars);
+    const lineH = 28;
+    const padding = 18;
+    const canvasW = 380;
+    const canvasH = padding * 2 + lines.length * lineH + 10;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasW;
+    canvas.height = canvasH + 20; // +20 pour la petite flèche
+    const ctx = canvas.getContext('2d')!;
+
+    // Fond bulle arrondi
+    ctx.fillStyle = 'rgba(15, 15, 40, 0.92)';
+    this.roundRect2D(ctx, 0, 0, canvasW, canvasH, 16);
+    ctx.fill();
+
+    // Bordure colorée
+    ctx.strokeStyle = 'rgba(120, 140, 255, 0.8)';
+    ctx.lineWidth = 2.5;
+    this.roundRect2D(ctx, 0, 0, canvasW, canvasH, 16);
+    ctx.stroke();
+
+    // Petite flèche en bas
+    ctx.fillStyle = 'rgba(15, 15, 40, 0.92)';
+    ctx.beginPath();
+    ctx.moveTo(canvasW / 2 - 12, canvasH);
+    ctx.lineTo(canvasW / 2, canvasH + 18);
+    ctx.lineTo(canvasW / 2 + 12, canvasH);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Nom de l'utilisateur
+    ctx.fillStyle = '#8899ff';
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(userName, padding, padding + 16);
+
+    // Texte du message (multi-lignes)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px Arial';
+    lines.forEach((line, i) => {
+      ctx.fillText(line, padding, padding + 16 + 24 + i * lineH);
+    });
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+
+    // Taille proportionnelle au canvas
+    const aspect = canvas.width / canvas.height;
+    sprite.scale.set(aspect * 0.9, 0.9, 1);
+    sprite.renderOrder = 999; // toujours visible au-dessus
+    return sprite;
+  }
+
+  wrapText(text: string, maxChars: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const word of words) {
+      if ((current + ' ' + word).trim().length > maxChars) {
+        if (current) lines.push(current.trim());
+        current = word;
+      } else {
+        current = (current + ' ' + word).trim();
+      }
+    }
+    if (current) lines.push(current.trim());
+    return lines.slice(0, 4); // max 4 lignes
+  }
+
+  roundRect2D(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  removeChatBubble3D(userId: string, avatar: THREE.Group) {
+    const bubble = this.chatBubbles.get(userId);
+    if (!bubble) return;
+    avatar.remove(bubble.sprite);
+    bubble.sprite.material.map?.dispose();
+    bubble.sprite.material.dispose();
+    this.chatBubbles.delete(userId);
   }
 
   // ─── BOUCLE ─────────────────────────────────────────────────────────────────

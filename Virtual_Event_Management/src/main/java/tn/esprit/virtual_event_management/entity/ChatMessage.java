@@ -7,4 +7,5 @@ public class ChatMessage {
     private String roomId;
     private String user;
     private String message;
+    private String senderId;
 }

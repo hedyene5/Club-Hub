@@ -44,26 +44,8 @@ public class VirtualEventController {
     }
 
     @PutMapping("/{id}/join")
-    public VirtualEvent joinEvent(@PathVariable String id) {
-
-        VirtualEvent event = virtualEventService.getEventById(id)
-                .orElseThrow(() -> new RuntimeException("Event introuvable"));
-
-        // 🔥 sécuriser null
-        if (event.getCurrentParticipants() == null) {
-            event.setCurrentParticipants(0);
-        }
-
-        // 🔥 vérifier maxParticipants
-        if (event.getMaxParticipants() != null &&
-                event.getCurrentParticipants() >= event.getMaxParticipants()) {
-            throw new RuntimeException("Event complet");
-        }
-
-        // 🔥 incrément
-        event.setCurrentParticipants(event.getCurrentParticipants() + 1);
-
-        return virtualEventService.updateEvent(id, event);
+    public ResponseEntity<VirtualEvent> joinEvent(@PathVariable String id) {
+        return ResponseEntity.ok(virtualEventService.joinEvent(id));
     }
 
     // 🔥 GET LINK DIRECT

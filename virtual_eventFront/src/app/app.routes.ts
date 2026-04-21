@@ -20,6 +20,8 @@ import { SignUpComponent } from './pages/auth-pages/sign-up/sign-up.component';
 import { CalendarComponent } from './pages/calendar/calendar.component';
 import { ManagementComponent } from './pages/management/management.component';
 import { AnalyticsComponent } from './pages/analytics/analytics.component';
+import { EmailComponent } from './pages/email/email.component';
+
 
 export const routes: Routes = [
 
@@ -35,6 +37,7 @@ export const routes: Routes = [
     component: AppLayoutComponent,
     children: [
       { path: 'pages/dashboard', component: DashboardComponent },
+      { path: 'inbox', component: EmailComponent },
       { path: 'calendar', component: CalendarComponent, title: 'CLUB HUB Calendar' },
       { path: 'profile', component: ProfileComponent, title: 'CLUB HUB Profile' },
       { path: 'form-elements', component: FormElementsComponent, title: 'CLUB HUB Form Elements' },

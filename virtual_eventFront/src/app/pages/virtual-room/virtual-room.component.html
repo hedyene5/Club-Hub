@@ -61,12 +61,17 @@
     <div *ngIf="chatMessages.length === 0" class="chat-empty">
       Aucun message... Dites bonjour ! 👋
     </div>
-    <div *ngFor="let msg of chatMessages" class="chat-msg">
+    <div
+      *ngFor="let msg of chatMessages"
+      class="chat-msg"
+      [class.fading]="!msg.visible"
+    >
       <div class="msg-header">
         <span class="msg-user">{{ msg.user }}</span>
         <span class="msg-time" *ngIf="msg.timestamp">
           {{ msg.timestamp | date:'HH:mm' }}
         </span>
+        <span class="msg-timer" *ngIf="msg.visible">30s</span>
       </div>
       <span class="msg-text">{{ msg.message }}</span>
     </div>

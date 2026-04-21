@@ -64,14 +64,22 @@ public class VirtualEventService implements IVirtualEventService {
         existing.setStatus(updatedEvent.getStatus());
         existing.setOrganizer(updatedEvent.getOrganizer());
 
+        // 🔥🔥🔥 AJOUTE ÇA (ULTRA IMPORTANT)
+        existing.setCurrentParticipants(updatedEvent.getCurrentParticipants());
+
         return virtualEventRepository.save(existing);
     }
 
     // 🔥 JOIN EVENT (important)
+    @Override
     public VirtualEvent joinEvent(String eventId) {
 
         VirtualEvent event = virtualEventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found"));
+
+        if (event.getCurrentParticipants() == null) {
+            event.setCurrentParticipants(0);
+        }
 
         if (event.getMaxParticipants() != null &&
                 event.getCurrentParticipants() >= event.getMaxParticipants()) {
@@ -112,5 +120,7 @@ public class VirtualEventService implements IVirtualEventService {
     public List<VirtualEvent> getRecordedEvents() {
         return virtualEventRepository.findByIsRecording(true);
     }
+
+
 
 }

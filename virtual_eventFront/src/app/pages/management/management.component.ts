@@ -1,48 +1,26 @@
 import { Component, OnInit } from '@angular/core';
 import { VirtualEventService } from '../../services/virtual-event.service';
-import { VirtualEvent } from '../../models/virtual-event';
-import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-management',
-  templateUrl: './management.component.html'
+  templateUrl: './management.component.html',
+  styleUrls: ['./management.component.css']
 })
 export class ManagementComponent implements OnInit {
 
-  events: VirtualEvent[] = [];
-  selectedTab = 'events';
+  events: any[] = [];
 
-  constructor(
-    private eventService: VirtualEventService,
-    private http: HttpClient
-  ) {}
+  constructor(private eventService: VirtualEventService) {}
 
-  ngOnInit(): void {
-    this.loadEvents();
+  ngOnInit() {
+    this.load();
   }
 
-  loadEvents() {
-    this.eventService.getAllEvents().subscribe(res => {
-      this.events = res;
-    });
+  load() {
+    this.eventService.getAllEvents().subscribe(res => this.events = res);
   }
 
-  deleteEvent(id: string) {
-    this.eventService.deleteEvent(id).subscribe(() => {
-      this.loadEvents();
-    });
+  delete(id: string) {
+    this.eventService.deleteEvent(id).subscribe(() => this.load());
   }
-
-  // 🔥 FAKE participants (car pas endpoint direct)
-  registrations: any[] = [];
-
-  loadRegistrations(eventId: string) {
-    this.selectedTab = 'participants';
-
-    this.http.get(`http://localhost:8082/api/registrations/event/${eventId}`)
-      .subscribe((res: any) => {
-        this.registrations = res;
-      });
-  }
-
 }

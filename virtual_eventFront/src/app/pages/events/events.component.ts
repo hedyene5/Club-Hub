@@ -145,14 +145,15 @@ export class EventsComponent implements OnInit, OnDestroy {
   }
 
   registerToEvent(event: VirtualEvent) {
-    this.virtualEventService.register(event.id!, this.userId).subscribe({
-      next: () => {
-        alert("✅ Inscription réussie");
-        event.currentParticipants = (event.currentParticipants || 0) + 1;
-        this.loadJoinAccess();
-      }
-    });
-  }
+  this.virtualEventService.register(event.id!, this.userId).subscribe({
+    next: () => {
+      alert("✅ Inscription réussie");
+
+      // 🔥 reload depuis backend
+      this.loadEvents();
+    }
+  });
+}
 
   payForEvent(event: VirtualEvent) {
     this.virtualEventService.pay(event.id!, this.userId).subscribe({

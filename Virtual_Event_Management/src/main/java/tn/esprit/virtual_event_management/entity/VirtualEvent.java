@@ -58,4 +58,10 @@ public class VirtualEvent {
     private String type;   // VIRTUAL ou ROOM
     private String roomId;
 
+    private Boolean reminderSent = false;
+
+    public Integer getSafeParticipants() {
+        return currentParticipants != null ? currentParticipants : 0;
+    }
+
 }

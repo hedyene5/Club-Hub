@@ -1,0 +1,40 @@
+.management {
+  padding: 30px;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+h1 {
+  margin-bottom: 20px;
+}
+
+/* TABLE */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th {
+  background: #f1f5f9;
+  text-align: left;
+}
+
+th, td {
+  padding: 15px;
+}
+
+tr:hover {
+  background: #f9fafb;
+}
+
+button {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}

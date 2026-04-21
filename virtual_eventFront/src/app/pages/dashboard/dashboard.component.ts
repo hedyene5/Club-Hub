@@ -1,49 +1,63 @@
 import { Component, OnInit } from '@angular/core';
-import { VirtualEventService } from '../../services/virtual-event.service';
-import { VirtualEvent } from '../../models/virtual-event';
+import { DashboardService } from '../../services/dashboard.service';
+import { Chart } from 'chart.js/auto';
 
 @Component({
   selector: 'app-dashboard',
-  templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.css']
+  templateUrl: './dashboard.component.html'
 })
 export class DashboardComponent implements OnInit {
 
-  events: VirtualEvent[] = [];
+  stats: any;
+  events: any[] = [];
 
-  totalEvents = 0;
-  totalParticipants = 0;
-  totalRevenue = 0;
+  constructor(private dashboardService: DashboardService) {}
 
-  recentEvents: VirtualEvent[] = [];
+  ngOnInit() {
+    this.loadData();
 
-  constructor(private eventService: VirtualEventService) {}
-
-  ngOnInit(): void {
-    this.loadDashboard();
+    // 🔥 refresh auto toutes les 5 secondes
+    setInterval(() => {
+      this.loadData();
+    }, 5000);
   }
 
-  loadDashboard() {
-    this.eventService.getAllEvents().subscribe(events => {
-      this.events = events;
-
-      // 📊 TOTAL EVENTS
-      this.totalEvents = events.length;
-
-      // 👥 TOTAL PARTICIPANTS
-      this.totalParticipants = events.reduce((sum, e) =>
-        sum + (e.currentParticipants || 0), 0);
-
-      // 💰 TOTAL REVENUE
-      this.totalRevenue = events.reduce((sum, e) =>
-        sum + ((e.isPaid ? (e.price || 0) * (e.currentParticipants || 0) : 0)), 0);
-
-      // 📅 RECENT EVENTS
-      this.recentEvents = events
-        .sort((a, b) =>
-          new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
-        )
-        .slice(0, 5);
+  loadData() {
+    this.dashboardService.getStats().subscribe(res => {
+      this.stats = res;
+      this.createChart();
     });
+
+    this.dashboardService.getEvents().subscribe(res => {
+      this.events = res;
+    });
+  }
+
+  // 📊 CHART
+  createChart() {
+
+    if (!this.stats) return;
+
+    new Chart("statsChart", {
+      type: 'bar',
+      data: {
+        labels: ['Events', 'Registrations', 'Participants'],
+        datasets: [{
+          label: 'Statistics',
+          data: [
+            this.stats.totalEvents,
+            this.stats.totalRegistrations,
+            this.stats.totalParticipants
+          ]
+        }]
+      }
+    });
+  }
+
+  // 🔥 TOP EVENTS
+  getTopEvents() {
+    return this.events
+      .sort((a, b) => (b.currentParticipants || 0) - (a.currentParticipants || 0))
+      .slice(0, 3);
   }
 }

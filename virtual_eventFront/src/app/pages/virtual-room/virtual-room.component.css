@@ -185,6 +185,8 @@
 
 /* Messages */
 .chat-messages {
+  max-height: 220px;
+  overflow-y: auto;
   padding: 10px 12px;
   display: flex; flex-direction: column; gap: 8px;
   scrollbar-width: thin;
@@ -201,12 +203,52 @@
 .chat-msg {
   display: flex; flex-direction: column; gap: 3px;
   animation: fadeIn 0.2s ease;
+  transition: opacity 1.5s ease, transform 1.5s ease, max-height 1.5s ease;
+  max-height: 200px;
+  overflow: hidden;
 }
+
+/* Message qui disparait après 30s */
+.chat-msg.fading {
+  opacity: 0;
+  transform: translateY(-4px);
+  max-height: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-.msg-header { display: flex; justify-content: space-between; align-items: center; }
+/* Barre de progression 30s sous le message */
+.msg-header {
+  display: flex; justify-content: space-between; align-items: center; gap: 4px;
+}
 .msg-user { font-size: 11px; font-weight: 700; color: #8899ff; }
 .msg-time { font-size: 10px; color: rgba(150,150,200,0.5); }
+
+.msg-timer {
+  font-size: 9px;
+  color: rgba(150,150,200,0.4);
+  margin-left: auto;
+}
+
+/* Barre de progression sous chaque message */
+.chat-msg::after {
+  content: '';
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, #4466ff, #8833ff);
+  border-radius: 2px;
+  transform-origin: left;
+  animation: countdown 30s linear forwards;
+}
+.chat-msg.fading::after { display: none; }
+
+@keyframes countdown {
+  from { transform: scaleX(1); opacity: 0.6; }
+  to   { transform: scaleX(0); opacity: 0.1; }
+}
 
 .msg-text {
   font-size: 13px; color: #e0e0ff;

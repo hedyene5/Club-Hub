@@ -15,4 +15,5 @@ public interface IVirtualEventService {
     List<VirtualEvent> getEventsByOrganizer(String organizerId);
     List<VirtualEvent> getEventsBetween(LocalDateTime start, LocalDateTime end);
     List<VirtualEvent> getRecordedEvents();
+    VirtualEvent joinEvent(String eventId);
 }
