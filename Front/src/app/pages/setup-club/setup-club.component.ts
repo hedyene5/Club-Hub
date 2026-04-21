@@ -64,7 +64,7 @@ export class SetupClubComponent implements OnInit {
     };
   
     // ✅ Appel via le Gateway (port 8084)
-    this.http.post<any>('http://localhost:8084/api/clubs', clubData, {
+    this.http.post<any>('http://172.18.72.32:8083/api/clubs', clubData, {
       withCredentials: true
     }).subscribe({
       next: (createdClub) => {
@@ -72,7 +72,7 @@ export class SetupClubComponent implements OnInit {
   
         // ✅ Appel via le Gateway (port 8084) pour associer le club
         this.http.put<any>(
-          `http://localhost:8084/api/users/${this.pendingUser.id}/club`,
+          `http://172.18.72.32:8081/api/users/${this.pendingUser.id}/club`,
           { clubId: createdClub.id },
           { withCredentials: true }
         ).subscribe({

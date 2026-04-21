@@ -140,6 +140,15 @@
       </select>
     </div>
 
+    <!-- Localisation (seulement pour élections présentielles) -->
+    <div *ngIf="electionForm.get('type')?.value === 'IN_PERSON'" class="border-t border-gray-200 pt-6">
+      <h4 class="text-lg font-medium text-gray-800 mb-4">📍 Localisation de l'élection</h4>
+      <app-location-map 
+        [initialLocation]="selectedLocation"
+        (locationSelected)="onLocationSelected($event)">
+      </app-location-map>
+    </div>
+
     <!-- Dates -->
     <div class="grid grid-cols-2 gap-4">
       <div>

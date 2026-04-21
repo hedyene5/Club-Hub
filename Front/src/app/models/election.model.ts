@@ -41,6 +41,13 @@ export interface ElectionResults {
   calculatedAt: Date;
 }
 
+export interface ElectionLocation {
+  address: string;
+  latitude: number;
+  longitude: number;
+  placeName?: string;
+}
+
 export interface Election {
   id?: string;
   clubId: string;
@@ -57,6 +64,7 @@ export interface Election {
   votes: Vote[];
   results?: ElectionResults;
   positions?: Position[];
+  location?: ElectionLocation; // Localisation pour élections présentielles
 }
 
 // NOUVELLES INTERFACES

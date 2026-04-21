@@ -6,11 +6,12 @@ import { ElectionService } from '../../../services/election.service';
 import { AuthService } from '../../../services/auth.service';
 import { ClubService } from '../../../services/club.service';
 import { SubGroup } from '../../../models/club.model';
+import { LocationMapComponent, LocationData } from '../../../components/location-map/location-map.component';
 
 @Component({
   selector: 'app-election-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, LocationMapComponent],
   templateUrl: './election-form.component.html',
   styleUrls: ['./election-form.component.css']
 })
@@ -23,6 +24,7 @@ export class ElectionFormComponent implements OnInit {
   loading = false;
   electionTypes = ['PRESIDENT', 'BUREAU'];
   clubSubGroups: SubGroup[] = [];  // Comités du club
+  selectedLocation?: LocationData;  // Localisation sélectionnée
 
   constructor(
     private fb: FormBuilder,
@@ -146,7 +148,8 @@ export class ElectionFormComponent implements OnInit {
       startDate: new Date(formValue.startDate).toISOString(),
       endDate: new Date(formValue.endDate).toISOString(),
       positions,
-      committees: undefined // ne pas envoyer le FormArray brut
+      committees: undefined, // ne pas envoyer le FormArray brut
+      location: this.selectedLocation // Ajouter la localisation
     };
 
     const obs = this.isEditMode
@@ -157,5 +160,16 @@ export class ElectionFormComponent implements OnInit {
       next: () => this.router.navigate(['/clubs', this.clubId]),
       error: (err) => { console.error(err); this.loading = false; }
     });
+  }
+
+  // Méthode appelée quand une localisation est sélectionnée
+  onLocationSelected(location: LocationData): void {
+    this.selectedLocation = location;
+    console.log('Localisation sélectionnée:', location);
+  }
+
+  // Vérifier si la localisation est requise
+  isLocationRequired(): boolean {
+    return this.electionForm.get('type')?.value === 'IN_PERSON';
   }
 }

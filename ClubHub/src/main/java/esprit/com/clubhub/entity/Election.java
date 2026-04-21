@@ -25,13 +25,19 @@ public class Election {
     private ElectionResults results;
     private String electionType;  // "PRESIDENT" ou "BUREAU"
     private VotingMode votingMode; // Mode de vote pour élections de bureau
+    private ElectionLocation location; // Localisation pour élections présentielles
+    private List<VotingCode> votingCodes; // Codes de vote pour élections présentielles
+    private LocalDateTime candidacyDeadline; // Date limite de postulation (J-1)
+    private boolean reminderSent; // Email de rappel envoyé
 
 
     public Election() {
         this.candidates = new ArrayList<>();
         this.votes = new ArrayList<>();
+        this.votingCodes = new ArrayList<>();
         this.status = "PLANNED";
         this.anonymous = true;
+        this.reminderSent = false;
     }
 
     // Getters
@@ -49,6 +55,10 @@ public class Election {
     public ElectionResults getResults() { return results; }
     public String getElectionType() { return electionType; }
     public VotingMode getVotingMode() { return votingMode; }
+    public ElectionLocation getLocation() { return location; }
+    public List<VotingCode> getVotingCodes() { return votingCodes; }
+    public LocalDateTime getCandidacyDeadline() { return candidacyDeadline; }
+    public boolean isReminderSent() { return reminderSent; }
 
     // Setters
     public void setId(String id) { this.id = id; }
@@ -65,5 +75,9 @@ public class Election {
     public void setResults(ElectionResults results) { this.results = results; }
     public void setElectionType(String electionType) { this.electionType = electionType; }
     public void setVotingMode(VotingMode votingMode) { this.votingMode = votingMode; }
+    public void setLocation(ElectionLocation location) { this.location = location; }
+    public void setVotingCodes(List<VotingCode> votingCodes) { this.votingCodes = votingCodes; }
+    public void setCandidacyDeadline(LocalDateTime candidacyDeadline) { this.candidacyDeadline = candidacyDeadline; }
+    public void setReminderSent(boolean reminderSent) { this.reminderSent = reminderSent; }
 
 }

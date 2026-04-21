@@ -7,7 +7,7 @@ import { Club, Member, SubGroup, SubGroupRecommendation } from '../models/club.m
   providedIn: 'root'
 })
 export class ClubService {
-  private apiUrl = 'http://localhost:8084/api/clubs';
+  private apiUrl = 'http://172.18.72.32:8083/api/clubs';
 
   constructor(private http: HttpClient) { }
 

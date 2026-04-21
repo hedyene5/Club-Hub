@@ -7,10 +7,13 @@ import esprit.com.clubhub.entity.ElectionResults;
 import esprit.com.clubhub.entity.Vote;
 import esprit.com.clubhub.entity.*;
 import esprit.com.clubhub.service.ElectionService;
+import esprit.com.clubhub.service.VotingCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +24,9 @@ public class ElectionController {
 
     @Autowired
     private ElectionService electionService;
+    
+    @Autowired
+    private VotingCodeService votingCodeService;
 
     // ========== CRUD ==========
 
@@ -241,6 +247,135 @@ public class ElectionController {
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ✅ NOUVEAU: Voter avec code (pour élections présentielles)
+    @PostMapping("/{id}/vote-with-code")
+    public ResponseEntity<?> voteWithCode(
+            @PathVariable String id, 
+            @RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String code = request.get("code");
+            String candidateId = request.get("candidateId");
+            
+            if (email == null || code == null || candidateId == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Email, code et candidateId requis"));
+            }
+            
+            Election election = electionService.getElectionById(id)
+                    .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
+            
+            // Vérifier que c'est une élection présentielle
+            if (!"IN_PERSON".equals(election.getType())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Cette élection n'est pas présentielle"));
+            }
+            
+            // Valider le code
+            if (!votingCodeService.validateVotingCode(election.getVotingCodes(), email, code)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Code invalide ou déjà utilisé"));
+            }
+            
+            // Trouver l'userId correspondant à l'email
+            VotingCode votingCode = election.getVotingCodes().stream()
+                    .filter(vc -> vc.getEmail().equals(email) && vc.getCode().equals(code))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Code non trouvé"));
+            
+            // Créer le vote
+            Vote vote = new Vote();
+            vote.setVoterId(votingCode.getUserId());
+            vote.setCandidateId(candidateId);
+            
+            // Marquer le code comme utilisé
+            votingCodeService.markCodeAsUsed(election.getVotingCodes(), email, code);
+            
+            // Enregistrer le vote
+            Election updated = electionService.castVote(id, vote);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Vote enregistré avec succès",
+                "election", updated
+            ));
+            
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Vérifier si les candidatures sont encore ouvertes pour une élection
+     */
+    @GetMapping("/{id}/candidacy-status")
+    public ResponseEntity<Map<String, Object>> getCandidacyStatus(@PathVariable String id) {
+        try {
+            Election election = electionService.getElectionById(id)
+                    .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
+            
+            LocalDateTime now = LocalDateTime.now();
+            boolean isOpen = election.getCandidacyDeadline() == null || now.isBefore(election.getCandidacyDeadline());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("isOpen", isOpen);
+            response.put("candidacyDeadline", election.getCandidacyDeadline());
+            response.put("startDate", election.getStartDate());
+            
+            if (!isOpen && election.getCandidacyDeadline() != null) {
+                response.put("message", "Les candidatures sont fermées depuis le " + 
+                    election.getCandidacyDeadline().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm")));
+            } else if (isOpen && election.getCandidacyDeadline() != null) {
+                response.put("message", "Les candidatures sont ouvertes jusqu'au " + 
+                    election.getCandidacyDeadline().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm")));
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * ✅ NOUVEAU: Voter avec token (après scannage QR code)
+     * POST /api/elections/{id}/vote-with-token
+     * Body: { "voterId": "...", "candidateId": "...", "token": "..." }
+     */
+    @PostMapping("/{id}/vote-with-token")
+    public ResponseEntity<?> voteWithToken(
+            @PathVariable String id,
+            @RequestBody Map<String, String> request) {
+        try {
+            String voterId = request.get("voterId");
+            String candidateId = request.get("candidateId");
+            String token = request.get("token");
+            String subGroupId = request.get("subGroupId"); // Optionnel pour élections de bureau
+
+            if (voterId == null || candidateId == null || token == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "voterId, candidateId et token requis"));
+            }
+
+            // Créer le vote
+            Vote vote = new Vote();
+            vote.setVoterId(voterId);
+            vote.setCandidateId(candidateId);
+            if (subGroupId != null) {
+                vote.setSubGroupId(subGroupId);
+            }
+
+            // Enregistrer le vote avec validation du token
+            Election updated = electionService.castVoteWithToken(id, vote, token);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Vote enregistré avec succès",
+                "election", updated
+            ));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "error", e.getMessage()
+            ));
         }
     }
 }

@@ -61,6 +61,21 @@
       </div>
     </div>
 
+    <!-- Localisation (pour élections présentielles) -->
+    <div *ngIf="election.type === 'IN_PERSON' && election.location" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <h4 class="font-medium text-blue-800 mb-2">📍 Lieu de l'élection</h4>
+      <p class="text-blue-700">{{ election.location.address }}</p>
+      <p class="text-xs text-blue-600 mt-1">
+        Coordonnées: {{ election.location.latitude.toFixed(6) }}, {{ election.location.longitude.toFixed(6) }}
+      </p>
+      <!-- Lien vers Google Maps -->
+      <a [href]="'https://www.google.com/maps?q=' + election.location.latitude + ',' + election.location.longitude" 
+         target="_blank"
+         class="inline-block mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+        🗺️ Voir sur Google Maps
+      </a>
+    </div>
+
     <!-- SECTION CANDIDATURE (visible uniquement si élection PLANNED, pas encore candidat) -->
     <div class="mb-6" *ngIf="election.status === 'PLANNED' && !hasAlreadyApplied">
       <div class="flex justify-between items-center mb-3">

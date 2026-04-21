@@ -1,0 +1,237 @@
+package esprit.com.clubhub.service;
+
+import esprit.com.clubhub.entity.Candidate;
+import esprit.com.clubhub.entity.Election;
+import esprit.com.clubhub.entity.VotingCode;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.stereotype.Service;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+public class EmailService {
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    @Autowired
+    private TemplateEngine templateEngine;
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+    
+    @Value("${spring.mail.from:${spring.mail.username}}")
+    private String fromAddress;
+
+    @Value("${app.frontend.url:http://localhost:4200}")
+    private String frontendUrl;
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm");
+
+    /**
+     * ÉTAPE 1: Email de création d'élection
+     */
+    public void sendElectionCreatedEmail(Election election, List<String> memberEmails, String clubName) {
+        Context context = new Context();
+        context.setVariable("clubName", clubName);
+        context.setVariable("electionTitle", election.getTitle());
+        context.setVariable("electionDescription", election.getDescription());
+        context.setVariable("electionType", election.getType().equals("IN_PERSON") ? "Présentiel" : "Virtuel");
+        context.setVariable("startDate", election.getStartDate().format(DATE_FORMATTER));
+        context.setVariable("endDate", election.getEndDate().format(DATE_FORMATTER));
+        context.setVariable("candidacyDeadline", election.getCandidacyDeadline().format(DATE_FORMATTER));
+        context.setVariable("applyLink", frontendUrl + "/elections/" + election.getId());
+        
+        if (election.getLocation() != null) {
+            context.setVariable("hasLocation", true);
+            context.setVariable("location", election.getLocation().getAddress());
+        } else {
+            context.setVariable("hasLocation", false);
+        }
+
+        String htmlContent = templateEngine.process("election-created", context);
+        
+        int count = 0;
+        for (String email : memberEmails) {
+            sendHtmlEmail(email, "🗳️ Nouvelle élection: " + election.getTitle(), htmlContent);
+            count++;
+            
+            // Délai de 2 secondes entre chaque email (sauf pour le dernier)
+            if (count < memberEmails.size()) {
+                try {
+                    System.out.println("   ⏳ Attente de 2 secondes avant le prochain envoi...");
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    System.err.println("   ⚠️ Interruption du délai: " + e.getMessage());
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    /**
+     * ÉTAPE 2: Email de confirmation de candidature
+     */
+    public void sendCandidacyConfirmationEmail(String email, String candidateName, Election election) {
+        Context context = new Context();
+        context.setVariable("candidateName", candidateName);
+        context.setVariable("electionTitle", election.getTitle());
+        context.setVariable("electionLink", frontendUrl + "/elections/" + election.getId());
+
+        String htmlContent = templateEngine.process("candidacy-confirmation", context);
+        sendHtmlEmail(email, "✅ Candidature confirmée: " + election.getTitle(), htmlContent);
+    }
+
+    /**
+     * ÉTAPE 3: Email de rappel J-1 avec codes de vote
+     */
+    public void sendElectionReminderEmail(Election election, Map<String, String> memberEmailsWithNames, 
+                                          String clubName, Map<String, List<Candidate>> candidatesByCommittee) {
+        int count = 0;
+        int total = memberEmailsWithNames.size();
+        
+        for (Map.Entry<String, String> entry : memberEmailsWithNames.entrySet()) {
+            String email = entry.getKey();
+            String name = entry.getValue();
+            
+            Context context = new Context();
+            context.setVariable("memberName", name);
+            context.setVariable("clubName", clubName);
+            context.setVariable("electionTitle", election.getTitle());
+            context.setVariable("startDate", election.getStartDate().format(DATE_FORMATTER));
+            context.setVariable("endDate", election.getEndDate().format(DATE_FORMATTER));
+            context.setVariable("isInPerson", election.getType().equals("IN_PERSON"));
+            
+            if (election.getType().equals("IN_PERSON")) {
+                // Trouver le code de vote pour ce membre
+                VotingCode votingCode = election.getVotingCodes().stream()
+                    .filter(vc -> vc.getEmail().equals(email))
+                    .findFirst()
+                    .orElse(null);
+                
+                if (votingCode != null) {
+                    context.setVariable("votingCode", votingCode.getCode());
+                }
+                context.setVariable("location", election.getLocation() != null ? election.getLocation().getAddress() : "");
+                context.setVariable("voteLink", frontendUrl + "/elections/" + election.getId() + "/vote");
+            } else {
+                context.setVariable("voteLink", frontendUrl + "/elections/" + election.getId());
+            }
+            
+            // Ajouter la liste des candidats par comité
+            context.setVariable("candidatesByCommittee", candidatesByCommittee);
+            
+            String htmlContent = templateEngine.process("election-reminder", context);
+            sendHtmlEmail(email, "⏰ Rappel: Élection demain - " + election.getTitle(), htmlContent);
+            
+            count++;
+            
+            // Délai de 2 secondes entre chaque email (sauf pour le dernier)
+            if (count < total) {
+                try {
+                    System.out.println("   ⏳ Attente de 2 secondes avant le prochain envoi...");
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    System.err.println("   ⚠️ Interruption du délai: " + e.getMessage());
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    /**
+     * ÉTAPE 4: Email de confirmation de vote
+     */
+    public void sendVoteConfirmationEmail(String email, String voterName, Election election) {
+        Context context = new Context();
+        context.setVariable("voterName", voterName);
+        context.setVariable("electionTitle", election.getTitle());
+        context.setVariable("electionLink", frontendUrl + "/elections/" + election.getId());
+
+        String htmlContent = templateEngine.process("vote-confirmation", context);
+        sendHtmlEmail(email, "✅ Vote enregistré: " + election.getTitle(), htmlContent);
+    }
+
+    /**
+     * ÉTAPE 5: Email des résultats
+     */
+    public void sendElectionResultsEmail(Election election, List<String> memberEmails, String clubName, 
+                                         Map<String, String> winners) {
+        Context context = new Context();
+        context.setVariable("clubName", clubName);
+        context.setVariable("electionTitle", election.getTitle());
+        context.setVariable("electionType", election.getElectionType());
+        context.setVariable("winners", winners);
+        context.setVariable("electionLink", frontendUrl + "/elections/" + election.getId());
+        
+        // Ajouter les résultats détaillés
+        if (election.getResults() != null) {
+            context.setVariable("totalVotes", election.getResults().getTotalVotes());
+            context.setVariable("results", election.getResults().getVoteCount());
+        }
+
+        String htmlContent = templateEngine.process("election-results", context);
+        
+        int count = 0;
+        for (String email : memberEmails) {
+            sendHtmlEmail(email, "🏆 Résultats: " + election.getTitle(), htmlContent);
+            count++;
+            
+            // Délai de 2 secondes entre chaque email (sauf pour le dernier)
+            if (count < memberEmails.size()) {
+                try {
+                    System.out.println("   ⏳ Attente de 2 secondes avant le prochain envoi...");
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    System.err.println("   ⚠️ Interruption du délai: " + e.getMessage());
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+    /**
+     * Méthode utilitaire pour envoyer un email HTML
+     */
+    private void sendHtmlEmail(String to, String subject, String htmlContent) {
+        System.out.println("📧 Préparation email:");
+        System.out.println("   De: " + fromAddress);
+        System.out.println("   À: " + to);
+        System.out.println("   Sujet: " + subject);
+        
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setFrom(fromAddress);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+            
+            System.out.println("   📤 Envoi en cours...");
+            mailSender.send(message);
+            System.out.println("   ✅ Email envoyé avec succès à: " + to);
+            
+        } catch (MessagingException e) {
+            System.err.println("   ❌ Erreur MessagingException:");
+            System.err.println("      Message: " + e.getMessage());
+            System.err.println("      Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "N/A"));
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("   ❌ Erreur générale:");
+            System.err.println("      Type: " + e.getClass().getSimpleName());
+            System.err.println("      Message: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}

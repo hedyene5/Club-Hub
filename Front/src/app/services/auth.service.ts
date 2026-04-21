@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap, BehaviorSubject } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface RegisterPayload {
   firstName: string;
@@ -53,8 +54,8 @@ export interface StoredUser extends AuthResponse {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
-  // ✅ Appel via le Gateway
-  private gateway = 'http://localhost:8084';
+  // ✅ Appel via le User Service (port 8081)
+  private gateway = environment.authUrl.replace('/api', '');
   private api = `${this.gateway}/api/auth`;
   private usersApi = `${this.gateway}/api/users`;
 

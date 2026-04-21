@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../services/auth.service';
 
 @Component({
@@ -11,18 +11,26 @@ import { AuthService } from '../../../../services/auth.service';
   templateUrl: './signin-form.component.html',
   styles: ``
 })
-export class SigninFormComponent {
+export class SigninFormComponent implements OnInit {
   showPassword = false;
   isChecked = false;
   email = '';
   password = '';
   loading = false;
   error = '';
+  returnUrl: string = '';
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
+
+  ngOnInit() {
+    // Récupérer l'URL de retour depuis les query params
+    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '';
+    console.log('🔗 Return URL:', this.returnUrl);
+  }
 
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
@@ -41,6 +49,14 @@ export class SigninFormComponent {
         this.loading = false;
         console.log('✅ Login réussi:', response);
 
+        // Si returnUrl existe, rediriger vers cette URL
+        if (this.returnUrl) {
+          console.log('↩️ Redirection vers returnUrl:', this.returnUrl);
+          this.router.navigateByUrl(this.returnUrl);
+          return;
+        }
+
+        // Sinon, comportement par défaut
         if (response.clubId) {
           this.router.navigate(['/clubs', response.clubId]);
         } else if (response.role === 'PRESIDENT') {

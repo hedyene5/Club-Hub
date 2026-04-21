@@ -18,6 +18,9 @@ import { VideosComponent } from './pages/ui-elements/videos/videos.component';
 import { SignInComponent } from './pages/auth-pages/sign-in/sign-in.component';
 import { SignUpComponent } from './pages/auth-pages/sign-up/sign-up.component';
 import { CalenderComponent } from './pages/calender/calender.component';
+import { QrValidationComponent } from './components/qr-validation/qr-validation.component';
+import { ScanSuccessComponent } from './components/scan-success/scan-success.component';
+import { VoteWithTokenComponent } from './components/vote-with-token/vote-with-token.component';
 
 // ========== IMPORTS ==========
 import { ClubListComponent } from './pages/clubs/club-list/club-list.component';
@@ -172,6 +175,27 @@ export const routes: Routes = [
     path: 'signup',
     component: SignUpComponent,
     title: 'Sign Up'
+  },
+  
+  // ========== ROUTES QR CODE (PUBLIC - Sans authGuard) ==========
+  // Ces routes doivent être accessibles sans connexion pour permettre
+  // le scan QR depuis un smartphone non connecté
+  {
+    path: 'elections/scan/success',
+    component: ScanSuccessComponent,
+    title: 'Validation Réussie'
+  },
+  {
+    path: 'elections/scan/:token',
+    component: QrValidationComponent,
+    canActivate: [authGuard], // Nécessite connexion mais redirige avec returnUrl
+    title: 'Validation QR Code'
+  },
+  {
+    path: 'elections/:id/vote',
+    component: VoteWithTokenComponent,
+    canActivate: [authGuard], // Nécessite connexion mais redirige avec returnUrl
+    title: 'Voter'
   },
   
   // error page

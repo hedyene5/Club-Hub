@@ -28,6 +28,18 @@ public class ElectionService {
     @Autowired
     private RestTemplate restTemplate;
     
+    @Autowired
+    private GmailEmailService emailService;
+    
+    @Autowired
+    private VotingCodeService votingCodeService;
+    
+    @Autowired
+    private ElectionAttendanceService attendanceService;
+
+    @Autowired
+    private QRTokenService qrTokenService;
+    
     private String userServiceUrl = "http://localhost:8081/api/users";
 
     // ❌ SUPPRIMER cette ligne
@@ -63,9 +75,6 @@ public class ElectionService {
             throw new RuntimeException("La date de début doit être aujourd'hui ou dans le futur");
         }
 
-        if (election.getPositions() == null) {
-            election.setPositions(new ArrayList<>());
-        }
         if (election.getCandidates() == null) {
             election.setCandidates(new ArrayList<>());
         }
@@ -78,10 +87,68 @@ public class ElectionService {
         if (election.getElectionType() == null) {
             election.setElectionType("PRESIDENT");
         }
+        
+        // ✅ Calculer la date limite de candidature (24h avant l'élection)
+        election.setCandidacyDeadline(election.getStartDate().minusHours(24));
 
         System.out.println("✅ Sauvegarde de l'élection...");
         Election saved = electionRepository.save(election);
         System.out.println("✅ Élection créée avec ID: " + saved.getId());
+        
+        // ✅ ÉTAPE 1: Envoyer l'email de création à tous les membres
+        System.out.println("========================================");
+        System.out.println("📧 ENVOI DES EMAILS DE CRÉATION");
+        System.out.println("========================================");
+        
+        try {
+            Club club = clubRepository.findById(saved.getClubId()).orElse(null);
+            
+            if (club == null) {
+                System.err.println("❌ ERREUR: Club non trouvé avec ID: " + saved.getClubId());
+                return saved;
+            }
+            
+            System.out.println("✅ Club trouvé: " + club.getName());
+            System.out.println("   Nombre de membres: " + (club.getMembers() != null ? club.getMembers().size() : 0));
+            
+            if (club.getMembers() == null || club.getMembers().isEmpty()) {
+                System.err.println("⚠️ ATTENTION: Le club n'a aucun membre !");
+                return saved;
+            }
+            
+            List<String> memberEmails = club.getMembers().stream()
+                .map(Member::getEmail)
+                .filter(email -> email != null && !email.isEmpty())
+                .toList();
+            
+            System.out.println("   Emails valides trouvés: " + memberEmails.size());
+            
+            if (memberEmails.isEmpty()) {
+                System.err.println("⚠️ ATTENTION: Aucun membre n'a d'email valide !");
+                System.err.println("   Vérifiez que les membres ont des emails dans la base de données");
+                return saved;
+            }
+            
+            System.out.println("   Liste des emails:");
+            for (String email : memberEmails) {
+                System.out.println("      - " + email);
+            }
+            
+            System.out.println("📧 Tentative d'envoi des emails...");
+            emailService.sendElectionCreatedEmail(saved, memberEmails, club.getName());
+            System.out.println("✅ Emails de création envoyés à " + memberEmails.size() + " membres");
+            System.out.println("========================================");
+            
+        } catch (Exception e) {
+            System.err.println("========================================");
+            System.err.println("❌ ERREUR lors de l'envoi des emails de création:");
+            System.err.println("   Type: " + e.getClass().getSimpleName());
+            System.err.println("   Message: " + e.getMessage());
+            System.err.println("   Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "N/A"));
+            System.err.println("========================================");
+            e.printStackTrace();
+        }
+        
         return saved;
     }
 
@@ -99,7 +166,6 @@ public class ElectionService {
         if (electionDetails.getEndDate() != null) election.setEndDate(electionDetails.getEndDate());
         if (electionDetails.getType() != null) election.setType(electionDetails.getType());
         if (electionDetails.getElectionType() != null) election.setElectionType(electionDetails.getElectionType());
-        if (electionDetails.getPositions() != null) election.setPositions(electionDetails.getPositions());
 
         if (electionDetails.getCandidates() != null && !electionDetails.getCandidates().isEmpty()) {
             System.out.println("✅ Mise à jour des candidats...");
@@ -153,6 +219,48 @@ public class ElectionService {
             applyPresidentRoleChange(saved);
         } else if ("BUREAU".equals(election.getElectionType())) {
             applyBureauRoleChange(saved);
+        }
+        
+        // ✅ ÉTAPE 5: Envoyer les résultats par email
+        try {
+            Club club = clubRepository.findById(saved.getClubId()).orElse(null);
+            if (club != null && saved.getResults() != null) {
+                List<String> memberEmails = club.getMembers().stream()
+                    .map(Member::getEmail)
+                    .filter(email -> email != null && !email.isEmpty())
+                    .toList();
+                
+                // Préparer la map des gagnants
+                Map<String, String> winners = new HashMap<>();
+                if ("PRESIDENT".equals(saved.getElectionType())) {
+                    String winnerId = saved.getResults().getWinnerId();
+                    Candidate winner = saved.getCandidates().stream()
+                        .filter(c -> c.getUserId().equals(winnerId))
+                        .findFirst().orElse(null);
+                    if (winner != null) {
+                        winners.put("Président", winner.getName());
+                    }
+                } else {
+                    Map<String, String> winnerBySubGroup = saved.getResults().getWinnerBySubGroup();
+                    if (winnerBySubGroup != null) {
+                        winnerBySubGroup.forEach((committee, winnerId) -> {
+                            Candidate winner = saved.getCandidates().stream()
+                                .filter(c -> c.getUserId().equals(winnerId))
+                                .findFirst().orElse(null);
+                            if (winner != null) {
+                                winners.put(committee, winner.getName());
+                            }
+                        });
+                    }
+                }
+                
+                if (!memberEmails.isEmpty() && !winners.isEmpty()) {
+                    emailService.sendElectionResultsEmail(saved, memberEmails, club.getName(), winners);
+                    System.out.println("✅ Emails de résultats envoyés à " + memberEmails.size() + " membres");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erreur envoi emails de résultats: " + e.getMessage());
         }
 
         return saved;
@@ -464,6 +572,15 @@ public class ElectionService {
         election.getVotes().add(vote);
         Election saved = electionRepository.save(election);
         System.out.println("✅ Vote enregistré");
+        
+        // ✅ ÉTAPE 4: Envoyer email de confirmation de vote
+        try {
+            emailService.sendVoteConfirmationEmail(voter.getEmail(), voter.getName(), saved);
+            System.out.println("✅ Email de confirmation envoyé à " + voter.getEmail());
+        } catch (Exception e) {
+            System.err.println("❌ Erreur envoi email de confirmation: " + e.getMessage());
+        }
+        
         System.out.println("=================");
         return saved;
     }
@@ -550,6 +667,16 @@ public class ElectionService {
         Election election = electionRepository.findById(electionId)
                 .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
 
+        // ✅ Vérifier si les candidatures sont encore ouvertes
+        LocalDateTime now = LocalDateTime.now();
+        if (election.getCandidacyDeadline() != null && now.isAfter(election.getCandidacyDeadline())) {
+            EligibilityResult closedResult = new EligibilityResult();
+            closedResult.setEligible(false);
+            closedResult.addReason("❌ Les candidatures sont fermées. La date limite était le " + 
+                election.getCandidacyDeadline().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm")));
+            return closedResult;
+        }
+
         EligibilityResult result;
 
         if (election.getElectionType() != null && election.getElectionType().equals("PRESIDENT")) {
@@ -564,6 +691,14 @@ public class ElectionService {
             election.getCandidates().add(candidate);
             electionRepository.save(election);
             result.addReason("✅ Candidature soumise avec succès ! En attente de validation par le CEO.");
+            
+            // ✅ ÉTAPE 2: Envoyer email de confirmation de candidature
+            try {
+                emailService.sendCandidacyConfirmationEmail(candidate.getEmail(), candidate.getName(), election);
+                System.out.println("✅ Email de confirmation de candidature envoyé à " + candidate.getEmail());
+            } catch (Exception e) {
+                System.err.println("❌ Erreur envoi email de confirmation: " + e.getMessage());
+            }
         }
 
         return result;
@@ -753,5 +888,33 @@ public class ElectionService {
         result.put("availableCommittees", availableCommittees);
         
         return result;
+    }
+
+    /**
+     * ✅ AMÉLIORÉ: Vote avec token (pour élections présentielles après scannage QR)
+     */
+    public Election castVoteWithToken(String electionId, Vote vote, String votingToken) {
+        System.out.println("=== CAST VOTE WITH TOKEN ===");
+        System.out.println("ElectionId: " + electionId);
+        System.out.println("VoterId: " + vote.getVoterId());
+        System.out.println("Token: " + votingToken);
+
+        // 1. Valider le token via QRTokenService
+        if (!qrTokenService.isVotingTokenValid(votingToken)) {
+            throw new RuntimeException("Token invalide ou expiré");
+        }
+
+        System.out.println("✅ Token validé");
+
+        // 2. Enregistrer le vote (utilise la logique existante)
+        Election election = castVote(electionId, vote);
+
+        // 3. Marquer le token comme utilisé
+        qrTokenService.markVotingTokenAsUsed(votingToken);
+
+        System.out.println("✅ Vote avec token enregistré");
+        System.out.println("=================");
+
+        return election;
     }
 }

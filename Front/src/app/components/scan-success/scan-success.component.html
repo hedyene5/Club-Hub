@@ -1,0 +1,43 @@
+<div class="success-container">
+  <div class="success-card">
+    <!-- Validated -->
+    <div *ngIf="isValidated" class="success-content validated">
+      <div class="icon">✅</div>
+      <h1>Présence Validée</h1>
+      <p class="member-name">{{ memberName }}</p>
+      <p class="message">
+        La présence a été validée avec succès.<br/>
+        Un email avec le lien de vote a été envoyé au membre.
+      </p>
+      <div class="info-box success">
+        <p><strong>✉️ Email envoyé</strong></p>
+        <p>Le membre recevra son lien de vote personnel dans quelques instants.</p>
+      </div>
+    </div>
+
+    <!-- Rejected -->
+    <div *ngIf="isRejected" class="success-content rejected">
+      <div class="icon">❌</div>
+      <h1>Présence Rejetée</h1>
+      <p class="member-name">{{ memberName }}</p>
+      <p class="message">
+        La présence a été rejetée.<br/>
+        Un email de notification a été envoyé au membre.
+      </p>
+      <div class="info-box warning">
+        <p><strong>⚠️ Action enregistrée</strong></p>
+        <p>Le membre a été informé du rejet de sa présence.</p>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn-primary" (click)="scanAnother()">
+        📱 Scanner un autre QR code
+      </button>
+      <button class="btn-secondary" routerLink="/dashboard">
+        🏠 Retour au tableau de bord
+      </button>
+    </div>
+  </div>
+</div>

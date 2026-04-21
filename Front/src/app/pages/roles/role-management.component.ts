@@ -46,7 +46,7 @@ export class RoleManagementComponent implements OnInit {
     isActive: true
   };
 
-  private apiUrl = 'http://localhost:8084/api/roles';
+  private apiUrl = 'http://172.18.72.32:8083/api/roles';
 
   constructor(
     private http: HttpClient,

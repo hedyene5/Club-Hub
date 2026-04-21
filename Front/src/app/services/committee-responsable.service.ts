@@ -14,7 +14,7 @@ export interface ResponsableStatus {
   providedIn: 'root'
 })
 export class CommitteeResponsableService {
-  private apiUrl = 'http://localhost:8084/api/clubs';
+  private apiUrl = 'http://172.18.72.32:8083/api/clubs';
   
   // ✅ Cache du statut de responsable
   private responsableStatusSubject = new BehaviorSubject<ResponsableStatus | null>(null);
