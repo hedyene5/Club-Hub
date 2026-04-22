@@ -7,11 +7,12 @@ import { CartService } from '../../services/cart.service';
 import { RecentlyViewedService } from '../../services/recently-viewed.service';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { EventMapComponent } from '../../shared/components/event-map/event-map.component';
 
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, EventMapComponent],
   templateUrl: './product-detail.component.html'
 })
 export class ProductDetailComponent implements OnInit {
@@ -70,8 +71,13 @@ export class ProductDetailComponent implements OnInit {
     }
   }
 
+  // Fixed: navigate back to products for physical items, to tickets for event tickets
   goBack() {
-    this.router.navigate(['/products']);
+    if (this.product?.productType === 'EVENT_TICKET') {
+      this.router.navigate(['/tickets']);
+    } else {
+      this.router.navigate(['/products']);
+    }
   }
 
   getProductTypeLabel(type: string): string {
@@ -93,7 +99,6 @@ export class ProductDetailComponent implements OnInit {
       return;
     }
 
-    // Use clubName from product, or fallback to product name, then default
     const clubName = this.product?.clubName || this.product?.name || 'Notre Club';
     const certificateTitle = 'CERTIFICAT DE MEMBRE';
 
@@ -107,14 +112,12 @@ export class ProductDetailComponent implements OnInit {
 
     certDiv.innerHTML = `
       <div style="background: linear-gradient(135deg, #fff8e7 0%, #fff 100%); border: 2px solid #fbbf24; border-radius: 24px; padding: 30px;">
-        <!-- Club header -->
         <div style="text-align: center; margin-bottom: 30px;">
           <div style="font-size: 48px; margin-bottom: 10px;">🏆</div>
           <div style="font-size: 14px; letter-spacing: 4px; color: #b45309;">${this.escapeHtml(clubName).toUpperCase()}</div>
           <h1 style="font-size: 42px; font-weight: bold; color: #1e3a8a; margin: 10px 0 0;">${certificateTitle}</h1>
         </div>
 
-        <!-- Certificate body -->
         <div style="text-align: center; margin: 40px 0;">
           <p style="font-size: 18px; color: #374151;">Ce certificat est décerné à</p>
           <p style="font-size: 48px; font-weight: bold; color: #b45309; margin: 20px 0; border-bottom: 2px dashed #fbbf24; display: inline-block; padding-bottom: 10px;">
@@ -123,14 +126,12 @@ export class ProductDetailComponent implements OnInit {
           <p style="font-size: 18px; color: #374151; margin-top: 30px;">pour son engagement et son soutien au sein de notre club.</p>
         </div>
 
-        <!-- Product details -->
         <div style="background: #fef3c7; border-radius: 16px; padding: 20px; margin: 30px 0; text-align: center;">
           <p style="font-size: 14px; color: #92400e; text-transform: uppercase;">Objet</p>
           <p style="font-size: 24px; font-weight: bold; color: #1e3a8a;">${this.escapeHtml(this.product?.name || '')}</p>
           <p style="font-size: 14px; color: #92400e;">Délivré le ${new Date().toLocaleDateString('fr-FR')}</p>
         </div>
 
-        <!-- Signature & stamp area -->
         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 50px;">
           <div style="text-align: center; width: 45%;">
             <div style="border-top: 1px solid #333; padding-top: 10px; font-size: 14px;">Le Président du Club</div>
@@ -140,7 +141,6 @@ export class ProductDetailComponent implements OnInit {
           </div>
         </div>
 
-        <!-- Footer -->
         <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #9ca3af;">
           ${this.escapeHtml(clubName)} – Fier membre depuis ${new Date().getFullYear()}
         </div>

@@ -125,4 +125,9 @@ export class ApiService {
   updateOrderStatus(id: string, status: string): Observable<Order> {
     return this.http.put<Order>(`${API_URL}/orders/${id}/status?status=${status}`, {}, { withCredentials: true });
   }
+
+  // ========== AI PDF EXTRACTION ==========
+  extractFromPdf(formData: FormData): Observable<any> {
+    return this.http.post<any>(`${API_URL}/products/extract-from-pdf`, formData);
+  }
 }

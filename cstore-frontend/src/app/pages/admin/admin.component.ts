@@ -44,6 +44,10 @@ export class AdminComponent implements OnInit {
   selectedStatus: { [key: string]: string } = {};
   activeTab = 'products';
 
+  // ========== AI PDF IMPORT PROPERTIES ==========
+  selectedFile: File | null = null;
+  importingPdf: boolean = false;
+
   constructor(private apiService: ApiService) {}
 
   ngOnInit() {
@@ -205,7 +209,7 @@ export class AdminComponent implements OnInit {
       price: Number(this.newProduct.price),
       stockQuantity: Number(this.newProduct.stockQuantity),
       isAvailable: this.newProduct.isAvailable,
-      eventName: 'General'  // ✅ Always send eventName
+      eventName: 'General'
     };
 
     if (this.newProduct.imageUrl?.trim()) {
@@ -326,5 +330,63 @@ export class AdminComponent implements OnInit {
     if (tab === 'orders') {
       this.loadOrders();
     }
+  }
+
+  // ========== AI PDF IMPORT METHODS ==========
+  onFileSelected(event: any) {
+    this.selectedFile = event.target.files[0];
+  }
+
+  importFromPdf() {
+    if (!this.selectedFile) return;
+    this.importingPdf = true;
+    const formData = new FormData();
+    formData.append('file', this.selectedFile);
+    formData.append('type', this.activeTab === 'products' ? 'PRODUCT' : 'TICKET');
+
+    this.apiService.extractFromPdf(formData).subscribe({
+      next: (data) => {
+        this.importingPdf = false;
+        if (this.activeTab === 'products') {
+          // Auto-fill product form
+          this.newProduct.name = data['name'] || '';
+          this.newProduct.price = data['price'] || 0;
+          let productType = data['productType'] || 'JERSEY';
+          // Prevent accidental ticket type for products
+          if (productType === 'EVENT_TICKET') productType = 'ACCESSORY';
+          this.newProduct.productType = productType;
+          this.newProduct.size = data['size'] || '';
+          this.newProduct.color = data['color'] || '';
+          this.newProduct.stockQuantity = data['stockQuantity'] || 0;
+          this.newProduct.description = data['description'] || '';
+          // Force the product to be available immediately
+          this.newProduct.isAvailable = true;
+          // Handle AI-generated image URL
+          this.newProduct.imageUrl = data['imageUrl'] || '';
+          this.onImageUrlChange(this.newProduct.imageUrl);
+        } else {
+          // Auto-fill ticket form
+          this.newProduct.name = data['name'] || '';
+          this.newProduct.price = data['price'] || 0;
+          this.newProduct.productType = 'EVENT_TICKET';
+          this.eventName = data['eventName'] || '';
+          this.eventDate = data['eventDate'] || '';
+          this.venue = data['venue'] || '';
+          this.newProduct.stockQuantity = data['availableTickets'] || 0;
+          this.newProduct.description = data['description'] || '';
+          // Force ticket to be available
+          this.newProduct.isAvailable = true;
+          // Handle AI-generated image URL for tickets (optional)
+          this.newProduct.imageUrl = data['imageUrl'] || '';
+          this.onImageUrlChange(this.newProduct.imageUrl);
+        }
+        alert('✅ Formulaire rempli automatiquement par l’IA !');
+      },
+      error: (err) => {
+        this.importingPdf = false;
+        console.error('Erreur IA:', err);
+        alert('❌ Erreur lors de l’extraction. Vérifiez votre clé API Gemini.');
+      }
+    });
   }
 }
