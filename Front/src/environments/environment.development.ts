@@ -1,6 +1,6 @@
 // Environnement de developpement
 export const environment = {
   production: false,
-  authUrl: 'http://172.18.72.32:8081/api',
-  apiUrl: 'http://172.18.72.32:8083/api'
+  authUrl: 'http://192.168.1.20:8081/api',
+  apiUrl: 'http://192.168.1.20:8083/api'
 };

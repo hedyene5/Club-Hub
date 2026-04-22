@@ -94,7 +94,7 @@ export class ProfileComponent implements OnInit {
       phoneNumber: this.editData.phoneNumber
     };
 
-    this.http.put(`http://172.18.72.32:8081/api/users/${this.user.userId}`, updateData).subscribe({
+    this.http.put(`http://192.168.1.20:8081/api/users/${this.user.userId}`, updateData).subscribe({
       next: (response: any) => {
         // Mettre à jour les données locales
         this.user.firstName = this.editData.firstName;
@@ -134,7 +134,7 @@ export class ProfileComponent implements OnInit {
     };
 
     this.http.put(
-      `http://172.18.72.32:8083/api/clubs/${this.user.clubId}/members/${this.user.userId}`,
+      `http://192.168.1.20:8083/api/clubs/${this.user.clubId}/members/${this.user.userId}`,
       memberData
     ).subscribe({
       next: () => {

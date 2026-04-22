@@ -20,7 +20,7 @@ export class VoteWithTokenComponent implements OnInit {
   voting: boolean = false;
   selectedCandidateId: string = '';
 
-  private apiUrl = 'http://172.18.72.32:8083/api';
+  private apiUrl = 'http://192.168.1.20:8083/api';
 
   constructor(
     private route: ActivatedRoute,

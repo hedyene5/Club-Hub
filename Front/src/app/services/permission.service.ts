@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class PermissionService {
-  private apiUrl = 'http://172.18.72.32:8083/api/permissions';
+  private apiUrl = 'http://192.168.1.20:8081/api/permissions';
   private permissionsSubject = new BehaviorSubject<string[]>([]);
   public permissions$ = this.permissionsSubject.asObservable();
 

@@ -7,7 +7,7 @@ import { Election, Candidate, Vote, ElectionResults, EligibilityCriteria, Eligib
   providedIn: 'root'
 })
 export class ElectionService {
-  private apiUrl = 'http://172.18.72.32:8083/api/elections';
+  private apiUrl = 'http://192.168.1.20:8083/api/elections';
 
   constructor(private http: HttpClient) { }
 

@@ -15,7 +15,7 @@ export interface CustomRole {
   providedIn: 'root'
 })
 export class CustomRoleService {
-  private apiUrl = 'http://172.18.72.32:8083/api/roles';
+  private apiUrl = 'http://192.168.1.20:8081/api/roles';
 
   constructor(private http: HttpClient) {}
 
