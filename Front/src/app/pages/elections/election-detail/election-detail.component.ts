@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ElectionService } from '../../../services/election.service';
 import { ClubService } from '../../../services/club.service';
 import { AuthService } from '../../../services/auth.service';
+import { AiGenerationService } from '../../../services/ai-generation.service';
 import { Election, Candidate, Vote, EligibilityResult } from '../../../models/election.model';
 import { SubGroup } from '../../../models/club.model';
 
@@ -34,11 +35,16 @@ export class ElectionDetailComponent implements OnInit {
   showApplicationForm = false;
   submitting = false;
   clubSubGroups: SubGroup[] = [];
+  
+  // Génération IA
+  generatingWithAI = false;
+  aiError: string | null = null;
 
   constructor(
     private electionService: ElectionService,
     private clubService: ClubService,
     private authService: AuthService,
+    private aiService: AiGenerationService,
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder
@@ -63,6 +69,7 @@ export class ElectionDetailComponent implements OnInit {
       email: ['', [Validators.required, Validators.email]],
       subGroupTarget: [''],
       yearsInClub: [0, [Validators.min(0), Validators.max(10)]],
+      userIdeas: [''],  // Nouveau champ pour les idées de l'utilisateur
       motivation: ['', Validators.required],
       manifesto: [''],
       skills: [''],
@@ -215,6 +222,48 @@ export class ElectionDetailComponent implements OnInit {
   }
 
   // ========== Soumettre une candidature (pour les membres) ==========
+  generateWithAI(): void {
+    const userIdeas = this.applicationForm.get('userIdeas')?.value;
+    
+    if (!userIdeas || userIdeas.trim().length === 0) {
+      this.aiError = 'Veuillez d\'abord décrire vos idées dans le champ ci-dessus';
+      return;
+    }
+    
+    this.generatingWithAI = true;
+    this.aiError = null;
+    
+    const request = {
+      candidateName: this.applicationForm.get('name')?.value || 'Candidat',
+      clubName: 'ClubHub',
+      position: this.applicationForm.get('subGroupTarget')?.value || 'Membre',
+      userIdeas: userIdeas
+    };
+    
+    this.aiService.generateMotivationLetter(
+      request,
+      this.currentUserId,
+      this.clubId || undefined
+    ).subscribe({
+      next: (response) => {
+        // Remplir automatiquement les champs
+        this.applicationForm.patchValue({
+          motivation: response.motivationLetter,
+          manifesto: response.program,
+          skills: response.skills.join(', ')
+        });
+        
+        this.generatingWithAI = false;
+        this.aiError = null;
+      },
+      error: (err) => {
+        console.error('Erreur génération IA:', err);
+        this.generatingWithAI = false;
+        this.aiError = 'Erreur lors de la génération. Vérifiez que le service IA est démarré.';
+      }
+    });
+  }
+
   submitApplication(): void {
     if (this.applicationForm.invalid) return;
     

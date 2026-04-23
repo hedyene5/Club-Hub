@@ -1,0 +1,11 @@
+esprit\com\aiservice\service\AiGenerationService$2.class
+esprit\com\aiservice\config\WebClientConfig.class
+esprit\com\aiservice\service\AiGenerationService$3.class
+esprit\com\aiservice\service\AiGenerationService.class
+esprit\com\aiservice\controller\AiController.class
+esprit\com\aiservice\AiServiceApplication.class
+esprit\com\aiservice\repository\GeneratedContentRepository.class
+esprit\com\aiservice\service\AiGenerationService$1.class
+esprit\com\aiservice\dto\MotivationLetterRequest.class
+esprit\com\aiservice\dto\GeneratedContent.class
+esprit\com\aiservice\dto\ProgramRequest.class

@@ -1,0 +1,64 @@
+╔════════════════════════════════════════════════════════════╗
+║         CHANGEMENT DE PORT : 8084 → 8085                   ║
+╚════════════════════════════════════════════════════════════╝
+
+✅ PROBLÈME RÉSOLU
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Le port 8084 était utilisé par le Gateway ClubHub.
+Le AI Service Backend utilise maintenant le port 8085.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 PORTS CLUBHUB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4200  → Frontend Angular
+8081  → User Service
+8083  → Club Service
+8084  → Gateway (déjà utilisé)
+8085  → AI Service Backend ← NOUVEAU
+5000  → AI Service Python
+27017 → MongoDB
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 DÉMARRAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PowerShell #1 :
+    cd AI-Service
+    .\start-service.ps1
+
+PowerShell #2 :
+    cd AI-Service-Backend
+    .\start-backend.ps1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ TEST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+curl http://localhost:5000/health
+curl http://192.168.1.20:8085/api/ai/health
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 FICHIERS MODIFIÉS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ AI-Service-Backend/src/main/resources/application.properties
+✅ Front/src/app/services/ai-generation.service.ts
+✅ AI-Service-Backend/start-backend.ps1
+✅ DEMARRER_TOUT.ps1
+✅ GUIDE_VISUEL_IA.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 AUCUNE ACTION REQUISE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tous les fichiers ont été mis à jour automatiquement.
+Vous pouvez démarrer les services normalement.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

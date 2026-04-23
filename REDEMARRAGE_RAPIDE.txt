@@ -1,0 +1,84 @@
+╔════════════════════════════════════════════════════════════╗
+║         REDÉMARRAGE RAPIDE - SERVICE IA                    ║
+╚════════════════════════════════════════════════════════════╝
+
+⚠️ IMPORTANT : Le service Python a été mis à jour
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Vous devez redémarrer le service Python pour appliquer les corrections.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ÉTAPE 1 : Arrêter le service Python actuel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dans la fenêtre PowerShell où tourne Python :
+    Appuyez sur Ctrl+C
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ÉTAPE 2 : Redémarrer le service Python
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dans la même fenêtre PowerShell :
+    cd AI-Service
+    .\start-service.ps1
+
+Attendez : "✅ Service IA démarré sur http://localhost:5000"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ÉTAPE 3 : Tester le service Python
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ouvrez une nouvelle fenêtre PowerShell :
+    cd AI-Service
+    .\test-endpoints.ps1
+
+Résultat attendu :
+    ✅ Health check OK
+    ✅ Génération OK
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ÉTAPE 4 : Tester le backend Spring Boot
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dans la même fenêtre PowerShell :
+    cd AI-Service-Backend
+    .\test-backend.ps1
+
+Résultat attendu :
+    ✅ Health check OK
+    ✅ Génération OK
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ÉTAPE 5 : Tester dans l'application
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Ouvrez http://192.168.1.20:4200
+2. Allez dans une élection
+3. Cliquez sur "Postuler"
+4. Remplissez "Parlez-nous de vous / vos idées"
+5. Cliquez sur "🤖 Générer avec IA"
+6. Les champs se remplissent automatiquement ! ✨
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 CE QUI A ÉTÉ CORRIGÉ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Endpoint Python : /generate → /generate/motivation-letter
+✅ Format de réponse : Correspond maintenant au backend Spring Boot
+✅ Nouveau endpoint : /generate/program
+✅ Health check amélioré
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 AIDE SUPPLÉMENTAIRE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Guide complet : DEPANNAGE_ERREUR_500.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

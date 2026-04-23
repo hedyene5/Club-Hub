@@ -26,4 +26,16 @@ export class CustomRoleService {
   getRoleById(id: string): Observable<CustomRole> {
     return this.http.get<CustomRole>(`${this.apiUrl}/${id}`);
   }
+
+  createRole(role: Partial<CustomRole>): Observable<CustomRole> {
+    return this.http.post<CustomRole>(this.apiUrl, role);
+  }
+
+  updateRole(id: string, role: Partial<CustomRole>): Observable<CustomRole> {
+    return this.http.put<CustomRole>(`${this.apiUrl}/${id}`, role);
+  }
+
+  deleteRole(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
 }

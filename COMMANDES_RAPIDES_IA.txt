@@ -1,0 +1,117 @@
+╔════════════════════════════════════════════════════════════╗
+║         COMMANDES RAPIDES - SERVICE IA                     ║
+╚════════════════════════════════════════════════════════════╝
+
+🎯 PROBLÈME : Erreur 404 sur http://192.168.1.20:8084/api/ai/...
+✅ SOLUTION : Démarrer le backend Spring Boot (port 8084)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 ÉTAPE 1 : Démarrer le service Python (port 5000)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ouvrez PowerShell #1 :
+
+    cd AI-Service
+    .\start-service.ps1
+
+Attendez : "✅ Service IA démarré sur http://localhost:5000"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 ÉTAPE 2 : Démarrer le backend Spring Boot (port 8084)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ouvrez PowerShell #2 :
+
+    cd AI-Service-Backend
+    .\start-backend.ps1
+
+OU directement avec Maven :
+
+    cd AI-Service-Backend
+    mvn spring-boot:run
+
+Attendez : "Started AiServiceApplication in X seconds"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ VÉRIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Test Python :
+    curl http://localhost:5000/health
+
+Test Spring Boot :
+    curl http://192.168.1.20:8084/api/ai/health
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 TEST DANS L'APPLICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Ouvrez http://192.168.1.20:4200
+2. Connectez-vous
+3. Allez dans un club → Élections
+4. Sélectionnez une élection "PLANNED"
+5. Cliquez sur "➕ Postuler"
+6. Remplissez "Parlez-nous de vous / vos idées"
+7. Cliquez sur "🤖 Générer avec IA"
+8. Les champs se remplissent automatiquement !
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ PRÉREQUIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Python installé : python --version
+✅ Maven installé : mvn --version
+✅ Java 17 installé : java -version
+
+Si Maven n'est pas installé :
+→ https://maven.apache.org/download.cgi
+→ Ajoutez au PATH : C:\Program Files\Apache\maven\bin
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛑 ARRÊTER LES SERVICES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dans chaque fenêtre PowerShell : Ctrl+C
+
+Ou utilisez le script :
+    .\ARRETER_TOUT.ps1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Frontend Angular (4200)
+    ↓ HTTP POST
+Backend Spring Boot (8084) ← VOUS ÊTES ICI
+    ↓ HTTP POST
+Service Python Flask (5000)
+    ↓
+Modèle GPT-2 (local)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 DÉPANNAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Erreur "mvn n'est pas reconnu" :
+→ Maven n'est pas installé ou pas dans le PATH
+
+Erreur "Port 8084 already in use" :
+→ netstat -ano | findstr :8084
+→ taskkill /PID <PID> /F
+
+Erreur 404 sur /api/ai/... :
+→ Le backend Spring Boot n'est pas démarré
+→ Relancez l'ÉTAPE 2
+
+Le bouton IA est grisé :
+→ Remplissez d'abord "Parlez-nous de vous"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

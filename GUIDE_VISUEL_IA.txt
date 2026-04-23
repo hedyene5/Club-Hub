@@ -1,0 +1,134 @@
+╔════════════════════════════════════════════════════════════╗
+║         GUIDE VISUEL - SERVICE IA CLUBHUB                  ║
+╚════════════════════════════════════════════════════════════╝
+
+🎯 PROBLÈME ACTUEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Erreur 404 sur http://192.168.1.20:8085/api/ai/...
+❌ Le bouton "🤖 Générer avec IA" ne fonctionne pas
+
+CAUSE : Le backend Spring Boot (port 8085) n'est pas démarré
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION RAPIDE (2 COMMANDES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ÉTAPE 0 : Vérifier les prérequis (optionnel)
+────────────────────────────────────────────────────────────
+    .\check-prerequisites.ps1
+
+ÉTAPE 1 : Démarrer le service Python (port 5000)
+────────────────────────────────────────────────────────────
+Ouvrez PowerShell #1 et tapez :
+
+    cd AI-Service
+    .\start-service.ps1
+
+Attendez ce message :
+    ✅ Service IA démarré sur http://localhost:5000
+
+ÉTAPE 2 : Démarrer le backend Spring Boot (port 8085)
+────────────────────────────────────────────────────────────
+Ouvrez PowerShell #2 et tapez :
+
+    cd AI-Service-Backend
+    .\start-backend.ps1
+
+Attendez ce message :
+    Started AiServiceApplication in X seconds
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 C'EST PRÊT ! TESTEZ MAINTENANT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Ouvrez votre navigateur : http://192.168.1.20:4200
+2. Connectez-vous avec un compte membre
+3. Allez dans un club → Élections
+4. Sélectionnez une élection "PLANNED"
+5. Cliquez sur "➕ Postuler"
+6. Remplissez "Parlez-nous de vous / vos idées"
+   Exemple : "Je suis passionné par l'organisation d'événements"
+7. Cliquez sur "🤖 Générer avec IA"
+8. Attendez 2-5 secondes
+9. Les champs se remplissent automatiquement ! ✨
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Frontend Angular (4200)
+    ↓ POST /api/ai/generate/motivation-letter
+Backend Spring Boot (8085) ← VOUS DEVEZ DÉMARRER CECI
+    ↓ POST /generate
+Service Python Flask (5000)
+    ↓
+Modèle GPT-2 (local, 100% gratuit)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ SI MAVEN N'EST PAS INSTALLÉ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Erreur : "mvn n'est pas reconnu"
+
+Solution :
+1. Téléchargez Maven : https://maven.apache.org/download.cgi
+2. Extrayez dans : C:\Program Files\Apache\maven
+3. Ajoutez au PATH Windows :
+   - Recherchez "Variables d'environnement"
+   - Modifiez "Path"
+   - Ajoutez : C:\Program Files\Apache\maven\bin
+4. Redémarrez PowerShell
+5. Vérifiez : mvn --version
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 VÉRIFICATION RAPIDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Test Python :
+    curl http://localhost:5000/health
+
+Réponse attendue :
+    {"status":"healthy","model":"asi/gpt-fr-cased-small"}
+
+Test Spring Boot :
+    curl http://192.168.1.20:8085/api/ai/health
+
+Réponse attendue :
+    {"status":"healthy","pythonService":"connected"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛑 ARRÊTER LES SERVICES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dans chaque fenêtre PowerShell : Ctrl+C
+
+Ou utilisez le script d'arrêt :
+    .\ARRETER_TOUT.ps1
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 FICHIERS D'AIDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ check-prerequisites.ps1      → Vérifier les prérequis
+✅ README_IA_QUICK_START.md     → Guide rapide
+✅ DEMARRAGE_MANUEL_IA.md       → Guide complet
+✅ COMMANDES_RAPIDES_IA.txt     → Commandes essentielles
+✅ GUIDE_TEST_IA_CANDIDATURE.md → Test de la fonctionnalité
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 RÉSUMÉ EN 3 LIGNES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. cd AI-Service ; .\start-service.ps1
+2. cd AI-Service-Backend ; .\start-backend.ps1
+3. Testez dans l'application !
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

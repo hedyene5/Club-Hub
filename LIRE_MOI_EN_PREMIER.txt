@@ -1,0 +1,142 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                                                                               ║
+║                    🚀 SERVICE IA - DÉMARRAGE RAPIDE 🚀                        ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  👋 BIENVENUE !                                                               │
+│                                                                               │
+│  Ce service IA génère automatiquement :                                      │
+│    ✅ Lettres de motivation personnalisées                                   │
+│    ✅ Programmes d'activités pour les clubs                                  │
+│                                                                               │
+│  🎯 100% LOCAL - Pas d'API externe - Gratuit                                 │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  DÉMARRAGE EN 3 ÉTAPES                                                        ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  1️⃣  Ouvre PowerShell
+      → Appuie sur Windows + X
+      → Clique sur "Windows PowerShell"
+
+  2️⃣  Va dans le dossier PI2
+      → Tape : cd C:\Users\souha\Desktop\PI2
+
+  3️⃣  Lance le script automatique
+      → Tape : .\DEMARRER_TOUT.ps1
+
+  ⏳ Attends 2-3 minutes...
+
+  ✅ C'EST TOUT ! Le service est démarré !
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  COMMANDES RAPIDES                                                            ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  🚀 Démarrer tout :
+     .\DEMARRER_TOUT.ps1
+
+  🛑 Arrêter tout :
+     .\ARRETER_TOUT.ps1
+
+  🧪 Tester le service :
+     cd AI-Service
+     .\test-service.ps1
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  GUIDES DISPONIBLES                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  📖 GUIDE_VISUEL_IA.txt
+     → Guide visuel avec schémas (RECOMMANDÉ pour débutants)
+
+  📖 DEMARRAGE_SIMPLE_IA.md
+     → Guide étape par étape détaillé
+
+  📖 GUIDE_IA_INSTALLATION.md
+     → Guide complet avec toutes les options
+
+  📖 RESUME_SERVICE_IA.md
+     → Résumé technique
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  VÉRIFICATION RAPIDE                                                          ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  Une fois démarré, vérifie que tout fonctionne :
+
+  ✅ Service Python :
+     http://localhost:5000/health
+
+  ✅ Backend Spring Boot :
+     http://localhost:8084/api/ai/health
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  BESOIN D'AIDE ?                                                              ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  ❓ Le script ne démarre pas ?
+     → Ouvre GUIDE_VISUEL_IA.txt
+     → Section "PROBLÈMES COURANTS"
+
+  ❓ Python n'est pas reconnu ?
+     → Installe Python depuis https://www.python.org/downloads/
+     → ⚠️ Coche "Add Python to PATH" pendant l'installation
+
+  ❓ Port déjà utilisé ?
+     → Exécute : .\ARRETER_TOUT.ps1
+     → Puis relance : .\DEMARRER_TOUT.ps1
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  NOTES IMPORTANTES                                                            ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  ⏳ Premier démarrage = 5-10 minutes
+     (Téléchargement du modèle GPT-2 ~500MB)
+
+  ⚡ Démarrages suivants = 30 secondes
+
+  💾 Espace disque requis = ~1GB
+
+  🌐 Connexion internet requise = Première fois seulement
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  ARCHITECTURE                                                                 ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  Frontend Angular (4200)
+         ↓
+  Backend Spring Boot (8084)
+         ↓
+  Service Python Flask (5000)
+         ↓
+  GPT-2 Local (pas d'API externe)
+
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  PRÊT À COMMENCER ?                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+  1. Ouvre PowerShell
+  2. cd C:\Users\souha\Desktop\PI2
+  3. .\DEMARRER_TOUT.ps1
+
+  C'est aussi simple que ça ! 🎉
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        Bon courage ! 🚀
+═══════════════════════════════════════════════════════════════════════════════

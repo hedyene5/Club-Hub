@@ -109,24 +109,57 @@
             <p class="text-xs text-gray-500 mt-1">Vous devez être membre de ce comité</p>
           </div>
 
-          <!-- Ancienneté pour président — supprimée -->
+          <!-- NOUVEAU : Section Génération IA -->
+          <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-lg">🤖</span>
+              <h4 class="font-semibold text-blue-800">Génération automatique avec IA</h4>
+            </div>
+            <p class="text-sm text-blue-600 mb-3">
+              Décrivez vos idées et motivations, l'IA générera automatiquement votre lettre de motivation, programme et compétences.
+            </p>
+            
+            <div class="mb-3">
+              <label class="block text-sm font-medium mb-1 text-gray-700">Parlez-nous de vous / vos idées</label>
+              <textarea formControlName="userIdeas" rows="3" 
+                        class="w-full rounded-lg border px-3 py-2"
+                        placeholder="Ex: Je suis passionné par l'organisation d'événements, j'ai de l'expérience en communication..."></textarea>
+            </div>
+            
+            <button type="button" (click)="generateWithAI()" 
+                    [disabled]="generatingWithAI || !applicationForm.get('userIdeas')?.value"
+                    class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              <span *ngIf="!generatingWithAI">🤖 Générer avec IA</span>
+              <span *ngIf="generatingWithAI" class="flex items-center gap-2">
+                <span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                Génération en cours...
+              </span>
+            </button>
+            
+            <div *ngIf="aiError" class="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              ⚠️ {{ aiError }}
+            </div>
+          </div>
 
           <div>
             <label class="block text-sm font-medium mb-1">Lettre de motivation *</label>
             <textarea formControlName="motivation" rows="4" class="w-full rounded-lg border px-3 py-2"
                       placeholder="Pourquoi voulez-vous ce poste ?"></textarea>
+            <p class="text-xs text-gray-500 mt-1">✏️ Vous pouvez modifier le texte généré</p>
           </div>
 
           <div>
             <label class="block text-sm font-medium mb-1">Programme (optionnel)</label>
             <textarea formControlName="manifesto" rows="2" class="w-full rounded-lg border px-3 py-2"
                       placeholder="Vos objectifs..."></textarea>
+            <p class="text-xs text-gray-500 mt-1">✏️ Vous pouvez modifier le texte généré</p>
           </div>
 
           <div>
             <label class="block text-sm font-medium mb-1">Compétences (séparées par virgules)</label>
             <input formControlName="skills" class="w-full rounded-lg border px-3 py-2"
                    placeholder="leadership, communication...">
+            <p class="text-xs text-gray-500 mt-1">✏️ Vous pouvez modifier les compétences générées</p>
           </div>
 
           <label class="flex items-center gap-2">
