@@ -1,6 +1,9 @@
 package tn.esprit.virtual_event_management.service;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import tn.esprit.virtual_event_management.Dto.UserDto;
 import tn.esprit.virtual_event_management.entity.EventRegistration;
 import tn.esprit.virtual_event_management.entity.VirtualEvent;
 import tn.esprit.virtual_event_management.repository.EventRegistrationRepository;
@@ -11,9 +14,9 @@ import tn.esprit.virtual_event_management.repository.VirtualEventRepository;
 public class EventRegistrationService implements IEventRegistrationService{
     private final EventRegistrationRepository repo;
     private final VirtualEventRepository eventRepository;
-    private final EmailService emailService; // ✅ AJOUT
+    private final EmailService emailService;
+    private final RestTemplate restTemplate;
 
-    // ✅ REGISTER
     @Override
     public EventRegistration register(String eventId, String userId) {
 
@@ -33,7 +36,7 @@ public class EventRegistrationService implements IEventRegistrationService{
         EventRegistration reg = new EventRegistration();
         reg.setEventId(eventId);
         reg.setUserId(userId);
-        reg.setPaid(!event.getIsPaid()); // gratuit = payé auto
+        reg.setPaid(!Boolean.TRUE.equals(event.getIsPaid()));
 
         if (event.getCurrentParticipants() == null) {
             event.setCurrentParticipants(0);
@@ -43,24 +46,49 @@ public class EventRegistrationService implements IEventRegistrationService{
 
         EventRegistration saved = repo.save(reg);
 
-        // ✅ EMAIL DE CONFIRMATION — userId = email (webservice externe)
         try {
-            emailService.sendRegistrationConfirmation(
-                    userId, // 👈 si ton userId EST l'email (webservice externe)
-                    "Participant",  // pas accès au nom → valeur par défaut
-                    event.getTitle(),
-                    event.getScheduledAt() != null ? event.getScheduledAt().toString() : "Date à confirmer",
-                    event.getMeetingLink() != null ? event.getMeetingLink() : "https://ton-app.com/events/" + event.getId()
+            String url = "http://localhost:8081/api/users/" + userId;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<UserDto> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    UserDto.class
             );
+
+            UserDto user = response.getBody();
+
+            if (user != null && user.getEmail() != null && !user.getEmail().isBlank()) {
+                String fullName = ((user.getFirstName() != null ? user.getFirstName() : "") +
+                        (user.getLastName() != null ? " " + user.getLastName() : "")).trim();
+
+                emailService.sendRegistrationConfirmation(
+                        user.getEmail(),
+                        fullName.isBlank() ? "Participant" : fullName,
+                        event.getTitle(),
+                        event.getScheduledAt() != null ? event.getScheduledAt().toString() : "Date à confirmer",
+                        event.getMeetingLink() != null
+                                ? event.getMeetingLink()
+                                : "https://ton-app.com/events/" + event.getId()
+                );
+
+                System.out.println("✅ Email de confirmation envoyé à : " + user.getEmail());
+            } else {
+                System.out.println("⚠️ Email non envoyé : email utilisateur introuvable");
+            }
+
         } catch (Exception e) {
-            // Ne pas bloquer l'inscription si l'email échoue
             System.out.println("⚠️ Email non envoyé : " + e.getMessage());
         }
 
         return saved;
     }
 
-    // 💰 PAYMENT
     @Override
     public EventRegistration markAsPaid(String eventId, String userId) {
 
@@ -72,7 +100,6 @@ public class EventRegistrationService implements IEventRegistrationService{
         return repo.save(reg);
     }
 
-    // 🎥 JOIN
     @Override
     public VirtualEvent joinEvent(String eventId, String userId) {
 
@@ -105,7 +132,6 @@ public class EventRegistrationService implements IEventRegistrationService{
         return event;
     }
 
-    // 🔐 CHECK
     @Override
     public boolean canJoin(String eventId, String userId) {
 

@@ -20,7 +20,5 @@ export class ManagementComponent implements OnInit {
     this.eventService.getAllEvents().subscribe(res => this.events = res);
   }
 
-  delete(id: string) {
-    this.eventService.deleteEvent(id).subscribe(() => this.load());
-  }
+ 
 }

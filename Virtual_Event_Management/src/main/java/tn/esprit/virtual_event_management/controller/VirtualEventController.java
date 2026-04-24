@@ -19,20 +19,25 @@ import java.util.List;
 @RequestMapping("/api/virtual-events")
 public class VirtualEventController {
     private final IVirtualEventService virtualEventService;
-    private PdfService pdfService;
+    private final PdfService pdfService;
+    private final EventRegistrationService registrationService;
+    private final IEventRegistrationService service;
 
-    public VirtualEventController(IVirtualEventService virtualEventService, EventRegistrationService registrationService, IEventRegistrationService service) {
+    public VirtualEventController(
+            IVirtualEventService virtualEventService,
+            EventRegistrationService registrationService,
+            IEventRegistrationService service,
+            PdfService pdfService
+    ) {
         this.virtualEventService = virtualEventService;
         this.registrationService = registrationService;
         this.service = service;
+        this.pdfService = pdfService;
     }
 
     @PostMapping
     public ResponseEntity<VirtualEvent> createEvent(@RequestBody VirtualEvent event) {
-
-        // 🔥 empêcher injection du lien
         event.setMeetingLink(null);
-
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(virtualEventService.createEvent(event));
     }
@@ -48,7 +53,6 @@ public class VirtualEventController {
         return ResponseEntity.ok(virtualEventService.joinEvent(id));
     }
 
-    // 🔥 GET LINK DIRECT
     @GetMapping("/{id}/link")
     public ResponseEntity<String> getMeetingLink(@PathVariable String id) {
         return virtualEventService.getEventById(id)
@@ -70,7 +74,6 @@ public class VirtualEventController {
 
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> getPdf(@PathVariable String id) {
-
         VirtualEvent event = virtualEventService.getEventById(id)
                 .orElseThrow(() -> new RuntimeException("Event introuvable"));
 
@@ -88,37 +91,31 @@ public class VirtualEventController {
         return ResponseEntity.noContent().build();
     }
 
-    private final EventRegistrationService registrationService;
     @PostMapping("/{eventId}/register/{userId}")
     public ResponseEntity<EventRegistration> register(
             @PathVariable String eventId,
             @PathVariable String userId) {
 
         EventRegistration reg = service.register(eventId, userId);
-
         return ResponseEntity.ok(reg);
     }
 
     @GetMapping("/{eventId}/can-join/{userId}")
     public ResponseEntity<Boolean> canJoin(@PathVariable String eventId,
                                            @PathVariable String userId) {
-        return ResponseEntity.ok(
-                registrationService.canJoin(eventId, userId)
-        );
+        return ResponseEntity.ok(registrationService.canJoin(eventId, userId));
     }
 
-    private final IEventRegistrationService service;
-
-    // 💰 PAYMENT
     @PostMapping("/{eventId}/pay/{userId}")
     public ResponseEntity<EventRegistration> payEvent(
             @PathVariable String eventId,
             @PathVariable String userId) {
 
         EventRegistration registration = service.markAsPaid(eventId, userId);
-
         return ResponseEntity.ok(registration);
     }
+
+
 
 
 }

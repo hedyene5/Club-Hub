@@ -26,6 +26,9 @@ export class MeetingRoomComponent implements OnInit {
   audioChunks: any[] = [];
   isRecording = false;
 
+  // ⚠️ CONSENTEMENT RECORD
+  showRecordConsent = false;
+
   constructor(
     private route: ActivatedRoute,
     private http: HttpClient,
@@ -44,14 +47,13 @@ export class MeetingRoomComponent implements OnInit {
 
   // 🎥 JITSI
   initJitsi(link: string) {
-
     const roomName = link.split('/').pop();
-    const domain = "meet.jit.si";
+    const domain = 'meet.jit.si';
 
     const options = {
       roomName: roomName,
-      width: "100%",
-      height: "100%",
+      width: '100%',
+      height: '100%',
       parentNode: document.querySelector('#jitsi-container')
     };
 
@@ -73,9 +75,26 @@ export class MeetingRoomComponent implements OnInit {
     this.api.executeCommand('sendChatMessage', text);
 
     this.messages.push({
-      from: "Me",
+      from: 'Me',
       text: text
     });
+  }
+
+  // ✅ OUVRIR MESSAGE AVANT RECORD
+  askRecordConsent() {
+    this.showRecordConsent = true;
+  }
+
+  // ✅ UTILISATEUR ACCEPTE
+  acceptRecording() {
+    this.showRecordConsent = false;
+    this.startRecording();
+  }
+
+  // ❌ UTILISATEUR REFUSE
+  refuseRecording() {
+    this.showRecordConsent = false;
+    this.leaveMeeting();
   }
 
   // 🎙️ START RECORD
@@ -92,19 +111,22 @@ export class MeetingRoomComponent implements OnInit {
       this.mediaRecorder.start();
       this.isRecording = true;
 
-      alert("🎙️ Enregistrement démarré");
+      alert('🎙️ Enregistrement démarré');
+
+    }).catch(error => {
+      console.error('Erreur microphone:', error);
+      alert('Impossible d’accéder au microphone');
     });
   }
 
   // ⏹ STOP RECORD
   stopRecording() {
+    if (!this.mediaRecorder) return;
 
     this.mediaRecorder.stop();
 
     this.mediaRecorder.onstop = () => {
-
       const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-
       this.createRecord(audioBlob);
     };
 
@@ -113,23 +135,20 @@ export class MeetingRoomComponent implements OnInit {
 
   // 📡 CREATE RECORD
   createRecord(audioBlob: Blob) {
-
     const payload = {
-      fileUrl: "temp",
+      fileUrl: 'temp',
       gdprConsent: true,
       virtualEvent: { id: this.eventId }
     };
 
     this.http.post<any>('http://localhost:8082/api/records', payload)
       .subscribe(record => {
-
         this.sendToTranscription(record.id, audioBlob);
       });
   }
 
   // 🧠 SEND TO WHISPER
   sendToTranscription(recordId: string, audioBlob: Blob) {
-
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
 
@@ -137,11 +156,16 @@ export class MeetingRoomComponent implements OnInit {
       `http://localhost:8082/api/transcriptions/${recordId}?language=auto`,
       formData
     ).subscribe(() => {
-      alert("🧠 Transcription terminée !");
+      alert('🧠 Transcription terminée !');
     });
   }
 
+  // 🚪 QUITTER MEETING
   leaveMeeting() {
+    if (this.api) {
+      this.api.dispose();
+    }
+
     this.router.navigate(['/events']);
   }
 }

@@ -1,151 +1,607 @@
-<div class="p-6 max-w-screen-2xl mx-auto">
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+<style>
+  .cal-header {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .cal-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .cal-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 4px 0;
+  }
+
+  .cal-subtitle {
+    color: #6b7280;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .cal-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .btn-ai {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-ai:hover { background: #6d28d9; }
+
+  .btn-new {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #4f46e5;
+    color: white;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-new:hover { background: #4338ca; }
+
+  .cal-wrapper {
+    background: white;
+    border-radius: 24px;
+    padding: 24px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  /* ── CHATBOT ── */
+  .chat-panel {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 370px;
+    max-height: 560px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    overflow: hidden;
+    font-family: inherit;
+  }
+
+  .chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: #7c3aed;
+    color: white;
+  }
+
+  .chat-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chat-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #86efac;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .chat-header-title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .chat-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.8);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+  }
+  .chat-close:hover { color: white; }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 360px;
+    min-height: 0;
+    background: #f9fafb;
+  }
+
+  .chat-msg-user {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .chat-bubble-user {
+    background: #4f46e5;
+    color: white;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 16px 16px 4px 16px;
+    max-width: 80%;
+    line-height: 1.5;
+  }
+
+  .chat-msg-bot {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .chat-bubble-bot {
+    background: white;
+    color: #1f2937;
+    font-size: 13px;
+    padding: 10px 14px;
+    border-radius: 16px 16px 16px 4px;
+    max-width: 85%;
+    line-height: 1.5;
+    border: 1px solid #e5e7eb;
+  }
+
+  .btn-inject {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-inject:hover { background: #059669; }
+
+  .chat-typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    padding: 10px 14px;
+    border-radius: 16px 16px 16px 4px;
+    width: fit-content;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #9ca3af;
+    animation: bounce 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  .chat-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+  }
+
+  .chat-textarea {
+    flex: 1;
+    resize: none;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    color: #111827;
+    font-family: inherit;
+    line-height: 1.5;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .chat-textarea:focus { border-color: #7c3aed; background: white; }
+  .chat-textarea::placeholder { color: #9ca3af; }
+
+  .btn-send {
+    align-self: flex-end;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-send:hover { background: #6d28d9; }
+  .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 16px;
+  }
+
+  .modal-box {
+    background: white;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+    overflow: hidden;
+  }
+
+  .modal-header {
+    padding: 24px 32px;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .modal-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .modal-icon.create { background: #e0e7ff; }
+  .modal-icon.edit   { background: #fef3c7; }
+
+  .modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 26px;
+    color: #9ca3af;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .modal-close:hover { color: #374151; }
+
+  .modal-form {
+    padding: 28px 32px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    color: #111827;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    background: white;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: #4f46e5;
+  }
+
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .form-checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #4f46e5;
+    cursor: pointer;
+  }
+
+  .form-buttons {
+    display: flex;
+    gap: 12px;
+    padding-top: 8px;
+  }
+
+  .btn-cancel {
+    flex: 1;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-cancel:hover { background: #f9fafb; }
+
+  .btn-delete {
+    flex: 1;
+    padding: 14px;
+    border-radius: 14px;
+    border: none;
+    background: #dc2626;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-delete:hover { background: #b91c1c; }
+
+  .btn-submit {
+    flex: 1;
+    padding: 14px;
+    border-radius: 14px;
+    border: none;
+    background: #4f46e5;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-submit:hover { background: #4338ca; }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+
+<!-- ── PAGE ── -->
+<div class="cal-header">
+  <div class="cal-top-bar">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Calendrier des Formations</h1>
-      <p class="text-gray-500 dark:text-gray-400">Clique sur une date pour planifier une nouvelle formation virtuelle</p>
+      <h1 class="cal-title">Calendrier des Formations</h1>
+      <p class="cal-subtitle">Clique sur une date pour planifier une nouvelle formation virtuelle</p>
     </div>
-    <button (click)="openCreateModal()" 
-            class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-medium transition-all shadow-lg">
-      <i class="lucide lucide-plus w-5 h-5"></i>
-      Nouvelle Formation
-    </button>
+    <div class="cal-actions">
+      <button class="btn-ai" (click)="toggleChat()">
+        💬 Assistant AI
+      </button>
+      <button class="btn-new" (click)="openCreateModal()">
+        + Nouvelle Formation
+      </button>
+    </div>
   </div>
 
-  <!-- Calendrier -->
-  <div class="bg-white dark:bg-gray-900 rounded-3xl shadow-theme p-6 border border-gray-200 dark:border-gray-800">
+  <div class="cal-wrapper">
     <full-calendar #calendar [options]="calendarOptions"></full-calendar>
   </div>
 </div>
 
-<!-- Modal -->
-<div *ngIf="isModalOpen" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[999] p-4">
+<!-- ── CHATBOT PANEL ── -->
+<div *ngIf="isChatOpen" class="chat-panel">
 
-  <div class="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
+  <div class="chat-header">
+    <div class="chat-header-left">
+      <div class="chat-dot"></div>
+      <span class="chat-header-title">Assistant Formation AI</span>
+    </div>
+    <button class="chat-close" (click)="toggleChat()" aria-label="Fermer">×</button>
+  </div>
 
-    <!-- HEADER -->
-    <div class="px-8 py-6 border-b dark:border-gray-800 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div [class]="isEditMode 
-          ? 'w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900 flex items-center justify-center'
-          : 'w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center'">
-          <i [class]="isEditMode ? 'lucide lucide-pencil w-4 h-4 text-amber-600' : 'lucide lucide-calendar-plus w-4 h-4 text-indigo-600'"></i>
+  <div class="chat-messages">
+    <ng-container *ngFor="let msg of chatMessages">
+
+      <div *ngIf="msg.role === 'user'" class="chat-msg-user">
+        <div class="chat-bubble-user">{{ msg.text }}</div>
+      </div>
+
+      <div *ngIf="msg.role === 'bot'" class="chat-msg-bot">
+        <div class="chat-bubble-bot">{{ msg.text }}</div>
+        <button *ngIf="msg.parsedEvent"
+                class="btn-inject"
+                (click)="injectIntoForm(msg.parsedEvent)">
+          ✓ Insérer dans le formulaire
+        </button>
+      </div>
+
+    </ng-container>
+
+    <div *ngIf="chatLoading" class="chat-msg-bot">
+      <div class="chat-typing">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-input-area">
+    <textarea class="chat-textarea"
+              [(ngModel)]="chatInput"
+              (keydown)="onChatKeydown($event)"
+              rows="2"
+              placeholder='Ex: "Conférence AI le 15 juin à 10h, payante 80 TND"'>
+    </textarea>
+    <button class="btn-send"
+            (click)="sendChatMessage()"
+            [disabled]="chatLoading || !chatInput.trim()"
+            aria-label="Envoyer"
+            title="Envoyer">
+      ➤
+    </button>
+  </div>
+</div>
+
+<!-- ── MODAL ── -->
+<div *ngIf="isModalOpen" class="modal-overlay">
+  <div class="modal-box">
+
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-icon" [class.edit]="isEditMode" [class.create]="!isEditMode">
+          {{ isEditMode ? '✏️' : '📅' }}
         </div>
-        <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+        <h2 class="modal-title">
           {{ isEditMode ? 'Modifier la Formation' : 'Nouvelle Formation Virtuelle' }}
         </h2>
       </div>
-      <button (click)="closeModal()" class="text-3xl leading-none text-gray-400 hover:text-gray-600">×</button>
+      <button class="modal-close" (click)="closeModal()">×</button>
     </div>
 
-    <!-- FORM -->
-    <form [formGroup]="eventForm" (ngSubmit)="onSubmit()" 
-          class="p-8 space-y-6 overflow-y-auto flex-1">
+    <form [formGroup]="eventForm" (ngSubmit)="onSubmit()" class="modal-form">
 
-      <!-- 🟢 NEW: TYPE CHOICE -->
       <div>
-        <label class="block text-sm font-medium mb-2">Type d'événement</label>
-
-        <select formControlName="type"
-                class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+        <label class="form-label">Type d'événement</label>
+        <select formControlName="type" class="form-select">
           <option value="VIRTUAL">🌐 Virtual (Jitsi)</option>
           <option value="ROOM">🧑‍🤝‍🧑 Room 3D</option>
         </select>
       </div>
 
-      <!-- 🟢 ONLY FOR ROOM 3D -->
       <div *ngIf="eventForm.value.type === 'ROOM'">
-        <label class="block text-sm font-medium mb-2">Room 3D ID</label>
-        <input formControlName="roomId" type="text"
-               class="w-full px-5 py-3.5 rounded-2xl border border-gray-300"
+        <label class="form-label">Room 3D ID</label>
+        <input formControlName="roomId" type="text" class="form-input"
                placeholder="room-1 / room-tech / room-ai">
       </div>
 
-      <!-- TITLE -->
       <div>
-        <label class="block text-sm font-medium mb-2">Titre *</label>
-        <input formControlName="title" type="text"
-               class="w-full px-5 py-3.5 rounded-2xl border border-gray-300"
+        <label class="form-label">Titre *</label>
+        <input formControlName="title" type="text" class="form-input"
                placeholder="Ex: AI Conference">
       </div>
 
-      <!-- Description -->
       <div>
-        <label class="block text-sm font-medium mb-2">Description</label>
-        <textarea formControlName="description"
-                  class="w-full px-5 py-3.5 rounded-2xl border border-gray-300"
+        <label class="form-label">Description</label>
+        <textarea formControlName="description" class="form-textarea" rows="3"
                   placeholder="Description de l'événement"></textarea>
       </div>
 
-      <!-- Dates -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="form-grid-2">
         <div>
-          <label class="block text-sm font-medium mb-2">Date début *</label>
-          <input formControlName="scheduledAt" type="datetime-local"
-                 class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+          <label class="form-label">Date début *</label>
+          <input formControlName="scheduledAt" type="datetime-local" class="form-input">
         </div>
-
         <div>
-          <label class="block text-sm font-medium mb-2">Date fin</label>
-          <input formControlName="endAt" type="datetime-local"
-                 class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+          <label class="form-label">Date fin</label>
+          <input formControlName="endAt" type="datetime-local" class="form-input">
         </div>
       </div>
 
-      <!-- PRICE -->
-      <div class="grid grid-cols-2 gap-4">
+      <div class="form-grid-2">
         <div>
-          <label class="block text-sm font-medium mb-2">Prix (TND)</label>
-          <input formControlName="price" type="number"
-                 class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+          <label class="form-label">Prix (TND)</label>
+          <input formControlName="price" type="number" class="form-input">
         </div>
-
-        <div class="flex items-center gap-3 mt-8">
-          <input formControlName="isPaid" type="checkbox" class="w-5 h-5 accent-indigo-600">
-          <label class="text-sm font-medium">Payant</label>
+        <div class="form-checkbox-row">
+          <input formControlName="isPaid" type="checkbox" id="isPaid">
+          <label for="isPaid" class="form-label" style="margin:0">Payant</label>
         </div>
       </div>
 
-      <!-- MAX PARTICIPANTS -->
       <div>
-        <label class="block text-sm font-medium mb-2">Max participants</label>
-        <input formControlName="maxParticipants" type="number"
-               class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+        <label class="form-label">Max participants</label>
+        <input formControlName="maxParticipants" type="number" class="form-input">
       </div>
 
-      <!-- IMAGE -->
       <div>
-        <label class="block text-sm font-medium mb-2">Image URL</label>
-        <input formControlName="imageUrl" type="text"
-               class="w-full px-5 py-3.5 rounded-2xl border border-gray-300">
+        <label class="form-label">Image URL</label>
+        <input formControlName="imageUrl" type="text" class="form-input">
       </div>
 
-      <!-- RECORDING -->
-      <div class="flex items-center gap-3">
-        <input formControlName="isRecording" type="checkbox" class="w-5 h-5 accent-indigo-600">
-        <label class="text-sm font-medium">Enregistrement</label>
+      <div class="form-checkbox-row" style="margin-top:0">
+        <input formControlName="isRecording" type="checkbox" id="isRecording">
+        <label for="isRecording" class="form-label" style="margin:0">Enregistrement</label>
       </div>
 
-      <!-- BUTTONS -->
-      <!-- BUTTONS -->
-<div class="flex gap-4 pt-6">
-  <button type="button" (click)="closeModal()"
-          class="flex-1 py-4 rounded-2xl border border-gray-300">
-    Cancel
-  </button>
+      <div class="form-buttons">
+        <button type="button" class="btn-cancel" (click)="closeModal()">Cancel</button>
+        <button *ngIf="isEditMode" type="button" class="btn-delete" (click)="confirmDelete()">Delete</button>
+        <button type="submit" class="btn-submit" [disabled]="eventForm.invalid">
+          {{ isEditMode ? 'Modifier' : 'Créer' }}
+        </button>
+      </div>
 
-  <!-- ✅ DELETE BUTTON (ONLY EDIT MODE) -->
-  <button *ngIf="isEditMode"
-          type="button"
-          (click)="confirmDelete()"
-          class="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl">
-    Delete
-  </button>
-
-  <button type="submit" [disabled]="eventForm.invalid"
-          class="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl">
-    {{ isEditMode ? 'Modifier' : 'Créer' }}
-  </button>
-</div>
     </form>
   </div>
 </div>
