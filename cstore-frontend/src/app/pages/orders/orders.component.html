@@ -10,11 +10,11 @@
       <p class="font-medium">Récapitulatif du panier</p>
       <div *ngFor="let item of getCartItems()" class="flex justify-between text-sm">
         <span>{{ item.name }} x {{ item.quantity }}</span>
-        <span>{{ item.price * item.quantity }} €</span>
+        <span>{{ item.price * item.quantity }} DT </span>
       </div>
       <div class="flex justify-between font-bold mt-2 pt-2 border-t">
         <span>Total</span>
-        <span>{{ getCartTotal() }} €</span>
+        <span>{{ getCartTotal() }} DT </span>
       </div>
     </div>
 

@@ -78,7 +78,7 @@
         <!-- Prix et actions (with stopPropagation) -->
         <div class="flex justify-between items-center mt-3">
           <div>
-            <span class="text-2xl font-extrabold text-gray-900">{{ product.price }} <span class="text-sm font-normal">€</span></span>
+            <span class="text-2xl font-extrabold text-gray-900">{{ product.price }} <span class="text-sm font-normal">DT</span></span>
             <p class="text-xs" [ngClass]="product.stockQuantity > 0 ? 'text-green-600' : 'text-red-500'">
               {{ product.stockQuantity > 0 ? 'En stock' : 'Rupture' }}
             </p>

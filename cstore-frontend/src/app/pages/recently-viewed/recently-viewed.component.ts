@@ -28,7 +28,7 @@ import { Product } from '../../services/api.service';
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium truncate">{{ product.name }}</p>
-            <p class="text-xs text-gray-500">{{ product.price }} €</p>
+            <p class="text-xs text-gray-500">{{ product.price }} DT </p>
           </div>
           <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>

@@ -21,7 +21,7 @@
         <tbody>
           <tr *ngFor="let item of cartItems">
             <td class="p-2 border-b">{{ item.name }}</td>
-            <td class="p-2 border-b">{{ item.price }} €</td>
+            <td class="p-2 border-b">{{ item.price }} DT </td>
             <td class="p-2 border-b">
               <input type="number" 
                      [ngModel]="item.quantity" 
@@ -30,7 +30,7 @@
                      min="1" 
                      [max]="item.stockQuantity || 999">
             </td>
-            <td class="p-2 border-b">{{ item.price * item.quantity }} €</td>
+            <td class="p-2 border-b">{{ item.price * item.quantity }} DT</td>
             <td class="p-2 border-b">
               <button (click)="removeItem(item)" class="text-red-500 hover:text-red-700">Supprimer</button>
             </td>
@@ -40,7 +40,7 @@
     </div>
 
     <div class="mt-6 text-right">
-      <p class="text-xl font-bold">Total: {{ totalPrice }} €</p>
+      <p class="text-xl font-bold">Total: {{ totalPrice }} DT </p>
       <p class="text-sm text-gray-500">Articles: {{ totalItems }}</p>
       <div class="mt-4 space-x-2">
         <button (click)="clearCart()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Vider</button>

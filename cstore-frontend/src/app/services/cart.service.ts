@@ -28,7 +28,6 @@ export class CartService {
   cart$ = this.cartSubject.asObservable();
 
   constructor() {
-    // Charger le panier depuis localStorage
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
       this.items = JSON.parse(savedCart);
@@ -40,6 +39,7 @@ export class CartService {
     localStorage.setItem('cart', JSON.stringify(this.items));
   }
 
+  // === Méthodes existantes (inchangées) ===
   addToCart(product: Product, quantity: number = 1): void {
     const existingItem = this.items.find(item => item.id === product.id);
     if (existingItem) {
@@ -130,5 +130,23 @@ export class CartService {
       totalPrice: this.getTotalPrice(),
       uniqueItems: this.getUniqueItemsCount()
     };
+  }
+
+  // === NOUVELLES MÉTHODES POUR AFFICHER EN DINARS TUNISIENS ===
+  /**
+   * Retourne le prix total formaté avec le symbole DT
+   * @example "125.500 DT"
+   */
+  getFormattedTotalPrice(): string {
+    return `${this.getTotalPrice().toFixed(3)} DT`;
+  }
+
+  /**
+   * Formate un prix numérique avec le symbole DT
+   * @param price Prix en nombre
+   * @example formatPrice(99.99) => "99.990 DT"
+   */
+  formatPrice(price: number): string {
+    return `${price.toFixed(3)} DT`;
   }
 }

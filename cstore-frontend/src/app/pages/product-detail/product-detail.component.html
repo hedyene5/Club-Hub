@@ -25,7 +25,7 @@
             <h2 class="text-2xl font-bold mt-2">{{ product.eventName || product.name }}</h2>
           </div>
           <div class="text-right">
-            <div class="text-3xl font-black">{{ product.price }} €</div>
+            <div class="text-3xl font-black">{{ product.price }} DT</div>
             <div class="text-sm opacity-90">TTC</div>
           </div>
         </div>
@@ -66,7 +66,7 @@
 
           <!-- Price & stock for tickets (already shown in header, but keep for consistency) -->
           <div *ngIf="product.productType !== 'EVENT_TICKET'" class="mb-4">
-            <span class="text-3xl font-extrabold text-gray-900">{{ product.price }} €</span>
+            <span class="text-3xl font-extrabold text-gray-900">{{ product.price }} DT </span>
             <p class="text-sm mt-1" [ngClass]="product.stockQuantity > 0 ? 'text-green-600' : 'text-red-500'">
               {{ product.stockQuantity > 0 ? 'En stock' : 'Rupture de stock' }}
             </p>
@@ -111,7 +111,7 @@
                [alt]="rec.name"
                class="w-full h-32 object-cover rounded mb-2">
           <h3 class="font-semibold text-sm">{{ rec.name }}</h3>
-          <p class="text-gray-600 text-sm">{{ rec.price }} €</p>
+          <p class="text-gray-600 text-sm">{{ rec.price }} DT</p>
         </div>
       </div>
     </div>
