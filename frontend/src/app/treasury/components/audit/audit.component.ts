@@ -127,7 +127,7 @@ export class AuditComponent implements OnInit {
   }
 
   loadMembers() {
-    this.http.get<MockUser[]>('http://localhost:8082/api/v1/users/club/1').subscribe({
+    this.http.get<MockUser[]>('http://localhost:8084/api/v1/users/club/1').subscribe({
       next: (users) => {
         users.forEach(u => this.memberNames.set(u.id, u.firstName + ' ' + u.lastName));
         this.applyView();

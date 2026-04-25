@@ -12,7 +12,7 @@ import { AnomalyAlert } from '../../models/treasury.models';
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Detection d'Anomalies</h2>
-          <p class="text-sm text-gray-500 mt-1">Analyse Z-Score sur les transactions (BF12)</p>
+          <p class="text-sm text-gray-500 mt-1">Detection IA par modele Isolation Forest (entraine localement)</p>
         </div>
         <span class="px-3 py-1 rounded-full text-sm font-medium"
               [class.bg-green-100]="anomalies.length === 0" [class.text-green-700]="anomalies.length === 0"
@@ -72,13 +72,13 @@ import { AnomalyAlert } from '../../models/treasury.models';
       </div>
 
       <!-- Method explanation -->
-      <div *ngIf="!loading" class="bg-gray-50 dark:bg-gray-800 rounded-xl border p-4">
-        <h3 class="font-medium text-gray-700 dark:text-gray-300 mb-2">Algorithme</h3>
-        <p class="text-sm text-gray-500">
-          Detection par <strong>Z-Score</strong> : calcul de l'ecart-type des montants de transactions.
-          Un Z-Score > 2.0 indique une anomalie (montant anormalement eleve ou bas).
-          Detection supplementaire des <strong>doubles paiements suspects</strong> (meme membre, meme montant, &lt;24h d'ecart).
-        </p>
+      <div *ngIf="!loading" class="bg-purple-50 dark:bg-gray-800 rounded-xl border border-purple-200 p-4">
+        <h3 class="font-medium text-purple-800 dark:text-gray-300 mb-2">Algorithmes IA utilises</h3>
+        <div class="space-y-2 text-sm text-gray-700">
+          <p><strong>1. Isolation Forest (entraine localement)</strong> : modele ML non-supervise qui apprend les patterns normaux des depenses selon 9 features (montant, categorie, heure, membre, delai validation, etc.) et isole les outliers.</p>
+          <p><strong>2. Z-Score</strong> (fallback si modele non entraine) : ecart-type sur montants paiements, seuil > 2.0.</p>
+          <p><strong>3. Detection doubles paiements</strong> : meme membre + meme montant + &lt;24h d'ecart.</p>
+        </div>
       </div>
     </div>
   `,
@@ -102,6 +102,7 @@ export class AnomaliesComponent implements OnInit {
     if (type === 'DOUBLE_PAIEMENT_SUSPECT') return 'bg-red-100 text-red-700';
     if (type === 'MONTANT_INHABITUEL') return 'bg-yellow-100 text-yellow-700';
     if (type === 'DEPENSE_ANORMALE') return 'bg-orange-100 text-orange-700';
+    if (type === 'ML_ISOLATION_FOREST') return 'bg-purple-100 text-purple-700';
     return 'bg-gray-100 text-gray-600';
   }
 
@@ -111,6 +112,7 @@ export class AnomaliesComponent implements OnInit {
       'DEPENSE_ANORMALE': 'Depense anormale',
       'DOUBLE_PAIEMENT_SUSPECT': 'Double paiement suspect',
       'FREQUENCE_ANORMALE': 'Frequence anormale',
+      'ML_ISOLATION_FOREST': 'IA - Isolation Forest',
     };
     return map[type] ?? type;
   }

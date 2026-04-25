@@ -23,7 +23,7 @@ function normalizeUser(raw: any): MockUser | null {
  * AuthService — pont vers le module User (esprit.com.clubhub) sur le port 8081.
  *
  * Le module User pose un cookie httpOnly `jwt` lors du login. Toutes les requetes
- * suivantes (treasury sur 8082) doivent etre faites avec withCredentials: true
+ * passent par le Gateway Spring Cloud sur 8084 avec withCredentials: true
  * pour que le navigateur transmette automatiquement le cookie.
  *
  * Permissions metier (cohrente avec backend treasury security/Roles.java):
@@ -34,7 +34,7 @@ function normalizeUser(raw: any): MockUser | null {
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly userServiceBase = 'http://localhost:8081/api';
+  private readonly userServiceBase = 'http://localhost:8084/api';
   private readonly currentUser$ = new BehaviorSubject<MockUser | null>(null);
 
   readonly user$ = this.currentUser$.asObservable();

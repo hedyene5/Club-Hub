@@ -1,43 +1,26 @@
-# Java / Maven
-target/
-*.class
-*.jar
-*.war
-.mvn/
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Dependencies
+node_modules/
+frontend/node_modules/
 
-# IntelliJ IDEA
+# Angular cache
+frontend/.angular/
+frontend/dist/
+
+# Java build
+treasury-service/target/
+treasury-service/.mvn/
+treasury-service/mvnw
+treasury-service/mvnw.cmd
+
+# IDE
 .idea/
 *.iml
-*.ipr
-*.iws
-
-# Eclipse
-.classpath
-.project
-.settings/
-
-# VS Code
 .vscode/
-
-# Environment
-.env
-*.env.local
-
-# Angular
-frontend/node_modules/
-frontend/dist/
-frontend/.angular/
-
-# Logs
-*.log
-logs/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Uploads
-uploads/
-receipts/
+# Env
+.env
+*.log

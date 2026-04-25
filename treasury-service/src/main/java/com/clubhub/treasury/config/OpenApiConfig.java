@@ -21,8 +21,9 @@ public class OpenApiConfig {
                 .description("Module de tresorerie : cotisations, paiements, depenses, budget, rapports")
                 .contact(new Contact().name("ClubHub Team")))
             .servers(List.of(
-                new Server().url("http://localhost:8082").description("Dev local"),
-                new Server().url("http://treasury-service:8082").description("Docker")
+                new Server().url("http://localhost:8085").description("Dev local (direct)"),
+                new Server().url("http://localhost:8084").description("Dev via Gateway"),
+                new Server().url("http://treasury-service:8085").description("Docker")
             ));
     }
 }

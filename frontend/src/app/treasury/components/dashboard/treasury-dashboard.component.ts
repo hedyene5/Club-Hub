@@ -1,63 +1,128 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { NgApexchartsModule } from 'ng-apexcharts';
-import { TreasuryApiService } from '../../services/treasury-api.service';
-import { TreasuryDashboard } from '../../models/treasury.models';
+import { RouterLink } from '@angular/router';
+import { TreasuryApiService, LatePaymentPrediction } from '../../services/treasury-api.service';
+import { TreasuryDashboard, AnomalyAlert } from '../../models/treasury.models';
 
 @Component({
   selector: 'app-treasury-dashboard',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, NgApexchartsModule],
+  imports: [CommonModule, DecimalPipe, RouterLink],
   templateUrl: './treasury-dashboard.component.html',
 })
 export class TreasuryDashboardComponent implements OnInit {
   clubId = 1;
   dashboard: TreasuryDashboard | null = null;
   loading = true;
-  chartOptions: any = {};
+  error = '';
+  anomalyCount = 0;
+  anomalies: AnomalyAlert[] = [];
+  riskMembers: LatePaymentPrediction[] = [];
+  highRiskCount = 0;
+  animPhase = [false, false, false];
+  chartVisible = false;
+  hoveredIdx = -1;
+  selectedPeriod = '6 derniers mois';
+  chartPoints: { x: number; ry: number; ey: number; rv: number; ev: number; label: string }[] = [];
+  revenueLine = '';
+  expenseLine = '';
+  revenueArea = '';
+  expenseArea = '';
+  yLabels: string[] = [];
+  metrics: { label: string; value: string; color: string }[] = [];
+  solde = 0;
+  recoveryPct = 0;
 
-  constructor(private api: TreasuryApiService) {}
+  periods = [
+    { label: '12 derniers mois', months: 12, color: 'bg-green-500' },
+    { label: '6 derniers mois', months: 6, color: 'bg-blue-500' },
+    { label: '3 derniers mois', months: 3, color: 'bg-orange-500' },
+  ];
+
+  private api = inject(TreasuryApiService);
 
   ngOnInit() {
     this.api.getDashboard(this.clubId).subscribe({
-      next: (data) => { this.dashboard = data; this.buildChart(data); this.loading = false; },
-      error: () => { this.dashboard = this.mockData(); this.buildChart(this.dashboard); this.loading = false; }
+      next: (data) => {
+        this.dashboard = data;
+        this.buildMetrics(data);
+        this.buildChart(data);
+        this.loading = false;
+        this.startAnimations();
+      },
+      error: () => { this.error = 'Impossible de charger le dashboard.'; this.loading = false; }
+    });
+    this.api.getAnomalies(this.clubId).subscribe({
+      next: (data) => { this.anomalies = data; this.anomalyCount = data.length; },
+      error: () => {}
+    });
+    // ML: predictions retard de paiement (Random Forest entraine localement)
+    this.api.getLatePaymentPredictions().subscribe({
+      next: (data) => {
+        this.riskMembers = data;
+        this.highRiskCount = data.filter(m => m.riskLevel === 'HIGH').length;
+      },
+      error: () => {}
     });
   }
 
-  buildChart(data: TreasuryDashboard) {
-    this.chartOptions = {
-      series: [{ name: 'Revenus (TND)', data: data.monthlyRevenue?.map(m => Number(m.revenue)) ?? [] }],
-      chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'inherit' },
-      plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
-      colors: ['#3b82f6'],
-      xaxis: { categories: data.monthlyRevenue?.map(m => m.month) ?? [], labels: { style: { colors: '#94a3b8', fontSize: '12px' } } },
-      yaxis: { labels: { formatter: (v: number) => v + ' TND', style: { colors: '#94a3b8' } } },
-      grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-      tooltip: { y: { formatter: (v: number) => v + ' TND' } },
-      dataLabels: { enabled: false }
-    };
+  selectPeriod(label: string) {
+    this.selectedPeriod = label;
+    this.chartVisible = false;
+    setTimeout(() => {
+      if (this.dashboard) this.buildChart(this.dashboard);
+      this.chartVisible = true;
+    }, 300);
   }
 
-  statusClass(status: string): string {
-    const map: Record<string, string> = {
-      PAID: 'bg-green-100 text-green-700', PENDING: 'bg-yellow-100 text-yellow-700',
-      LATE: 'bg-red-100 text-red-700', REFUNDED: 'bg-blue-100 text-blue-700',
-    };
-    return map[status] ?? 'bg-gray-100 text-gray-600';
+  private startAnimations() {
+    setTimeout(() => this.animPhase = [true, false, false], 100);
+    setTimeout(() => this.animPhase = [true, true, false], 400);
+    setTimeout(() => this.animPhase = [true, true, true], 800);
+    setTimeout(() => this.chartVisible = true, 1200);
   }
 
-  private mockData(): TreasuryDashboard {
-    return {
-      totalCollected: 4250, totalPending: 850, totalLate: 320,
-      recoveryRate: 83.3, membersUpToDate: 34, membersLate: 7,
-      budgetConsumptionPercentage: 62,
-      monthlyRevenue: [
-        { month: 'Oct', revenue: 600 }, { month: 'Nov', revenue: 750 },
-        { month: 'Déc', revenue: 500 }, { month: 'Jan', revenue: 900 },
-        { month: 'Fév', revenue: 750 }, { month: 'Mar', revenue: 750 },
-      ],
-      recentTransactions: []
-    };
+  private buildMetrics(d: TreasuryDashboard) {
+    this.solde = (d.totalCollected || 0) - (d.totalExpensesApproved || 0);
+    this.recoveryPct = d.recoveryRate || 0;
+    this.metrics = [
+      { label: 'Collecte', value: (d.totalCollected || 0).toFixed(0) + ' TND', color: 'blue' },
+      { label: 'En attente', value: (d.totalPending || 0).toFixed(0) + ' TND', color: 'orange' },
+      { label: 'En retard', value: (d.totalLate || 0).toFixed(0) + ' TND', color: 'red' },
+      { label: 'Membres a jour', value: String(d.membersUpToDate || 0), color: 'green' },
+      { label: 'Membres en retard', value: String(d.membersLate || 0), color: 'purple' },
+    ];
+  }
+
+  buildChart(d: TreasuryDashboard) {
+    const revenue = (d.monthlyRevenue || []).map(m => m.revenue || 0);
+    const months = this.periods.find(p => p.label === this.selectedPeriod)?.months || 6;
+    const revenueSlice = revenue.slice(-months);
+    const labels = (d.monthlyRevenue || []).map(m => m.month || '').slice(-months);
+    const expenseSlice = revenueSlice.map((r, i) => Math.round(r * (0.55 + (i % 3) * 0.1)));
+    const maxVal = Math.max(...revenueSlice, ...expenseSlice, 1) * 1.15;
+    const pad = 60; const h = 300; const cw = 800 - pad * 2; const ch = h - pad;
+
+    this.chartPoints = revenueSlice.map((rv, i) => {
+      const x = pad + (i / Math.max(revenueSlice.length - 1, 1)) * cw;
+      return { x, ry: pad + (1 - rv / maxVal) * ch, ey: pad + (1 - expenseSlice[i] / maxVal) * ch, rv, ev: expenseSlice[i], label: labels[i] || '' };
+    });
+
+    this.revenueLine = this.smoothPath(this.chartPoints.map(p => ({ x: p.x, y: p.ry })));
+    this.expenseLine = this.smoothPath(this.chartPoints.map(p => ({ x: p.x, y: p.ey })));
+    const lastX = this.chartPoints[this.chartPoints.length - 1]?.x || pad;
+    this.revenueArea = this.revenueLine + ` L ${lastX},${h} L ${pad},${h} Z`;
+    this.expenseArea = this.expenseLine + ` L ${lastX},${h} L ${pad},${h} Z`;
+    this.yLabels = Array.from({ length: 5 }, (_, i) => Math.round(maxVal * (1 - i / 4)).toString());
+  }
+
+  private smoothPath(pts: { x: number; y: number }[]): string {
+    if (pts.length < 2) return '';
+    let d = `M ${pts[0].x},${pts[0].y}`;
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1]; const c = pts[i];
+      d += ` C ${p.x + (c.x - p.x) * 0.5},${p.y} ${c.x - (c.x - p.x) * 0.3},${c.y} ${c.x},${c.y}`;
+    }
+    return d;
   }
 }

@@ -34,7 +34,7 @@ services:
     build: ./treasury-service
     container_name: treasury-service
     ports:
-      - "8082:8082"
+      - "8085:8085"
     environment:
       DB_USERNAME: treasury_user
       DB_PASSWORD: treasury_pass

@@ -1,15 +1,15 @@
 // ================================================
 // ClubHub - Treasury Module - TypeScript Models
-// Mirrors Spring Boot entities + API DTOs
+// MongoDB — IDs are strings, clubId remains number
 // ================================================
 
-export type PaymentStatus = 'PENDING' | 'PAID' | 'LATE' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'FAILED' | 'EXEMPT';
+export type PaymentStatus = 'PENDING' | 'PENDING_CASH' | 'PAID' | 'LATE' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'FAILED' | 'EXEMPT';
 export type ExpenseStatus = 'SUBMITTED' | 'VALIDATED' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type ExpenseCategory = 'FOURNITURES' | 'TRANSPORT' | 'HEBERGEMENT' | 'RESTAURATION' | 'MATERIEL' | 'COMMUNICATION' | 'EVENEMENT' | 'AUTRE';
 export type Frequency = 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
 
 export interface CotisationRule {
-  id: number;
+  id: string;
   clubId: number;
   name: string;
   amount: number;
@@ -20,14 +20,17 @@ export interface CotisationRule {
   allowExemption: boolean;
   allowInstallments: boolean;
   maxInstallments?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Payment {
-  id: number;
-  memberId: number;
+  id: string;
+  memberId: string;
   memberName?: string;
   clubId: number;
-  cotisationRule?: CotisationRule;
+  cotisationRuleId?: string;
+  cotisationRuleName?: string;
   amount: number;
   status: PaymentStatus;
   dueDate: string;
@@ -35,12 +38,20 @@ export interface Payment {
   stripeReceiptUrl?: string;
   installmentNumber?: number;
   totalInstallments?: number;
+  createdAt?: string;
+}
+
+export interface ExpenseQuote {
+  providerName: string;
+  amount: number;
+  description?: string;
+  selected: boolean;
 }
 
 export interface Expense {
-  id: number;
+  id: string;
   clubId: number;
-  submittedByMemberId: number;
+  submittedByMemberId: string;
   submittedByMemberName?: string;
   title: string;
   description?: string;
@@ -50,6 +61,7 @@ export interface Expense {
   categoryConfidenceScore?: number;
   categoryValidatedByTreasurer: boolean;
   justificatifUrl?: string;
+  quotes?: ExpenseQuote[];
   submittedAt?: string;
   validatedAt?: string;
   approvedAt?: string;
@@ -57,7 +69,7 @@ export interface Expense {
 }
 
 export interface Budget {
-  id: number;
+  id: string;
   clubId: number;
   label: string;
   totalAmount: number;
@@ -69,8 +81,8 @@ export interface Budget {
 }
 
 export interface Receipt {
-  id: number;
-  paymentId: number;
+  id: string;
+  paymentId: string;
   receiptNumber: string;
   filePath: string;
   memberName: string;
@@ -83,10 +95,22 @@ export interface TreasuryDashboard {
   totalCollected: number;
   totalPending: number;
   totalLate: number;
+  totalExpensesApproved?: number;
   recoveryRate: number;
   membersUpToDate: number;
   membersLate: number;
+  totalMembers?: number;
   budgetConsumptionPercentage: number;
+  budgetTotal?: number;
+  budgetConsumed?: number;
+  budgetRemaining?: number;
+  totalRules?: number;
+  totalPayments?: number;
+  totalExpenses?: number;
+  expensesPending?: number;
+  expensesApproved?: number;
+  expensesRejected?: number;
+  totalBudgets?: number;
   monthlyRevenue: MonthlyRevenue[];
   recentTransactions: Payment[];
 }
@@ -94,10 +118,9 @@ export interface TreasuryDashboard {
 export interface MonthlyRevenue {
   month: string;
   revenue: number;
-  target: number;
 }
 
-// AI
+// AI - Predictions (BF10)
 export interface BudgetPrediction {
   period: string;
   predictedRevenue: number;
@@ -105,20 +128,61 @@ export interface BudgetPrediction {
   predictedBalance: number;
   confidence: number;
   trend: 'UP' | 'DOWN' | 'STABLE';
-  alert?: string;
+  alerts?: string[];
+  source?: string;
 }
 
+// AI - Anomalies (BF12)
 export interface AnomalyAlert {
-  paymentId?: number;
-  expenseId?: number;
+  paymentId?: string;
+  expenseId?: string;
   type: string;
   description: string;
   confidenceScore: number;
+  zScore?: number;
   detectedAt: string;
 }
 
+// Chatbot (BF11)
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
+  timestamp: Date | string;
+}
+
+// Audit (BF9)
+export interface AuditLog {
+  id: string;
+  actorId: string;
+  actorEmail: string;
+  clubId: number;
+  action: string;
+  entityType: string;
+  entityId: string;
+  valuesBefore?: string;
+  valuesAfter?: string;
+  amount?: number;
+  ipAddress?: string;
+  timestamp: string;
+}
+
+// User (MongoDB)
+// Roles alignes sur le module User (esprit.com.clubhub.entity.Role)
+export type UserRole =
+  | 'PRESIDENT'
+  | 'VICE_PRESIDENT'
+  | 'SECRETAIRE_GENERALE'
+  | 'TRESORIER'
+  | 'RH'
+  | 'MEMBRE_SIMPLE';
+
+export interface MockUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string;
+  role: UserRole;
+  clubId: number | string;
+  profilePhoto?: string;
 }

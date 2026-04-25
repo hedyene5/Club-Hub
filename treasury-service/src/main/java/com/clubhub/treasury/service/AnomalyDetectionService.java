@@ -19,18 +19,29 @@ public class AnomalyDetectionService {
 
     private final PaymentRepository paymentRepository;
     private final ExpenseRepository expenseRepository;
+    private final MlAnomalyDetectionService mlService;
 
     public AnomalyDetectionService(PaymentRepository paymentRepository,
-                                    ExpenseRepository expenseRepository) {
+                                    ExpenseRepository expenseRepository,
+                                    MlAnomalyDetectionService mlService) {
         this.paymentRepository = paymentRepository;
         this.expenseRepository = expenseRepository;
+        this.mlService = mlService;
     }
 
     public List<AnomalyResponse> detectAnomalies(Long clubId) {
         List<AnomalyResponse> anomalies = new ArrayList<>();
 
         anomalies.addAll(detectPaymentAnomalies(clubId));
-        anomalies.addAll(detectExpenseAnomalies(clubId));
+
+        // Prefer ML (Isolation Forest) for expenses; fallback to Z-Score if model not trained
+        List<AnomalyResponse> mlAnomalies = mlService.detectAnomalies(clubId);
+        if (!mlAnomalies.isEmpty()) {
+            anomalies.addAll(mlAnomalies);
+        } else {
+            anomalies.addAll(detectExpenseAnomalies(clubId));
+        }
+
         anomalies.addAll(detectDuplicatePayments(clubId));
 
         anomalies.sort(Comparator.comparingInt(AnomalyResponse::getConfidenceScore).reversed());

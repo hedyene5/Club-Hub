@@ -1,55 +1,44 @@
 package com.clubhub.treasury.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "audit_logs")
+@Document(collection = "audit_logs")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class AuditLog {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false)
-    private Long actorId;
+    private String actorId;
 
-    @Column(nullable = false)
     private String actorEmail;
 
-    @Column(nullable = false)
+    @Indexed
+    @Field("club_id")
     private Long clubId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private ActionType action;
 
-    @Column(nullable = false)
     private String entityType;
 
-    @Column(nullable = false)
-    private Long entityId;
+    private String entityId;
 
-    @Column(columnDefinition = "TEXT")
     private String valuesBefore;
 
-    @Column(columnDefinition = "TEXT")
     private String valuesAfter;
 
     private BigDecimal amount;
 
     private String ipAddress;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime timestamp;
-
-    @PrePersist
-    void onCreate() {
-        timestamp = LocalDateTime.now();
-    }
+    private LocalDateTime timestamp = LocalDateTime.now();
 
     public enum ActionType {
         PAYMENT_CREATED, PAYMENT_UPDATED, PAYMENT_REFUNDED,

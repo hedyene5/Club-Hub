@@ -4,5 +4,5 @@ import lombok.Data;
 
 @Data
 public class CreatePaymentIntentRequest {
-    @NotNull private Long paymentId;
+    @NotNull private String paymentId;
 }

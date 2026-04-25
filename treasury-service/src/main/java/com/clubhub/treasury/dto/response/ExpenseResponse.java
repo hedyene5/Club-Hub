@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 
 @Data @Builder
 public class ExpenseResponse {
-    private Long id;
+    private String id;
     private Long clubId;
-    private Long submittedByMemberId;
+    private String submittedByMemberId;
     private String submittedByMemberName;
     private String title;
     private String description;

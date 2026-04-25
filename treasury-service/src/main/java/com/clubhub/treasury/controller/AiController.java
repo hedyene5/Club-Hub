@@ -24,6 +24,7 @@ public class AiController {
 
     private final GeminiService geminiService;
     private final AnomalyDetectionService anomalyService;
+    private final MlAnomalyDetectionService mlAnomalyService;
     private final PredictionService predictionService;
     private final DashboardService dashboardService;
     private final ExpenseService expenseService;
@@ -32,12 +33,14 @@ public class AiController {
 
     public AiController(GeminiService geminiService,
                         AnomalyDetectionService anomalyService,
+                        MlAnomalyDetectionService mlAnomalyService,
                         PredictionService predictionService,
                         DashboardService dashboardService,
                         ExpenseService expenseService,
                         RagService ragService) {
         this.geminiService = geminiService;
         this.anomalyService = anomalyService;
+        this.mlAnomalyService = mlAnomalyService;
         this.predictionService = predictionService;
         this.dashboardService = dashboardService;
         this.expenseService = expenseService;
@@ -72,6 +75,25 @@ public class AiController {
     @GetMapping("/anomalies")
     public ResponseEntity<List<AnomalyResponse>> anomalies(@PathVariable Long clubId) {
         return ResponseEntity.ok(anomalyService.detectAnomalies(clubId));
+    }
+
+    // BF12b - Detection d'anomalies avec modele ML uniquement (Isolation Forest)
+    @GetMapping("/anomalies/ml")
+    public ResponseEntity<List<AnomalyResponse>> anomaliesMl(@PathVariable Long clubId) {
+        return ResponseEntity.ok(mlAnomalyService.detectAnomalies(clubId));
+    }
+
+    // Statut du modele ML entraine localement
+    @GetMapping("/ml/status")
+    public ResponseEntity<Map<String, Object>> mlStatus(@PathVariable Long clubId) {
+        return ResponseEntity.ok(mlAnomalyService.getModelStatus());
+    }
+
+    // Re-entrainement manuel du modele ML
+    @PostMapping("/ml/retrain")
+    public ResponseEntity<Map<String, Object>> mlRetrain(@PathVariable Long clubId) {
+        mlAnomalyService.trainModel();
+        return ResponseEntity.ok(mlAnomalyService.getModelStatus());
     }
 
     // BF13 - Categorisation auto depenses

@@ -107,7 +107,7 @@ export class EspaceMembreComponent implements OnInit {
       next: (data) => { this.pendingPayments = data.filter(p => p.status === 'PENDING' || p.status === 'LATE').length; },
       error: () => {}
     });
-    this.http.get<any>(`http://localhost:8082/api/v1/treasury/1/notifications/user/${this.user!.id}/count`).subscribe({
+    this.http.get<any>(`http://localhost:8084/api/v1/treasury/1/notifications/user/${this.user!.id}/count`).subscribe({
       next: (r: any) => { this.unreadNotifs = r.unread || 0; },
       error: () => {}
     });

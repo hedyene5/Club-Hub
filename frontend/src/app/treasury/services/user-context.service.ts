@@ -16,7 +16,7 @@ import { AuthService } from './auth.service';
  */
 @Injectable({ providedIn: 'root' })
 export class UserContextService {
-  private base = 'http://localhost:8082/api/v1/users';
+  private base = 'http://localhost:8084/api/v1/users';
 
   private http = inject(HttpClient);
   private auth = inject(AuthService);

@@ -1,39 +1,28 @@
 package com.clubhub.treasury.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "receipts")
+@Document(collection = "receipts")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Receipt {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id", nullable = false)
-    private Payment payment;
+    private String paymentId;
 
-    @Column(nullable = false, unique = true)
     private String receiptNumber;
 
-    @Column(nullable = false)
     private String filePath;
 
-    @Column(nullable = false)
     private String memberName;
 
-    @Column(nullable = false)
     private String clubName;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime generatedAt;
-
-    @PrePersist
-    void onCreate() {
-        generatedAt = LocalDateTime.now();
-    }
+    private LocalDateTime generatedAt = LocalDateTime.now();
 }

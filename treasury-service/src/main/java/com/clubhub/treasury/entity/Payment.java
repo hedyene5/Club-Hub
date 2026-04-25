@@ -1,39 +1,38 @@
 package com.clubhub.treasury.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Entity
-@Table(name = "payments")
+@Document(collection = "payments")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Payment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @Column(nullable = false)
-    private Long memberId;
+    @Indexed
+    @Field("member_id")
+    private String memberId;
 
-    @Column(nullable = false)
+    @Indexed
+    @Field("club_id")
     private Long clubId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cotisation_rule_id")
-    private CotisationRule cotisationRule;
+    private String cotisationRuleId;
 
-    @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal amount;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Indexed
+    @Field("status")
     private PaymentStatus status;
 
-    @Column(nullable = false)
     private LocalDate dueDate;
 
     private LocalDateTime paidAt;
@@ -46,27 +45,10 @@ public class Payment {
     private Integer installmentNumber;
     private Integer totalInstallments;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
-
-    @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Receipt> receipts;
-
-    @PrePersist
-    void onCreate() {
-        createdAt = updatedAt = LocalDateTime.now();
-        if (status == null) status = PaymentStatus.PENDING;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
     public enum PaymentStatus {
-        PENDING, PAID, LATE, REFUNDED, PARTIALLY_REFUNDED, FAILED, EXEMPT
+        PENDING, PENDING_CASH, PAID, LATE, REFUNDED, PARTIALLY_REFUNDED, FAILED, EXEMPT
     }
 }

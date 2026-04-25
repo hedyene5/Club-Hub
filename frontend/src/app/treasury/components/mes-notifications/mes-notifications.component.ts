@@ -103,7 +103,7 @@ export class MesNotificationsComponent implements OnInit {
   }
 
   load() {
-    this.http.get<Notif[]>(`http://localhost:8082/api/v1/treasury/1/notifications/user/${this.user!.id}`).subscribe({
+    this.http.get<Notif[]>(`http://localhost:8084/api/v1/treasury/1/notifications/user/${this.user!.id}`).subscribe({
       next: (data) => { this.notifications = data; this.page = 0; this.loading = false; },
       error: () => { this.loading = false; }
     });
@@ -111,13 +111,13 @@ export class MesNotificationsComponent implements OnInit {
 
   markRead(n: Notif) {
     if (n.read) return;
-    this.http.patch(`http://localhost:8082/api/v1/treasury/1/notifications/${n.id}/read`, {}).subscribe({
+    this.http.patch(`http://localhost:8084/api/v1/treasury/1/notifications/${n.id}/read`, {}).subscribe({
       next: () => { n.read = true; }
     });
   }
 
   markAllRead() {
-    this.http.patch(`http://localhost:8082/api/v1/treasury/1/notifications/user/${this.user!.id}/read-all`, {}).subscribe({
+    this.http.patch(`http://localhost:8084/api/v1/treasury/1/notifications/user/${this.user!.id}/read-all`, {}).subscribe({
       next: () => { this.notifications.forEach(n => n.read = true); }
     });
   }

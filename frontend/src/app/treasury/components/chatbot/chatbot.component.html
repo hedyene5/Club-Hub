@@ -2,13 +2,16 @@
 
   <div class="mb-6">
     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Assistant IA Trésorerie</h1>
-    <p class="text-sm text-gray-500 mt-1">Posez des questions en langage naturel — Propulsé par Gemini AI</p>
+    <p class="text-sm text-gray-500 mt-1">Posez des questions en langage naturel — Propulse par Gemini AI
+      <span *ngIf="aiAvailable" class="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">Gemini actif</span>
+      <span *ngIf="!aiAvailable" class="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs">Mode local</span>
+    </p>
   </div>
 
   <!-- Suggestions rapides -->
   <div class="flex flex-wrap gap-2 mb-4">
-    <button *ngFor="let q of ['Taux de recouvrement ?', 'Membres en retard ?', 'Budget restant ?', 'Dépenses ce mois ?']"
-      (click)="input = q; send()"
+    <button *ngFor="let q of suggestions"
+      (click)="send(q)"
       class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-medium hover:bg-blue-100 transition border border-blue-100">
       {{ q }}
     </button>
@@ -70,7 +73,7 @@
 
   <!-- Disclaimer -->
   <p class="text-xs text-center text-gray-300 mt-2">
-    Mode démo — Gemini API activé après configuration de la clé
+    BF11 — Chatbot Tresorerie IA (Gemini API + fallback local)
   </p>
 
 </div>

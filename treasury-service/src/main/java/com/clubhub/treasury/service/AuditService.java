@@ -15,8 +15,8 @@ public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
 
-    public void log(Long actorId, String actorEmail, Long clubId, String action,
-                    String entityType, Long entityId, String before, String after, BigDecimal amount) {
+    public void log(String actorId, String actorEmail, Long clubId, String action,
+                    String entityType, String entityId, String before, String after, BigDecimal amount) {
         AuditLog log = AuditLog.builder()
                 .actorId(actorId)
                 .actorEmail(actorEmail)

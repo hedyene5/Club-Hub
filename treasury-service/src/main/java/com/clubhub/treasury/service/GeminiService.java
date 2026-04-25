@@ -9,6 +9,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -111,47 +112,203 @@ public class GeminiService {
         }
     }
 
-    /** Fallback intelligent : extrait les chiffres cles du contexte BDD */
+    /**
+     * Fallback intelligent (sans LLM) : analyse la question et produit
+     * une reponse naturelle a partir des vraies donnees BDD extraites par le RAG.
+     * Objectif : reponses aussi utiles que Gemini, SANS dependance externe.
+     */
     private String buildSmartFallback(String question, String dbContext) {
         String q = question.toLowerCase();
+        Map<String, String> kpi = parseKpisFromContext(dbContext);
 
-        // Extraire les stats du contexte
-        String stats = "";
-        for (String line : dbContext.split("\n")) {
-            String l = line.trim();
-            if (l.startsWith("- ") && l.contains(":")) {
-                stats += l + "\n";
-            }
-        }
+        String collected = kpi.getOrDefault("Total collecte", "0");
+        String pending = kpi.getOrDefault("Total en attente", "0");
+        String late = kpi.getOrDefault("Total en retard", "0");
+        String recovery = kpi.getOrDefault("Taux de recouvrement", "0");
+        String membersUp = kpi.getOrDefault("Membres a jour", "0");
+        String membersLate = kpi.getOrDefault("Membres en retard", "0");
+        String totalMembers = kpi.getOrDefault("Total membres", "0");
+        String totalPayments = kpi.getOrDefault("Nombre total de paiements", "0");
+        String totalExpenses = kpi.getOrDefault("Nombre total de depenses", "0");
 
-        if (q.contains("retard")) {
-            return extractFromContext(dbContext, "retard", "Voici les informations sur les paiements en retard extraites de la base de donnees:\n" + stats);
-        }
-        if (q.contains("budget")) {
-            return extractFromContext(dbContext, "BUDGET", "Voici la situation budgetaire:\n" + stats);
-        }
-        if (q.contains("depense")) {
-            return extractFromContext(dbContext, "DEPENSE", "Voici le resume des depenses:\n" + stats);
-        }
-        if (q.contains("recouvrement") || q.contains("taux")) {
-            return extractFromContext(dbContext, "recouvrement", "Voici les indicateurs de recouvrement:\n" + stats);
-        }
-        if (q.contains("resume") || q.contains("situation") || q.contains("general")) {
-            return "Voici un resume base sur les donnees actuelles:\n" + stats;
+        // Reponses specifiques par intention
+        if (q.contains("retard") || q.contains("impaye") || q.contains("relance")) {
+            String membresEnRetardDetail = extractSection(dbContext, "[MEMBRES EN RETARD]");
+            return String.format(
+                "Actuellement, %s membre(s) sont en retard de paiement pour un montant total de %s TND. "
+                + "Le taux de recouvrement du club est de %s%%.%s",
+                membersLate, late, recovery,
+                membresEnRetardDetail.isBlank() ? "" : "\n\nDetail :\n" + membresEnRetardDetail);
         }
 
-        return "Voici les donnees disponibles:\n" + stats
-                + "\n(Mode hors-ligne : l'IA Gemini est temporairement indisponible. Les donnees ci-dessus sont extraites directement de la base de donnees.)";
+        if (q.contains("budget") || q.contains("consomm") || q.contains("restant") || q.contains("depasse")) {
+            String budgetsDetail = extractSection(dbContext, "[BUDGETS]");
+            return String.format(
+                "Voici la situation budgetaire du club :\n%s\n"
+                + "(Total depense approuve : %s depenses actives)",
+                budgetsDetail.isBlank() ? "Aucun budget configure." : budgetsDetail,
+                totalExpenses);
+        }
+
+        if (q.contains("depense") || q.contains("facture") || q.contains("rembours") || q.contains("approuv")) {
+            String depensesDetail = extractSection(dbContext, "[DEPENSES]");
+            return String.format(
+                "Voici le resume des depenses du club :\n%s",
+                depensesDetail.isBlank() ? "Aucune depense enregistree." : depensesDetail);
+        }
+
+        if (q.contains("recouvrement") || q.contains("taux") || q.contains("performance")) {
+            return String.format(
+                "Le taux de recouvrement actuel est de %s%%. "
+                + "Sur %s paiements enregistres, le club a collecte %s TND, avec %s TND en attente et %s TND en retard. "
+                + "%s membres sont a jour sur %s au total.",
+                recovery, totalPayments, collected, pending, late, membersUp, totalMembers);
+        }
+
+        if (q.contains("paiement") || q.contains("paye") || q.contains("collecte")) {
+            String paiementsDetail = extractSection(dbContext, "[PAIEMENTS");
+            return String.format(
+                "Le club a enregistre %s paiements pour un total collecte de %s TND.\n%s",
+                totalPayments, collected,
+                paiementsDetail.isBlank() ? "" : paiementsDetail);
+        }
+
+        if (q.contains("cotisation") || q.contains("regle") || q.contains("frequence")) {
+            String reglesDetail = extractSection(dbContext, "[REGLES DE COTISATION");
+            return reglesDetail.isBlank()
+                ? "Aucune regle de cotisation active actuellement."
+                : "Regles de cotisation actives :\n" + reglesDetail;
+        }
+
+        if (q.contains("membre") || q.contains("utilisateur")) {
+            return String.format(
+                "Le club compte %s membres : %s a jour sur leurs cotisations et %s en retard. "
+                + "Nombre total de paiements enregistres : %s.",
+                totalMembers, membersUp, membersLate, totalPayments);
+        }
+
+        if (q.contains("audit") || q.contains("historique") || q.contains("trace") || q.contains("log")) {
+            String auditDetail = extractSection(dbContext, "[JOURNAL D'AUDIT");
+            return auditDetail.isBlank()
+                ? "Aucune action recente dans le journal d'audit."
+                : "Dernieres actions tracees :\n" + auditDetail;
+        }
+
+        if (q.contains("notification") || q.contains("email") || q.contains("alerte")) {
+            String notifDetail = extractSection(dbContext, "[NOTIFICATIONS");
+            return notifDetail.isBlank()
+                ? "Aucune notification recente."
+                : "Notifications recentes :\n" + notifDetail;
+        }
+
+        if (q.contains("anomalie") || q.contains("suspect") || q.contains("fraude")) {
+            int latePct = 0;
+            try {
+                double c = Double.parseDouble(collected.replace(",", "."));
+                double l = Double.parseDouble(late.replace(",", "."));
+                if (c + l > 0) latePct = (int) ((l / (c + l)) * 100);
+            } catch (Exception ignored) {}
+            return String.format(
+                "Analyse de la situation : %s%% des montants sont en retard. "
+                + "%s membres en retard sur %s (%s %% de la base). "
+                + (latePct > 20 || (Integer.parseInt(totalMembers) > 0 && Integer.parseInt(membersLate) * 100 / Math.max(1, Integer.parseInt(totalMembers)) > 30)
+                    ? "Situation a surveiller : taux de retard eleve."
+                    : "Aucune anomalie critique detectee."),
+                latePct, membersLate, totalMembers,
+                Integer.parseInt(totalMembers) > 0 ? Integer.parseInt(membersLate) * 100 / Integer.parseInt(totalMembers) : 0);
+        }
+
+        if (q.contains("prediction") || q.contains("prevision") || q.contains("futur") || q.contains("prochain")) {
+            return String.format(
+                "Estimations basees sur les donnees actuelles :\n"
+                + "- Revenus moyens par paiement : %s TND / paiement (sur %s paiements)\n"
+                + "- Montant total en attente : %s TND\n"
+                + "- Si le taux de recouvrement actuel (%s%%) se maintient, environ %s TND supplementaires seront collectes.\n"
+                + "Une analyse predictive detaillee est disponible dans la page IA & Alertes.",
+                safeDivide(collected, totalPayments), totalPayments, pending, recovery,
+                safeMultiply(pending, recovery, 100));
+        }
+
+        if (q.contains("resume") || q.contains("situation") || q.contains("general") || q.contains("etat")
+            || q.contains("bonjour") || q.contains("salut") || q.contains("hello") || q.isBlank()) {
+            return String.format(
+                "Bonjour ! Voici la situation financiere du club :\n"
+                + "- Collecte : %s TND (%s paiements)\n"
+                + "- En attente : %s TND | En retard : %s TND\n"
+                + "- Taux de recouvrement : %s%%\n"
+                + "- Membres : %s a jour / %s en retard (total %s)\n"
+                + "- Depenses : %s enregistrees\n"
+                + "Que voulez-vous savoir de plus ? (retards, budget, depenses, cotisations...)",
+                collected, totalPayments, pending, late, recovery,
+                membersUp, membersLate, totalMembers, totalExpenses);
+        }
+
+        // Par defaut : KPI synthetique + encouragement a preciser
+        return String.format(
+            "Je n'ai pas de reponse specifique a cette question, mais voici un apercu du club :\n"
+            + "- %s TND collectes, %s TND en attente, %s TND en retard\n"
+            + "- Taux de recouvrement : %s%% | %s membres en retard\n"
+            + "Essayez de demander : 'paiements en retard', 'budget', 'depenses', 'cotisations', 'membres', 'anomalies' ou 'prediction'.",
+            collected, pending, late, recovery, membersLate);
     }
 
-    private String extractFromContext(String ctx, String keyword, String prefix) {
-        StringBuilder sb = new StringBuilder(prefix);
-        for (String line : ctx.split("\n")) {
-            if (line.toLowerCase().contains(keyword.toLowerCase()) && line.trim().startsWith("-")) {
-                sb.append(line.trim()).append("\n");
+    /** Extrait les KPI du bloc [STATISTIQUES GENERALES] en paires cle->valeur */
+    private Map<String, String> parseKpisFromContext(String ctx) {
+        Map<String, String> out = new HashMap<>();
+        boolean inStats = false;
+        for (String raw : ctx.split("\n")) {
+            String line = raw.trim();
+            if (line.startsWith("[STATISTIQUES")) { inStats = true; continue; }
+            if (line.startsWith("[") && inStats) break;
+            if (!inStats || !line.startsWith("- ")) continue;
+
+            String body = line.substring(2);
+            int colon = body.indexOf(':');
+            if (colon < 0) continue;
+            String key = body.substring(0, colon).trim();
+            String val = body.substring(colon + 1).trim();
+
+            // "Membres a jour: 5 / Membres en retard: 2 / Total membres: 8"
+            if (val.contains(" / ")) {
+                out.put("Membres a jour", val.split("/")[0].trim());
+                for (String seg : val.split(" / ")) {
+                    int c = seg.indexOf(':');
+                    if (c > 0) out.put(seg.substring(0, c).trim(), seg.substring(c + 1).trim().replace(" TND", ""));
+                }
+            } else {
+                out.put(key, val.replace(" TND", "").replace("%", "").trim());
             }
         }
+        return out;
+    }
+
+    /** Retourne le contenu textuel d'une section (entre un marqueur et le prochain marqueur [...]) */
+    private String extractSection(String ctx, String marker) {
+        StringBuilder sb = new StringBuilder();
+        boolean capturing = false;
+        for (String line : ctx.split("\n")) {
+            String t = line.trim();
+            if (t.startsWith(marker)) { capturing = true; continue; }
+            if (capturing && t.startsWith("[") && !t.startsWith(marker)) break;
+            if (capturing && !t.isEmpty()) sb.append(t).append("\n");
+        }
         return sb.toString().trim();
+    }
+
+    private String safeDivide(String a, String b) {
+        try {
+            double x = Double.parseDouble(a.replace(",", "."));
+            double y = Double.parseDouble(b.replace(",", "."));
+            return y == 0 ? "0" : String.format("%.2f", x / y);
+        } catch (Exception e) { return "0"; }
+    }
+
+    private String safeMultiply(String a, String b, double divisor) {
+        try {
+            double x = Double.parseDouble(a.replace(",", "."));
+            double y = Double.parseDouble(b.replace(",", "."));
+            return String.format("%.0f", x * y / divisor);
+        } catch (Exception e) { return "0"; }
     }
 
     public String categorizeExpense(String title, String description) {

@@ -25,7 +25,7 @@ public class CotisationService {
     private final AuditService auditService;
 
     @Transactional
-    public CotisationRule createRule(Long clubId, CreateCotisationRuleRequest req, Long actorId, String actorEmail) {
+    public CotisationRule createRule(Long clubId, CreateCotisationRuleRequest req, String actorId, String actorEmail) {
         CotisationRule rule = CotisationRule.builder()
                 .clubId(clubId)
                 .name(req.getName())
@@ -48,19 +48,19 @@ public class CotisationService {
     }
 
     @Transactional
-    public List<Payment> assignToMembers(Long ruleId, List<Long> memberIds, Long clubId) {
+    public List<Payment> assignToMembers(String ruleId, List<String> memberIds, Long clubId) {
         CotisationRule rule = ruleRepository.findById(ruleId)
                 .orElseThrow(() -> new TreasuryException("Cotisation rule not found", 404));
 
         List<Payment> payments = new ArrayList<>();
-        for (Long memberId : memberIds) {
+        for (String memberId : memberIds) {
             LocalDate dueDate = computeNextDueDate(rule);
             if (rule.isAllowInstallments() && rule.getMaxInstallments() != null) {
                 for (int i = 1; i <= rule.getMaxInstallments(); i++) {
                     Payment p = Payment.builder()
                             .memberId(memberId)
                             .clubId(clubId)
-                            .cotisationRule(rule)
+                            .cotisationRuleId(rule.getId())
                             .amount(rule.getAmount().divide(BigDecimal.valueOf(rule.getMaxInstallments()), 3, RoundingMode.HALF_UP))
                             .dueDate(dueDate.plusMonths(i - 1))
                             .installmentNumber(i)
@@ -72,7 +72,7 @@ public class CotisationService {
                 Payment p = Payment.builder()
                         .memberId(memberId)
                         .clubId(clubId)
-                        .cotisationRule(rule)
+                        .cotisationRuleId(rule.getId())
                         .amount(rule.getAmount())
                         .dueDate(dueDate)
                         .build();
