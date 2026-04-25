@@ -3,14 +3,24 @@ import { Component } from '@angular/core';
 @Component({
   selector: 'app-sidebar-widget',
   template: `
-    <div class="mx-auto mb-10 w-full max-w-60 rounded-2xl px-4 py-4 text-center"
-         style="background: linear-gradient(135deg, #1C2340 0%, #2d3561 100%);">
-      <div class="flex items-center justify-center gap-1 mb-1">
-        <span style="font-family:'Arial Black',Arial,sans-serif;font-size:14px;font-weight:900;color:#fff;letter-spacing:0.5px">CLUB</span>
-        <span style="font-family:'Arial Black',Arial,sans-serif;font-size:14px;font-weight:900;color:#E84068;letter-spacing:0.5px">HUB</span>
-      </div>
-      <p style="font-size:10px;color:#9CA3AF;margin:0;">Module Trésorerie — v1.0</p>
+    <div
+      class="mx-auto mb-10 w-full max-w-60 rounded-2xl bg-gray-50 px-4 py-5 text-center dark:bg-white/[0.03]"
+    >
+      <h3 class="mb-2 font-semibold text-gray-900 dark:text-white">
+        #1 Tailwind CSS Dashboard
+      </h3>
+      <p class="mb-4 text-gray-500 text-theme-sm dark:text-gray-400">
+        Leading Tailwind CSS Admin Template with 500+ UI Component and Pages.
+      </p>
+      <a
+        href="https://tailadmin.com/pricing"
+        target="_blank"
+        rel="nofollow"
+        class="flex items-center justify-center p-3 font-medium text-white rounded-lg bg-brand-500 text-theme-sm hover:bg-brand-600"
+      >
+        Purchase Plan
+      </a>
     </div>
   `
 })
-export class SidebarWidgetComponent {}
+export class SidebarWidgetComponent {} 

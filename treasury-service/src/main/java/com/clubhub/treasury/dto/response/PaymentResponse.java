@@ -8,11 +8,11 @@ import java.time.LocalDateTime;
 
 @Data @Builder
 public class PaymentResponse {
-    private String id;
-    private String memberId;
+    private Long id;
+    private Long memberId;
     private String memberName;
     private Long clubId;
-    private String cotisationRuleId;
+    private Long cotisationRuleId;
     private String cotisationRuleName;
     private BigDecimal amount;
     private PaymentStatus status;

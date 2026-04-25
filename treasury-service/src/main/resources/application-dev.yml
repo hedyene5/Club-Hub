@@ -1,53 +1,48 @@
 spring:
-  data:
-    mongodb:
-      # MongoDB local installe (port 27017)
-      uri: mongodb://localhost:27017/clubhub_treasury
+  datasource:
+    url: jdbc:h2:mem:treasury_dev;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
-  autoconfigure:
-    exclude:
-      - de.flapdoodle.embed.mongo.spring.autoconfigure.EmbeddedMongoAutoConfiguration
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
 
-  quartz:
-    job-store-type: memory
-    overwrite-existing-jobs: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  flyway:
+    enabled: false
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: kayzeurdylan@gmail.com
-    password: ycaoctdpvjjlalqu
+    host: localhost
+    port: 1025
+    username: ''
+    password: ''
     properties:
-      mail.smtp.auth: true
-      mail.smtp.starttls.enable: true
-
-# Flapdoodle desactive — on utilise MongoDB local
-# de:
-#   flapdoodle:
-#     mongodb:
-#       embedded:
-#         version: 7.0.9
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
 
 stripe:
-  secret-key: sk_test_51OebnQI4pL3hKGDrUhMLOTCMnj2nyFKOKCs3VevmTUXM27I4tx2UB4MuEZkfBH5ZNVJkLOIiR2MbipqxpOgKBOa400JBrBp5CF
+  secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
-  publishable-key: pk_test_51OebnQI4pL3hKGDrHvAaNloBwQ52VuxYXOcI3nlerH6w4jwtqrvRoVfU3eAlESm4ok8UsI6yNw1PLjexLOMcGgB200MzUcIWE8
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_placeholder}
   currency: tnd
 
 gemini:
-  api-key: AIzaSyD4cJhfqA1YRt8jufrVI7-NOcpIjiStkeQ
-  model: gemini-2.0-flash
+  api-key: placeholder
+  model: gemini-1.5-flash
   max-tokens: 2048
-
-notification:
-  # DESACTIVE en dev — les mails du seed (@esprit.tn) n'existent pas
-  # et provoquent des bounces qui floodent la boite Gmail
-  # Remettre a true uniquement pour tester avec de vrais emails (kayzeurdylan2@gmail.com)
-  email-enabled: false
 
 logging:
   level:
     com.clubhub.treasury: DEBUG
     org.springframework.security: WARN
     org.springframework.web: INFO
-    # de.flapdoodle: WARN

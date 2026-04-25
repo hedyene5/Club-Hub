@@ -1,50 +1,48 @@
 package com.clubhub.treasury.entity;
 
+import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Document(collection = "expenses")
+@Entity
+@Table(name = "expenses")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Expense {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Indexed
-    @Field("club_id")
+    @Column(nullable = false)
     private Long clubId;
 
-    private String submittedByMemberId;
+    @Column(nullable = false)
+    private Long submittedByMemberId;
 
-    private String validatedByTreasurerId;
-    private String approvedByPresidentId;
+    private Long validatedByTreasurerId;
+    private Long approvedByPresidentId;
 
+    @Column(nullable = false)
     private String title;
 
+    @Column(length = 1000)
     private String description;
 
+    @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal amount;
 
-    @Indexed
-    @Field("status")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ExpenseStatus status;
 
     // IA auto-categorization
+    @Enumerated(EnumType.STRING)
     private ExpenseCategory category;
 
     private Integer categoryConfidenceScore; // 0-100
 
     private boolean categoryValidatedByTreasurer = false;
-
-    // 3-quote system: member must provide 3 quotes from different providers
-    private List<Quote> quotes;
 
     // Justificatif (file path or URL)
     private String justificatifUrl;
@@ -55,19 +53,26 @@ public class Expense {
 
     private String rejectionReason;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    void onCreate() {
+        createdAt = updatedAt = LocalDateTime.now();
+        if (status == null) status = ExpenseStatus.SUBMITTED;
+        submittedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 
     public enum ExpenseStatus {
         SUBMITTED, VALIDATED, APPROVED, REJECTED, CANCELLED
-    }
-
-    @Data @NoArgsConstructor @AllArgsConstructor @Builder
-    public static class Quote {
-        private String providerName;    // Nom du fournisseur
-        private BigDecimal amount;      // Montant du devis
-        private String description;     // Description
-        private boolean selected;       // true si choisi par le tresorier
     }
 
     public enum ExpenseCategory {

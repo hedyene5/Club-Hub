@@ -1,11 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { TreasuryApiService } from '../../services/treasury-api.service';
-import { AuthService } from '../../services/auth.service';
-import { CotisationRule, Payment, MockUser } from '../../models/treasury.models';
+import { CotisationRule, Payment } from '../../models/treasury.models';
 
 @Component({
   selector: 'app-cotisations',
@@ -18,31 +15,8 @@ export class CotisationsComponent implements OnInit {
   rules: CotisationRule[] = [];
   payments: Payment[] = [];
   loading = true;
-  error = '';
   showRuleForm = false;
   activeTab: 'rules' | 'payments' = 'rules';
-  confirmingId: string | null = null;
-  confirmSuccess = '';
-  confirmError = '';
-
-  // User lookup map: memberId -> "firstName lastName"
-  private userMap = new Map<string, string>();
-
-  // Pagination - payments
-  paymentPage = 0;
-  paymentPageSize = 10;
-
-  // Pagination - rules
-  rulePage = 0;
-  rulePageSize = 10;
-
-  // Sort - payments
-  sortField: 'member' | 'amount' | 'status' | 'dueDate' | 'paidAt' = 'dueDate';
-  sortDir: 'asc' | 'desc' = 'desc';
-
-  // Sort - rules
-  ruleSortField: 'name' | 'amount' | 'frequency' | 'startDate' = 'name';
-  ruleSortDir: 'asc' | 'desc' = 'asc';
 
   form: FormGroup;
 
@@ -52,17 +26,7 @@ export class CotisationsComponent implements OnInit {
     { value: 'ANNUAL', label: 'Annuelle' },
   ];
 
-  constructor(
-    private api: TreasuryApiService,
-    private fb: FormBuilder,
-    public auth: AuthService,
-    private route: ActivatedRoute,
-    private http: HttpClient
-  ) {
-    const tab = this.route.snapshot.data['defaultTab'];
-    if (tab === 'payments' || tab === 'rules') {
-      this.activeTab = tab;
-    }
+  constructor(private api: TreasuryApiService, private fb: FormBuilder) {
     this.form = this.fb.group({
       name: ['', Validators.required],
       amount: [null, [Validators.required, Validators.min(0.001)]],
@@ -74,43 +38,17 @@ export class CotisationsComponent implements OnInit {
     });
   }
 
-  ngOnInit() {
-    this.loadUsers();
-    this.load();
-  }
-
-  /** Fetch all users for club and build memberId -> name lookup */
-  private loadUsers(): void {
-    this.http.get<MockUser[]>('http://localhost:8081/api/users/club/1', { withCredentials: true }).subscribe({
-      next: (users) => {
-        for (const u of users) {
-          const id = (u as any).id || (u as any).userId;
-          if (id) {
-            this.userMap.set(id, `${u.firstName} ${u.lastName}`);
-          }
-        }
-      },
-      error: () => { /* silently ignore - fallback to memberName or truncated id */ }
-    });
-  }
-
-  /** Resolve member name: userMap > payment.memberName > truncated id */
-  getMemberName(memberId: string, memberName?: string): string {
-    if (this.userMap.has(memberId)) return this.userMap.get(memberId)!;
-    if (memberName) return memberName;
-    if (!memberId) return 'Membre';
-    return 'Membre #' + memberId.substring(0, 8);
-  }
+  ngOnInit() { this.load(); }
 
   load() {
     this.loading = true;
     this.api.getCotisationRules(this.clubId).subscribe({
-      next: (data) => { this.rules = data; this.rulePage = 0; this.loading = false; },
-      error: () => { this.error = 'Impossible de charger les cotisations.'; this.loading = false; }
+      next: (data) => { this.rules = data; this.loading = false; },
+      error: () => { this.rules = this.mockRules(); this.loading = false; }
     });
     this.api.getPayments(this.clubId).subscribe({
-      next: (data) => { this.payments = data; this.paymentPage = 0; },
-      error: () => { this.error = 'Impossible de charger les cotisations.'; this.loading = false; }
+      next: (data) => { this.payments = data; },
+      error: () => { this.payments = this.mockPayments(); }
     });
   }
 
@@ -121,139 +59,6 @@ export class CotisationsComponent implements OnInit {
       error: () => { this.showRuleForm = false; this.form.reset(); }
     });
   }
-
-  // ── Sorted + paginated data ────────────────────────────────────────
-
-  get sortedPayments(): Payment[] {
-    const arr = [...this.payments];
-    const dir = this.sortDir === 'asc' ? 1 : -1;
-    arr.sort((a, b) => {
-      let va: any, vb: any;
-      switch (this.sortField) {
-        case 'member':
-          va = this.getMemberName(a.memberId, a.memberName).toLowerCase();
-          vb = this.getMemberName(b.memberId, b.memberName).toLowerCase();
-          break;
-        case 'amount': va = a.amount; vb = b.amount; break;
-        case 'status': va = a.status; vb = b.status; break;
-        case 'dueDate': va = a.dueDate || ''; vb = b.dueDate || ''; break;
-        case 'paidAt': va = a.paidAt || ''; vb = b.paidAt || ''; break;
-        default: va = ''; vb = '';
-      }
-      if (va < vb) return -1 * dir;
-      if (va > vb) return 1 * dir;
-      return 0;
-    });
-    return arr;
-  }
-
-  get pagedPayments(): Payment[] {
-    const start = this.paymentPage * this.paymentPageSize;
-    return this.sortedPayments.slice(start, start + this.paymentPageSize);
-  }
-
-  get paymentTotalPages(): number {
-    return Math.max(1, Math.ceil(this.payments.length / this.paymentPageSize));
-  }
-
-  get sortedRules(): CotisationRule[] {
-    const arr = [...this.rules];
-    const dir = this.ruleSortDir === 'asc' ? 1 : -1;
-    arr.sort((a, b) => {
-      let va: any, vb: any;
-      switch (this.ruleSortField) {
-        case 'name': va = a.name.toLowerCase(); vb = b.name.toLowerCase(); break;
-        case 'amount': va = a.amount; vb = b.amount; break;
-        case 'frequency': va = a.frequency; vb = b.frequency; break;
-        case 'startDate': va = a.startDate || ''; vb = b.startDate || ''; break;
-        default: va = ''; vb = '';
-      }
-      if (va < vb) return -1 * dir;
-      if (va > vb) return 1 * dir;
-      return 0;
-    });
-    return arr;
-  }
-
-  get pagedRules(): CotisationRule[] {
-    const start = this.rulePage * this.rulePageSize;
-    return this.sortedRules.slice(start, start + this.rulePageSize);
-  }
-
-  get ruleTotalPages(): number {
-    return Math.max(1, Math.ceil(this.rules.length / this.rulePageSize));
-  }
-
-  // ── Sort toggling ──────────────────────────────────────────────────
-
-  togglePaymentSort(field: 'member' | 'amount' | 'status' | 'dueDate' | 'paidAt'): void {
-    if (this.sortField === field) {
-      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
-    } else {
-      this.sortField = field;
-      this.sortDir = 'asc';
-    }
-    this.paymentPage = 0;
-  }
-
-  toggleRuleSort(field: 'name' | 'amount' | 'frequency' | 'startDate'): void {
-    if (this.ruleSortField === field) {
-      this.ruleSortDir = this.ruleSortDir === 'asc' ? 'desc' : 'asc';
-    } else {
-      this.ruleSortField = field;
-      this.ruleSortDir = 'asc';
-    }
-    this.rulePage = 0;
-  }
-
-  sortIcon(field: string, currentField: string, currentDir: string): string {
-    if (field !== currentField) return ' \u2195';
-    return currentDir === 'asc' ? ' \u2191' : ' \u2193';
-  }
-
-  // ── CSV Export ─────────────────────────────────────────────────────
-
-  exportPaymentsCsv(): void {
-    const header = 'Membre,Montant,Statut,Echeance,Paye le\n';
-    const rows = this.sortedPayments.map(p => {
-      const name = this.getMemberName(p.memberId, p.memberName).replace(/,/g, ' ');
-      const amount = p.amount.toFixed(3);
-      const status = p.status;
-      const dueDate = p.dueDate || '';
-      const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleDateString('fr-FR') : '';
-      return `${name},${amount},${status},${dueDate},${paidAt}`;
-    }).join('\n');
-
-    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `paiements_club${this.clubId}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  exportRulesCsv(): void {
-    const header = 'Nom,Montant,Frequence,Date debut,Active\n';
-    const rows = this.sortedRules.map(r => {
-      const name = r.name.replace(/,/g, ' ');
-      const amount = r.amount.toFixed(3);
-      const freq = this.freqLabel(r.frequency);
-      const start = r.startDate || '';
-      const active = r.active ? 'Oui' : 'Non';
-      return `${name},${amount},${freq},${start},${active}`;
-    }).join('\n');
-
-    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `regles_cotisations_club${this.clubId}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  // ── Helpers ────────────────────────────────────────────────────────
 
   statusClass(status: string): string {
     const map: Record<string, string> = {
@@ -270,22 +75,19 @@ export class CotisationsComponent implements OnInit {
     return this.frequencies.find(x => x.value === f)?.label ?? f;
   }
 
-  confirmCashPayment(payment: Payment): void {
-    this.confirmingId = payment.id;
-    this.confirmSuccess = '';
-    this.confirmError = '';
-    const memberName = this.getMemberName(payment.memberId, payment.memberName);
-    this.api.confirmPayment(this.clubId, payment.id, 'CASH', '', 'Club Test ClubHub', memberName).subscribe({
-      next: () => {
-        this.confirmSuccess = `Paiement de ${memberName} valid\u00e9 avec succ\u00e8s.`;
-        this.confirmingId = null;
-        this.load();
-      },
-      error: () => {
-        this.confirmError = `Erreur lors de la validation du paiement de ${memberName}.`;
-        this.confirmingId = null;
-      }
-    });
+  private mockRules(): CotisationRule[] {
+    return [
+      { id: 1, clubId: 1, name: 'Cotisation annuelle 2025/2026', amount: 120, frequency: 'ANNUAL', startDate: '2025-09-01', active: true, allowExemption: false, allowInstallments: true, maxInstallments: 3 },
+      { id: 2, clubId: 1, name: 'Cotisation mensuelle activités', amount: 15, frequency: 'MONTHLY', startDate: '2025-10-01', active: true, allowExemption: true, allowInstallments: false },
+    ];
   }
 
+  private mockPayments(): Payment[] {
+    return [
+      { id: 1, memberId: 10, memberName: 'Ali Ben Salah', clubId: 1, amount: 120, status: 'PAID', dueDate: '2025-10-01', paidAt: '2025-10-03T10:30:00' },
+      { id: 2, memberId: 11, memberName: 'Sana Khelifi', clubId: 1, amount: 120, status: 'PENDING', dueDate: '2025-10-01' },
+      { id: 3, memberId: 12, memberName: 'Omar Mansouri', clubId: 1, amount: 120, status: 'LATE', dueDate: '2025-10-01' },
+      { id: 4, memberId: 13, memberName: 'Fatma Haddad', clubId: 1, amount: 15, status: 'PAID', dueDate: '2026-03-01', paidAt: '2026-03-02T09:00:00' },
+    ];
+  }
 }

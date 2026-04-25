@@ -14,7 +14,6 @@ export class BudgetComponent implements OnInit {
   clubId = 1;
   budgets: Budget[] = [];
   loading = true;
-  error = '';
   showForm = false;
   form: FormGroup;
 
@@ -33,7 +32,7 @@ export class BudgetComponent implements OnInit {
     this.loading = true;
     this.api.getBudgets(this.clubId).subscribe({
       next: (d) => { this.budgets = d; this.loading = false; },
-      error: () => { this.error = 'Impossible de charger les budgets.'; this.loading = false; }
+      error: () => { this.budgets = this.mockData(); this.loading = false; }
     });
   }
 
@@ -67,4 +66,11 @@ export class BudgetComponent implements OnInit {
     return null;
   }
 
+  private mockData(): Budget[] {
+    return [
+      { id: 1, clubId: 1, label: 'Budget annuel 2025/2026', totalAmount: 5000, consumedAmount: 3100, remainingAmount: 1900, consumptionPercentage: 62, periodStart: '2025-09-01', periodEnd: '2026-08-31' },
+      { id: 2, clubId: 1, label: 'Budget événements S2', totalAmount: 1500, consumedAmount: 1380, remainingAmount: 120, consumptionPercentage: 92, periodStart: '2026-02-01', periodEnd: '2026-06-30' },
+      { id: 3, clubId: 1, label: 'Budget communication', totalAmount: 800, consumedAmount: 350, remainingAmount: 450, consumptionPercentage: 44, periodStart: '2025-09-01', periodEnd: '2026-08-31' },
+    ];
+  }
 }

@@ -32,7 +32,7 @@ public class BudgetService {
         return budgetRepository.findByClubId(clubId);
     }
 
-    public Budget getOrThrow(String id) {
+    public Budget getOrThrow(Long id) {
         return budgetRepository.findById(id)
                 .orElseThrow(() -> new TreasuryException("Budget not found: " + id, 404));
     }

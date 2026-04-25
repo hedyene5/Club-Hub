@@ -1,53 +1,70 @@
 package com.clubhub.treasury.entity;
 
+import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
-@Document(collection = "cotisation_rules")
+@Entity
+@Table(name = "cotisation_rules")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class CotisationRule {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Indexed
-    @Field("club_id")
+    @Column(nullable = false)
     private Long clubId;
 
+    @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal amount;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Frequency frequency;
 
+    @Column(nullable = false)
     private LocalDate startDate;
 
     private LocalDate endDate;
 
+    @Column(nullable = false)
     private boolean active = true;
 
+    @Column(nullable = false)
     private boolean allowExemption = false;
 
+    @Column(nullable = false)
     private boolean allowInstallments = false;
 
     private Integer maxInstallments;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "cotisationRule", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Payment> payments;
+
+    @PrePersist
+    void onCreate() {
+        createdAt = updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 
     public enum Frequency {
         MONTHLY, QUARTERLY, ANNUAL
-    }
-
-    @Override
-    public String toString() {
-        return name + " - " + amount + " TND/" + frequency;
     }
 }

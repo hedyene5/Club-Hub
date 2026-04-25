@@ -1,34 +1,36 @@
 package com.clubhub.treasury.entity;
 
+import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Document(collection = "budgets")
+@Entity
+@Table(name = "budgets")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Budget {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Indexed
-    @Field("club_id")
+    @Column(nullable = false)
     private Long clubId;
 
+    @Column(nullable = false)
     private String label;
 
+    @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal totalAmount;
 
+    @Column(nullable = false, precision = 10, scale = 3)
     private BigDecimal consumedAmount = BigDecimal.ZERO;
 
+    @Column(nullable = false)
     private LocalDate periodStart;
 
+    @Column(nullable = false)
     private LocalDate periodEnd;
 
     // Alert thresholds already sent (to avoid duplicate alerts)
@@ -37,8 +39,21 @@ public class Budget {
     private boolean alert90Sent = false;
     private boolean alert100Sent = false;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    void onCreate() {
+        createdAt = updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 
     public BigDecimal getRemainingAmount() {
         return totalAmount.subtract(consumedAmount);

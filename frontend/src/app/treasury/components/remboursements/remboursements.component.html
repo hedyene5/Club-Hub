@@ -21,7 +21,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
       <div class="px-5 py-4 border-b border-gray-50 dark:border-gray-700 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Paiements remboursables</h3>
-        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{{ allPaid.length }}</span>
+        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{{ paid.length }}</span>
       </div>
       <table class="w-full text-sm">
         <thead class="bg-gray-50 dark:bg-gray-700/50">
@@ -40,23 +40,15 @@
               <input type="checkbox" [checked]="isSelected(p.id)" (click)="$event.stopPropagation()" (change)="toggle(p.id)"
                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
             </td>
-            <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200">{{ p.memberName || resolveMember(p.memberId) }}</td>
+            <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200">{{ p.memberName || 'Membre #' + p.memberId }}</td>
             <td class="px-4 py-3 font-semibold text-gray-800 dark:text-gray-200">{{ p.amount | number:'1.3-3' }} TND</td>
             <td class="px-4 py-3 text-gray-400 text-xs">{{ p.paidAt | date:'dd/MM/yyyy HH:mm' }}</td>
           </tr>
-          <tr *ngIf="allPaid.length === 0">
+          <tr *ngIf="paid.length === 0">
             <td colspan="4" class="px-4 py-8 text-center text-gray-400">Aucun paiement remboursable</td>
           </tr>
         </tbody>
       </table>
-      <!-- Pagination -->
-      <div *ngIf="totalPages > 1" class="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-        <span class="text-sm text-gray-500">Page {{page+1}} / {{totalPages}} ({{total}} elements)</span>
-        <div class="flex gap-2">
-          <button (click)="page=page-1; onPageChange()" [disabled]="page===0" class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-700">Precedent</button>
-          <button (click)="page=page+1; onPageChange()" [disabled]="page>=totalPages-1" class="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-700">Suivant</button>
-        </div>
-      </div>
     </div>
 
     <!-- Already refunded -->
@@ -64,7 +56,7 @@
       <h3 class="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-3">Remboursements effectués</h3>
       <div class="space-y-2">
         <div *ngFor="let p of refunded" class="flex items-center justify-between text-sm">
-          <span class="text-gray-700 dark:text-gray-300">{{ p.memberName || resolveMember(p.memberId) }}</span>
+          <span class="text-gray-700 dark:text-gray-300">{{ p.memberName }}</span>
           <div class="flex items-center gap-3">
             <span class="font-semibold text-gray-800 dark:text-white">{{ p.amount | number:'1.3-3' }} TND</span>
             <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">{{ p.status }}</span>

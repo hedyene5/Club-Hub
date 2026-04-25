@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { TreasuryApiService } from '../../services/treasury-api.service';
-import { Payment, MockUser } from '../../models/treasury.models';
+import { Payment } from '../../models/treasury.models';
 
 @Component({
   selector: 'app-remboursements',
@@ -12,66 +11,30 @@ import { Payment, MockUser } from '../../models/treasury.models';
 })
 export class RemboursementsComponent implements OnInit {
   clubId = 1;
-  allPaid: Payment[] = [];
   paid: Payment[] = [];
   refunded: Payment[] = [];
   loading = true;
-  error = '';
-  selectedPayments: string[] = [];
+  selectedPayments: number[] = [];
 
-  // Pagination
-  page = 0;
-  pageSize = 10;
-  get total(): number { return this.allPaid.length; }
-  get totalPages(): number { return Math.max(1, Math.ceil(this.total / this.pageSize)); }
-
-  // Member name resolution
-  memberNames = new Map<string, string>();
-
-  constructor(private api: TreasuryApiService, private http: HttpClient) {}
+  constructor(private api: TreasuryApiService) {}
 
   ngOnInit() {
-    this.loadMembers();
     this.api.getPayments(this.clubId).subscribe({
       next: (data) => {
-        this.allPaid = data.filter(p => p.status === 'PAID');
+        this.paid = data.filter(p => p.status === 'PAID');
         this.refunded = data.filter(p => p.status === 'REFUNDED' || p.status === 'PARTIALLY_REFUNDED');
-        this.applyView();
         this.loading = false;
       },
-      error: () => { this.error = 'Impossible de charger les remboursements.'; this.loading = false; }
+      error: () => { this.paid = this.mockPaid(); this.refunded = this.mockRefunded(); this.loading = false; }
     });
   }
 
-  loadMembers() {
-    this.http.get<MockUser[]>('http://localhost:8082/api/v1/users/club/1').subscribe({
-      next: (users) => {
-        users.forEach(u => this.memberNames.set(u.id, u.firstName + ' ' + u.lastName));
-        this.applyView();
-      },
-      error: () => {}
-    });
-  }
-
-  resolveMember(id: string): string {
-    return this.memberNames.get(id) || 'Membre #' + id;
-  }
-
-  applyView() {
-    const start = this.page * this.pageSize;
-    this.paid = this.allPaid.slice(start, start + this.pageSize);
-  }
-
-  onPageChange() {
-    this.applyView();
-  }
-
-  toggle(id: string) {
+  toggle(id: number) {
     const i = this.selectedPayments.indexOf(id);
     if (i === -1) this.selectedPayments.push(id); else this.selectedPayments.splice(i, 1);
   }
 
-  isSelected(id: string) { return this.selectedPayments.includes(id); }
+  isSelected(id: number) { return this.selectedPayments.includes(id); }
 
   initiateRefunds() {
     if (!this.selectedPayments.length) return;
@@ -79,4 +42,17 @@ export class RemboursementsComponent implements OnInit {
     this.selectedPayments = [];
   }
 
+  private mockPaid(): Payment[] {
+    return [
+      { id: 1, memberId: 10, memberName: 'Ali Ben Salah', clubId: 1, amount: 120, status: 'PAID', dueDate: '2026-01-01', paidAt: '2026-01-03T10:00:00' },
+      { id: 4, memberId: 13, memberName: 'Fatma Haddad', clubId: 1, amount: 120, status: 'PAID', dueDate: '2026-01-01', paidAt: '2026-01-05T14:00:00' },
+      { id: 5, memberId: 14, memberName: 'Hedi Saidi', clubId: 1, amount: 15, status: 'PAID', dueDate: '2026-03-01', paidAt: '2026-03-02T09:00:00' },
+    ];
+  }
+
+  private mockRefunded(): Payment[] {
+    return [
+      { id: 6, memberId: 15, memberName: 'Nour Triki', clubId: 1, amount: 120, status: 'REFUNDED', dueDate: '2025-12-01', paidAt: '2025-12-03T09:00:00' },
+    ];
+  }
 }

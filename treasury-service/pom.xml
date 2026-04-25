@@ -15,13 +15,14 @@
     <artifactId>treasury-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>treasury-service</name>
-    <description>ClubHub - Module Tresorerie (Cash Flow &amp; Payments) - MongoDB</description>
+    <description>ClubHub - Module Tresorerie (Cash Flow &amp; Payments)</description>
 
     <properties>
         <java.version>21</java.version>
         <mapstruct.version>1.6.2</mapstruct.version>
         <springdoc.version>2.6.0</springdoc.version>
         <stripe.version>26.3.0</stripe.version>
+        <flyway.version>10.19.0</flyway.version>
         <itext.version>8.0.5</itext.version>
     </properties>
 
@@ -30,12 +31,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <!-- MongoDB (remplace JPA + PostgreSQL + H2 + Flyway) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
 
         <!-- Security + JWT -->
@@ -59,6 +54,27 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>0.12.6</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- JPA + PostgreSQL -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Flyway migrations -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
         <!-- Validation -->
@@ -115,11 +131,11 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Embedded MongoDB (dev/test — pas besoin d'installer MongoDB) -->
+        <!-- H2 (dev profile - no Docker needed) -->
         <dependency>
-            <groupId>de.flapdoodle.embed</groupId>
-            <artifactId>de.flapdoodle.embed.mongo.spring30x</artifactId>
-            <version>4.11.0</version>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- Test -->

@@ -1,214 +1,57 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
+import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { TreasuryApiService } from '../../services/treasury-api.service';
-import { UserContextService } from '../../services/user-context.service';
-import { Expense, ExpenseStatus, MockUser } from '../../models/treasury.models';
+import { Expense, ExpenseStatus } from '../../models/treasury.models';
 
 @Component({
   selector: 'app-depenses',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, DecimalPipe, DatePipe, FormsModule, ReactiveFormsModule],
   templateUrl: './depenses.component.html',
 })
 export class DepensesComponent implements OnInit {
   clubId = 1;
   expenses: Expense[] = [];
-  allExpenses: Expense[] = [];
   loading = true;
-  error = '';
   showForm = false;
   selectedStatus = '';
   form: FormGroup;
-  user: MockUser | null = null;
-  successMsg = '';
-
-  // Quote selection for validation
-  quoteModalExpense: Expense | null = null;
-  selectedQuoteIndex: number = 0;
-
-  // Pagination
-  page = 0;
-  pageSize = 10;
-  get total(): number { return this.allExpenses.length; }
-  get totalPages(): number { return Math.max(1, Math.ceil(this.total / this.pageSize)); }
-
-  // Sort
-  sortField: 'submittedAt' | 'amount' | 'status' = 'submittedAt';
-  sortDir: 'asc' | 'desc' = 'desc';
-
-  // Member name resolution
-  memberNames = new Map<string, string>();
 
   statusFilters = ['', 'SUBMITTED', 'VALIDATED', 'APPROVED', 'REJECTED'];
 
-  constructor(private api: TreasuryApiService, private fb: FormBuilder, private userCtx: UserContextService, private http: HttpClient) {
+  constructor(private api: TreasuryApiService, private fb: FormBuilder) {
     this.form = this.fb.group({
       title: ['', Validators.required],
       description: [''],
+      amount: [null, [Validators.required, Validators.min(0.001)]],
       justificatifUrl: [''],
-      quote0: this.fb.group({
-        providerName: ['', Validators.required],
-        amount: [null, [Validators.required, Validators.min(0.001)]],
-        description: [''],
-      }),
-      quote1: this.fb.group({
-        providerName: ['', Validators.required],
-        amount: [null, [Validators.required, Validators.min(0.001)]],
-        description: [''],
-      }),
-      quote2: this.fb.group({
-        providerName: ['', Validators.required],
-        amount: [null, [Validators.required, Validators.min(0.001)]],
-        description: [''],
-      }),
     });
   }
 
-  ngOnInit() {
-    this.user = this.userCtx.getCurrentUser();
-    this.loadMembers();
-    this.load();
-  }
-
-  loadMembers() {
-    this.http.get<MockUser[]>('http://localhost:8082/api/v1/users/club/1').subscribe({
-      next: (users) => {
-        users.forEach(u => this.memberNames.set(u.id, u.firstName + ' ' + u.lastName));
-        this.applyView();
-      },
-      error: () => {}
-    });
-  }
-
-  resolveMember(id: string): string {
-    return this.memberNames.get(id) || 'Membre #' + id;
-  }
+  ngOnInit() { this.load(); }
 
   load() {
     this.loading = true;
     this.api.getExpenses(this.clubId, this.selectedStatus || undefined).subscribe({
-      next: (d) => { this.allExpenses = d; this.page = 0; this.applyView(); this.loading = false; },
-      error: () => { this.error = 'Impossible de charger les depenses.'; this.loading = false; }
+      next: (d) => { this.expenses = d; this.loading = false; },
+      error: () => { this.expenses = this.mockData(); this.loading = false; }
     });
-  }
-
-  applyView() {
-    let sorted = [...this.allExpenses];
-    sorted.sort((a, b) => {
-      let cmp = 0;
-      if (this.sortField === 'submittedAt') {
-        cmp = (a.submittedAt || '').localeCompare(b.submittedAt || '');
-      } else if (this.sortField === 'amount') {
-        cmp = a.amount - b.amount;
-      } else if (this.sortField === 'status') {
-        cmp = a.status.localeCompare(b.status);
-      }
-      return this.sortDir === 'asc' ? cmp : -cmp;
-    });
-    const start = this.page * this.pageSize;
-    this.expenses = sorted.slice(start, start + this.pageSize);
-  }
-
-  toggleSort(field: 'submittedAt' | 'amount' | 'status') {
-    if (this.sortField === field) {
-      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
-    } else {
-      this.sortField = field;
-      this.sortDir = 'asc';
-    }
-    this.page = 0;
-    this.applyView();
-  }
-
-  sortIcon(field: string): string {
-    if (this.sortField !== field) return '';
-    return this.sortDir === 'asc' ? ' ▲' : ' ▼';
-  }
-
-  onPageChange() {
-    this.applyView();
   }
 
   submit() {
     if (this.form.invalid) return;
-    this.successMsg = '';
-    const v = this.form.value;
-    const quotes = [v.quote0, v.quote1, v.quote2];
-    const avgAmount = quotes.reduce((sum: number, q: any) => sum + (q.amount || 0), 0) / 3;
-    const payload = {
-      title: v.title,
-      description: v.description,
-      amount: Math.round(avgAmount * 1000) / 1000,
-      justificatifUrl: v.justificatifUrl,
-      quotes,
-    };
-    this.api.submitExpense(this.clubId, payload).subscribe({
-      next: (exp) => {
-        this.showForm = false;
-        this.form.reset();
-        this.successMsg = 'Depense "' + exp.title + '" soumise ! Categorie IA: ' + (exp.category || 'AUTRE') + ' (' + (exp.categoryConfidenceScore || 0) + '%)';
-        this.load();
-      },
-      error: () => { this.error = 'Erreur soumission depense.'; }
+    this.api.submitExpense(this.clubId, this.form.value).subscribe({
+      next: () => { this.showForm = false; this.form.reset(); this.load(); },
+      error: () => { this.showForm = false; }
     });
   }
 
-  validate(e: Expense) {
-    if (!this.user) return;
-    // If expense has quotes, show the quote selection modal
-    if (e.quotes && e.quotes.length > 0) {
-      this.quoteModalExpense = e;
-      this.selectedQuoteIndex = 0;
-      return;
-    }
-    // Fallback: validate without quote selection
-    this.api.validateExpense(this.clubId, e.id, 0).subscribe({
-      next: () => { this.successMsg = 'Depense "' + e.title + '" validee.'; this.load(); },
-      error: (err) => { this.error = err.error?.message || 'Erreur validation.'; }
-    });
-  }
-
-  confirmValidateWithQuote() {
-    if (!this.quoteModalExpense || !this.user) return;
-    this.api.validateExpense(this.clubId, this.quoteModalExpense.id, this.selectedQuoteIndex).subscribe({
-      next: () => {
-        this.successMsg = 'Depense "' + this.quoteModalExpense!.title + '" validee avec le devis #' + (this.selectedQuoteIndex + 1) + '.';
-        this.quoteModalExpense = null;
-        this.load();
-      },
-      error: (err) => { this.error = err.error?.message || 'Erreur validation.'; this.quoteModalExpense = null; }
-    });
-  }
-
-  cancelQuoteModal() {
-    this.quoteModalExpense = null;
-  }
-
-  approve(e: Expense) {
-    if (!this.user) return;
-    this.api.approveExpense(this.clubId, e.id).subscribe({
-      next: () => { this.successMsg = 'Depense "' + e.title + '" approuvee. Facture envoyee par email.'; this.load(); },
-      error: (err) => { this.error = err.error?.message || 'Erreur approbation.'; }
-    });
-  }
-
+  validate(e: Expense) { this.api.validateExpense(this.clubId, e.id).subscribe(() => this.load()); }
+  approve(e: Expense) { this.api.approveExpense(this.clubId, e.id).subscribe(() => this.load()); }
   reject(e: Expense) {
     const reason = prompt('Motif du rejet :');
-    if (reason) {
-      this.api.rejectExpense(this.clubId, e.id, reason).subscribe({
-        next: () => { this.successMsg = 'Depense "' + e.title + '" rejetee.'; this.load(); },
-        error: (err) => { this.error = err.error?.message || 'Erreur rejet.'; }
-      });
-    }
-  }
-
-  canValidate(): boolean { return this.userCtx.isTresorier(); }
-  canApprove(): boolean { return this.userCtx.isPresident(); }
-  getUserLabel(): string {
-    if (!this.user) return 'Non connecte';
-    return this.user.firstName + ' ' + this.user.lastName + ' (' + this.user.role + ')';
+    if (reason) this.api.rejectExpense(this.clubId, e.id, reason).subscribe(() => this.load());
   }
 
   statusClass(s: ExpenseStatus): string {
@@ -221,4 +64,13 @@ export class DepensesComponent implements OnInit {
   }
 
   filterLabel(s: string) { return s || 'Toutes'; }
+
+  private mockData(): Expense[] {
+    return [
+      { id: 1, clubId: 1, submittedByMemberId: 2, submittedByMemberName: 'Ali Ben Salah', title: 'Matériel événement', description: 'Tables et chaises', amount: 320, status: 'SUBMITTED', categoryValidatedByTreasurer: false, submittedAt: new Date().toISOString() },
+      { id: 2, clubId: 1, submittedByMemberId: 3, submittedByMemberName: 'Sana Khelifi', title: 'Transport déplacement', description: 'Location bus', amount: 180, status: 'VALIDATED', category: 'TRANSPORT', categoryConfidenceScore: 94, categoryValidatedByTreasurer: false, submittedAt: new Date().toISOString() },
+      { id: 3, clubId: 1, submittedByMemberId: 4, submittedByMemberName: 'Omar Mansouri', title: 'Restauration réunion', description: 'Buffet', amount: 95, status: 'APPROVED', category: 'RESTAURATION', categoryConfidenceScore: 88, categoryValidatedByTreasurer: true, submittedAt: new Date().toISOString() },
+      { id: 4, clubId: 1, submittedByMemberId: 5, submittedByMemberName: 'Fatma Haddad', title: 'Impression flyers', description: 'Flyers événement', amount: 45, status: 'REJECTED', rejectionReason: 'Budget insuffisant', categoryValidatedByTreasurer: false, submittedAt: new Date().toISOString() },
+    ];
+  }
 }

@@ -1,7 +1,6 @@
 package com.clubhub.treasury.exception;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -12,19 +11,14 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
-        return ResponseEntity.status(403).body(errorBody("Acces refuse. Role insuffisant.", 403));
-    }
-
     @ExceptionHandler(TreasuryException.class)
     public ResponseEntity<Map<String, Object>> handleTreasuryException(TreasuryException ex) {
         return ResponseEntity.status(ex.getStatus()).body(errorBody(ex.getMessage(), ex.getStatus()));
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
-        return ResponseEntity.status(500).body(errorBody(ex.getMessage(), 500));
+    @ExceptionHandler(jakarta.persistence.EntityNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(Exception ex) {
+        return ResponseEntity.status(404).body(errorBody(ex.getMessage(), 404));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -58,8 +58,8 @@
               'justify-start': (isExpanded$ | async) || (isHovered$ | async)
             }"
           >
-            @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async))
-            { Finances }
+            @if ((isExpanded$ | async) || (isHovered$ | async) || (isMobileOpen$ | async)) 
+            { Menu } 
            @else {
             <svg
               width="1em"
@@ -262,7 +262,7 @@
                 (isHovered$ | async) ||
                 (isMobileOpen$ | async)
             ) {
-              Compte
+              Others
             } @else {
               <svg
                 width="1em"

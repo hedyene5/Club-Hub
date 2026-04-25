@@ -29,15 +29,11 @@ public class PaymentService {
         return paymentRepository.findByClubIdAndStatus(clubId, status);
     }
 
-    public List<Payment> getByMember(String memberId, Long clubId) {
+    public List<Payment> getByMember(Long memberId, Long clubId) {
         return paymentRepository.findByMemberIdAndClubId(memberId, clubId);
     }
 
-    public Payment save(Payment payment) {
-        return paymentRepository.save(payment);
-    }
-
-    public Payment getOrThrow(String id) {
+    public Payment getOrThrow(Long id) {
         return paymentRepository.findById(id)
                 .orElseThrow(() -> new TreasuryException("Payment not found: " + id, 404));
     }
@@ -46,8 +42,8 @@ public class PaymentService {
      * Called by Stripe webhook after successful payment
      */
     @Transactional
-    public Payment confirmPayment(String paymentId, String stripeIntentId, String receiptUrl,
-                                   String actorId, String actorEmail) {
+    public Payment confirmPayment(Long paymentId, String stripeIntentId, String receiptUrl,
+                                   Long actorId, String actorEmail) {
         Payment payment = getOrThrow(paymentId);
         if (payment.getStatus() == PaymentStatus.PAID) {
             log.warn("Payment {} already marked as PAID — idempotent skip", paymentId);
@@ -68,7 +64,7 @@ public class PaymentService {
      * Mark payment as refunded after Stripe processes it
      */
     @Transactional
-    public Payment markRefunded(String paymentId, String actorId, String actorEmail) {
+    public Payment markRefunded(Long paymentId, Long actorId, String actorEmail) {
         Payment payment = getOrThrow(paymentId);
         if (payment.getStatus() != PaymentStatus.PAID) {
             throw new TreasuryException("Only PAID payments can be refunded", 400);
@@ -97,7 +93,7 @@ public class PaymentService {
      * Mark a payment as exempt (e.g., scholarship)
      */
     @Transactional
-    public Payment markExempt(String paymentId, String actorId, String actorEmail) {
+    public Payment markExempt(Long paymentId, Long actorId, String actorEmail) {
         Payment payment = getOrThrow(paymentId);
         String before = payment.getStatus().name();
         payment.setStatus(PaymentStatus.EXEMPT);
