@@ -19,6 +19,8 @@ export class TreasuryDashboardComponent implements OnInit {
   anomalies: AnomalyAlert[] = [];
   riskMembers: LatePaymentPrediction[] = [];
   highRiskCount = 0;
+  resetting = false;
+  resetMessage = '';
   animPhase = [false, false, false];
   chartVisible = false;
   hoveredIdx = -1;
@@ -63,6 +65,24 @@ export class TreasuryDashboardComponent implements OnInit {
         this.highRiskCount = data.filter(m => m.riskLevel === 'HIGH').length;
       },
       error: () => {}
+    });
+  }
+
+  resetDemo() {
+    if (this.resetting) return;
+    this.resetting = true;
+    this.resetMessage = 'Re-seed des donnees + re-entrainement des modeles ML...';
+    this.api.seedDemoData().subscribe({
+      next: () => {
+        this.resetMessage = 'Donnees rechargees';
+        // Re-fetch all dashboard data after seed completes
+        this.ngOnInit();
+        setTimeout(() => { this.resetting = false; this.resetMessage = ''; }, 2500);
+      },
+      error: () => {
+        this.resetMessage = 'Erreur lors du reset';
+        setTimeout(() => { this.resetting = false; this.resetMessage = ''; }, 3000);
+      }
     });
   }
 

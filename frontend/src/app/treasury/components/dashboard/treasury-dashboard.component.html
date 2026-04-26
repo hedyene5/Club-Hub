@@ -2,9 +2,23 @@
   <div class="max-w-7xl mx-auto p-8 lg:p-12">
 
     <!-- Header -->
-    <div class="mb-10">
-      <h1 class="text-4xl lg:text-5xl font-extralight text-gray-900 dark:text-white mb-2 tracking-tight">Tresorerie</h1>
-      <p class="text-lg text-gray-500 font-light">Vue d'ensemble financiere du club</p>
+    <div class="mb-10 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-4xl lg:text-5xl font-extralight text-gray-900 dark:text-white mb-2 tracking-tight">Tresorerie</h1>
+        <p class="text-lg text-gray-500 font-light">Vue d'ensemble financiere du club</p>
+      </div>
+      <button (click)="resetDemo()" [disabled]="resetting"
+              class="shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              [class.bg-purple-600]="!resetting" [class.hover:bg-purple-700]="!resetting" [class.text-white]="!resetting"
+              [class.bg-gray-300]="resetting" [class.text-gray-600]="resetting"
+              [class.cursor-not-allowed]="resetting"
+              title="Re-seed la base + re-entraine les modeles IA">
+        <span *ngIf="!resetting">Reset demo</span>
+        <span *ngIf="resetting" class="flex items-center gap-2">
+          <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+          {{ resetMessage }}
+        </span>
+      </button>
     </div>
 
     <!-- Anomaly Alert (ML Isolation Forest) -->

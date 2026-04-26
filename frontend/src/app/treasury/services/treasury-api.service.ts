@@ -152,8 +152,8 @@ export class TreasuryApiService {
       { headers: { 'X-Actor-Id': actorId, 'X-Actor-Email': actorEmail } });
   }
 
-  // Demo seed
+  // Demo seed (public, direct sur le service treasury sans passer par le gateway)
   seedDemoData(): Observable<any> {
-    return this.http.post('http://localhost:8084/api/v1/demo/seed', {});
+    return this.http.post('http://localhost:8085/api/v1/demo/seed', {});
   }
 }

@@ -30,9 +30,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            // CORS gere entierement par le Gateway (port 8084). Desactive ici pour
-            // eviter le doublon Access-Control-Allow-Origin qui fait rejeter la reponse.
-            .cors(cors -> cors.disable())
+            // CORS active pour autoriser le frontend (4200) a appeler directement les endpoints
+            // /api/v1/demo/** sans passer par le gateway. Les autres routes restent accessibles
+            // via le gateway qui gere lui-meme son CORS.
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .headers(headers -> headers.frameOptions(f -> f.sameOrigin())) // H2 console
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
