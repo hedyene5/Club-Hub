@@ -1,0 +1,570 @@
+<div class="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+  <ng-container *ngIf="view === 'list'">
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h2 class="text-title-md2 font-semibold text-black dark:text-white">Voice Channels</h2>
+        <p class="text-sm text-body dark:text-bodydark">Select a channel to open it</p>
+      </div>
+    </div>
+
+    <div *ngIf="error" class="mb-4 rounded border border-danger bg-red-50 px-4 py-3 text-sm text-danger dark:bg-meta-4">
+      {{ error }}
+    </div>
+
+    <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+      <div *ngIf="loading" class="flex items-center justify-center py-20">
+        <svg class="h-8 w-8 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+      </div>
+      <div *ngIf="!loading && channels.length === 0" class="flex flex-col items-center justify-center py-20">
+        <svg class="mb-4 h-12 w-12 text-bodydark2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M9 4.5a3 3 0 116 0A3 3 0 019 4.5z"/>
+        </svg>
+        <p class="text-base font-medium text-black dark:text-white">No channels yet</p>
+        <p class="mt-1 text-sm text-body dark:text-bodydark">Create your first voice channel below.</p>
+      </div>
+
+      <ul *ngIf="!loading" class="divide-y divide-stroke dark:divide-strokedark">
+        <li
+          *ngFor="let channel of channels"
+          (click)="openChannel(channel)"
+          class="group flex cursor-pointer items-center justify-between px-6 py-4 transition hover:bg-gray-2 dark:hover:bg-meta-4"
+        >
+          <div class="flex items-center gap-3">
+            <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
+              [class.bg-warning]="channel.isCommitteeChannel"
+              [class.bg-meta-1]="!channel.isCommitteeChannel && !channel.isPrivate"
+              [class.bg-primary]="!channel.isCommitteeChannel && channel.isPrivate"
+            >
+              <svg *ngIf="!channel.isCommitteeChannel" class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4M9 4.5a3 3 0 116 0A3 3 0 019 4.5z"/>
+              </svg>
+              <svg *ngIf="channel.isCommitteeChannel" class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="font-medium text-black dark:text-white">{{ channel.name }}</p>
+              <p class="text-xs text-bodydark2">
+                <span *ngIf="channel.isCommitteeChannel" class="text-warning">Committee channel</span>
+                <span *ngIf="!channel.isCommitteeChannel">{{ channel.isPrivate ? 'Private' : 'Public' }}</span>
+              </p>
+            </div>
+          </div>
+          <button
+            *ngIf="!isMembreSimple"
+            (click)="requestDeleteChannel(channel, $event)"
+            class="rounded p-1.5 text-red-500 transition hover:bg-red-50 dark:hover:bg-meta-4"
+            title="Delete channel"
+          >
+            <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </button>
+        </li>
+      </ul>
+
+      <div class="flex justify-end border-t border-stroke px-6 py-4 dark:border-strokedark">
+        <button
+          *ngIf="!isMembreSimple"
+          (click)="goToCreate()"
+          class="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-blue shadow-sm transition hover:bg-opacity-90"
+        >
+          <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+            <path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"/>
+          </svg>
+          New Channel
+        </button>
+        <p *ngIf="isMembreSimple" class="text-sm text-bodydark2 italic">Only admins can create channels</p>
+      </div>
+    </div>
+
+    <div
+      *ngIf="pendingDeleteChannel"
+      class="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50"
+      (click)="cancelDelete()"
+    >
+      <div
+        class="w-full max-w-sm rounded-sm border border-stroke bg-white p-6 shadow-default dark:border-strokedark dark:bg-boxdark"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="mb-4 flex items-center gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-meta-4">
+            <svg class="h-5 w-5 text-danger fill-current" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <div>
+            <h4 class="text-base font-semibold text-black dark:text-white">Delete channel</h4>
+            <p class="text-sm text-bodydark2">
+              Are you sure you want to delete <span class="font-medium text-black dark:text-white">{{ pendingDeleteChannel.name }}</span>?
+            </p>
+          </div>
+        </div>
+        <p *ngIf="pendingDeleteChannel.isCommitteeChannel" class="mb-4 rounded border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+          This is a committee channel. All members assigned to this committee will have their committee cleared.
+        </p>
+        <div class="flex items-center justify-end gap-3">
+          <button
+            (click)="cancelDelete()"
+            class="rounded border border-stroke px-4 py-2 text-sm font-medium text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+          >
+            Cancel
+          </button>
+          <button
+            (click)="confirmDelete()"
+            class="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="view === 'detail' && selectedChannel">
+    <div *ngIf="error" class="mb-4 rounded border border-danger bg-red-50 px-4 py-3 text-sm text-danger dark:bg-meta-4">
+      {{ error }}
+    </div>
+
+    <div class="mb-6 flex items-center gap-3">
+      <button
+        (click)="goBack()"
+        class="flex h-9 w-9 items-center justify-center rounded-md border border-stroke text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+      >
+        <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+      <div>
+        <h2 class="text-title-md2 font-semibold text-black dark:text-white">{{ selectedChannel.name }}</h2>
+        <span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-medium"
+          [class.bg-meta-3]="!selectedChannel.isPrivate"
+          [class.text-white]="!selectedChannel.isPrivate"
+          [class.bg-primary]="selectedChannel.isPrivate"
+          [class.text-white]="selectedChannel.isPrivate"
+        >{{ selectedChannel.isPrivate ? 'Private' : 'Public' }}</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-2">
+        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark flex items-center justify-between">
+          <h4 class="text-base font-semibold text-black dark:text-white">Audio History</h4>
+          <span *ngIf="audioHistory.length > 0"
+            class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+            {{ audioHistory.length }} message{{ audioHistory.length !== 1 ? 's' : '' }}
+          </span>
+        </div>
+
+        <div *ngIf="audioLoading" class="flex items-center justify-center py-10">
+          <svg class="h-6 w-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+        </div>
+
+        <div *ngIf="isSaving" class="flex items-center gap-2 border-b border-stroke px-6 py-3 dark:border-strokedark bg-primary/5">
+          <svg class="h-4 w-4 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span class="text-xs text-primary font-medium">Saving audio message...</span>
+        </div>
+
+        <ul *ngIf="!audioLoading" class="divide-y divide-stroke dark:divide-strokedark">
+          <li *ngIf="audioHistory.length === 0" class="px-6 py-10 text-center text-sm text-bodydark2">
+            No audio messages yet. Press the mic button below to transmit.
+          </li>
+
+          <li
+            *ngFor="let msg of audioHistory"
+            class="flex items-center gap-4 px-6 py-4"
+            [class.bg-gray-1]="msg.hidden"
+            [class.dark:bg-meta-4]="msg.hidden"
+          >
+            <ng-container>
+              <button
+                (click)="playAudio(msg)"
+                class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border transition"
+                [class.border-primary]="playingId === msg.id"
+                [class.text-primary]="playingId === msg.id"
+                [class.bg-primary]="playingId === msg.id"
+                [class.border-stroke]="playingId !== msg.id"
+                [class.text-bodydark2]="playingId !== msg.id"
+                [class.hover:border-primary]="playingId !== msg.id"
+                [class.hover:text-primary]="playingId !== msg.id"
+                [class.dark:border-strokedark]="playingId !== msg.id"
+              >
+                <svg *ngIf="playingId !== msg.id" class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                  <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                </svg>
+                <svg *ngIf="playingId === msg.id" class="h-4 w-4 fill-current text-white" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+              </button>
+
+              <div class="flex flex-1 items-center gap-0.5">
+                <ng-container *ngFor="let bar of [3,5,7,4,6,8,5,3,6,4,7,5,3,6,4,8,6,4,5,7]">
+                  <div class="w-1 rounded-full transition-colors"
+                    [class.bg-primary]="playingId === msg.id"
+                    [class.bg-stroke]="playingId !== msg.id"
+                    [class.dark:bg-strokedark]="playingId !== msg.id"
+                    [style.height.px]="bar * 3">
+                  </div>
+                </ng-container>
+                <span *ngIf="msg.hidden && !isMembreSimple"
+                  class="ml-3 inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-600 dark:bg-orange-900/20 dark:text-orange-400 flex-shrink-0">
+                  Hidden from members
+                </span>
+              </div>
+
+              <div class="text-right flex-shrink-0">
+                <p class="text-sm font-medium text-black dark:text-white">{{ msg.userName }}</p>
+                <p class="mt-0.5 text-xs text-bodydark2">{{ formatDate(msg.createdAt) }}</p>
+                <button
+                  *ngIf="msg.userId !== currentUserId && !msg.hidden"
+                  (click)="openReportModal(msg)"
+                  class="mt-1 flex items-center gap-1 text-xs text-bodydark2 hover:text-danger transition ml-auto"
+                  title="Report this audio"
+                >
+                  Report
+                </button>
+              </div>
+            </ng-container>
+          </li>
+        </ul>
+
+        <div
+          *ngIf="reportingAudio"
+          class="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50"
+          (click)="closeReportModal()"
+        >
+          <div
+            class="w-full max-w-md rounded-sm border border-stroke bg-white p-6 shadow-default dark:border-strokedark dark:bg-boxdark"
+            (click)="$event.stopPropagation()"
+          >
+            <div *ngIf="reportSuccess" class="flex flex-col items-center gap-3 py-4">
+              <p class="text-sm font-medium text-black dark:text-white">Report submitted successfully.</p>
+            </div>
+
+            <ng-container *ngIf="!reportSuccess">
+              <div class="mb-4 flex items-start gap-3">
+                <div>
+                  <h4 class="text-base font-semibold text-black dark:text-white">Report audio message</h4>
+                  <p class="text-sm text-bodydark2">
+                    From <span class="font-medium text-black dark:text-white">{{ reportingAudio.userName }}</span>
+                    &middot; {{ formatDate(reportingAudio.createdAt) }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="mb-2 block text-sm font-medium text-black dark:text-white">
+                  Reason <span class="text-danger">*</span>
+                </label>
+                <div class="flex flex-col gap-2">
+                  <label *ngFor="let r of [
+                    { value: 'INAPPROPRIATE', label: 'Inappropriate content' },
+                    { value: 'HARASSMENT',    label: 'Harassment or bullying' },
+                    { value: 'SPAM',          label: 'Spam' },
+                    { value: 'OTHER',         label: 'Other' }
+                  ]" class="flex cursor-pointer items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="reportReason"
+                      [value]="r.value"
+                      [(ngModel)]="reportReason"
+                      class="accent-danger"
+                    />
+                    <span class="text-sm text-body dark:text-bodydark">{{ r.label }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="mb-5">
+                <label class="mb-2 block text-sm font-medium text-black dark:text-white">Additional details <span class="text-bodydark2 font-normal">(optional)</span></label>
+                <textarea
+                  [(ngModel)]="reportDetails"
+                  rows="3"
+                  placeholder="Describe the issue..."
+                  class="w-full rounded border border-stroke bg-transparent px-4 py-2 text-sm text-black outline-none transition focus:border-primary dark:border-strokedark dark:text-white dark:focus:border-primary resize-none"
+                ></textarea>
+              </div>
+
+              <div class="flex items-center justify-end gap-3">
+                <button
+                  (click)="closeReportModal()"
+                  class="rounded border border-stroke px-4 py-2 text-sm font-medium text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  (click)="submitReport()"
+                  [disabled]="!reportReason || reportSubmitting"
+                  class="inline-flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Submit Report
+                </button>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+
+        <div class="border-t border-stroke px-6 py-3 dark:border-strokedark">
+          <p class="text-xs text-bodydark2">Tap the mic button below to transmit voice to this channel</p>
+        </div>
+      </div>
+
+      <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark flex flex-col">
+        <div class="border-b border-stroke px-6 py-4 dark:border-strokedark flex items-center justify-between">
+          <h4 class="text-base font-semibold text-black dark:text-white">
+            Members
+            <span *ngIf="channelMembers.length > 0" class="ml-1.5 text-sm font-normal text-bodydark2">({{ channelMembers.length }})</span>
+          </h4>
+          <button
+            *ngIf="!isMembreSimple && !showAddMemberPanel"
+            (click)="openAddMemberPanel()"
+            class="flex items-center gap-1.5 rounded border border-primary px-2.5 py-1 text-xs font-medium text-primary transition hover:bg-primary hover:text-white"
+            title="Add a member"
+          >
+            Add
+          </button>
+          <button
+            *ngIf="!isMembreSimple && showAddMemberPanel"
+            (click)="closeAddMemberPanel()"
+            class="text-xs font-medium text-bodydark2 hover:text-danger transition"
+          >
+            Cancel
+          </button>
+        </div>
+
+        <div *ngIf="showAddMemberPanel && !isMembreSimple" class="border-b border-stroke dark:border-strokedark">
+          <div class="px-4 py-3">
+            <input
+              type="text"
+              [(ngModel)]="memberSearch"
+              placeholder="Search by name or email..."
+              class="w-full rounded border border-stroke bg-transparent py-2 px-3 text-xs text-black outline-none transition focus:border-primary dark:border-strokedark dark:text-white dark:focus:border-primary"
+            />
+          </div>
+
+          <div *ngIf="addableLoading" class="px-6 pb-3 text-xs text-bodydark2">Loading users...</div>
+          <p *ngIf="!addableLoading && !memberSearch" class="px-6 pb-3 text-xs text-bodydark2 italic">
+            Start typing to search for a member to add.
+          </p>
+          <p *ngIf="!addableLoading && memberSearch && filteredAddableUsers.length === 0" class="px-6 pb-3 text-xs text-bodydark2 italic">
+            No users found matching "{{ memberSearch }}".
+          </p>
+
+          <ul *ngIf="!addableLoading && filteredAddableUsers.length > 0"
+            class="max-h-44 overflow-y-auto divide-y divide-stroke dark:divide-strokedark">
+            <li
+              *ngFor="let user of filteredAddableUsers"
+              class="flex items-center justify-between gap-3 px-4 py-2.5"
+            >
+              <div class="min-w-0">
+                <p class="truncate text-xs font-medium text-black dark:text-white">{{ user.firstName }} {{ user.lastName }}</p>
+                <p class="truncate text-xs text-bodydark2">{{ user.role.replace('_', ' ') }}</p>
+              </div>
+              <button
+                (click)="addMemberToChannel(user)"
+                [disabled]="addingUserId === user.id"
+                class="flex-shrink-0 rounded border border-meta-3 px-2.5 py-1 text-xs font-medium text-meta-3 transition hover:bg-meta-3 hover:text-white disabled:opacity-50"
+              >
+                <span *ngIf="addingUserId !== user.id">Add</span>
+                <span *ngIf="addingUserId === user.id">...</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div *ngIf="membersLoading" class="px-6 py-5 text-sm text-bodydark2">Loading...</div>
+        <ul *ngIf="!membersLoading" class="divide-y divide-stroke dark:divide-strokedark">
+          <li *ngIf="channelMembers.length === 0" class="px-6 py-5 text-sm text-bodydark2">No members.</li>
+          <li
+            *ngFor="let member of channelMembers"
+            class="flex items-center gap-3 px-4 py-3 group"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-black dark:text-white">
+                {{ member.firstName }} {{ member.lastName }}
+                <span *ngIf="member.id === currentUserId" class="ml-1 text-xs text-blue-400">(you)</span>
+              </p>
+              <p class="truncate text-xs text-bodydark2">{{ member.role.replace('_', ' ') }}</p>
+            </div>
+
+            <button
+              *ngIf="canKick(member)"
+              (click)="requestKick(member, $event)"
+              [disabled]="kickingId === member.id"
+              class="flex-shrink-0 rounded p-1.5 text-danger transition hover:bg-red-50 dark:hover:bg-meta-4 disabled:opacity-50"
+              title="Remove from channel"
+            >
+              Remove
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div
+        *ngIf="pendingKickMember"
+        class="fixed inset-0 z-[999999] flex items-center justify-center bg-black/50"
+        (click)="cancelKick()"
+      >
+        <div
+          class="w-full max-w-sm rounded-sm border border-stroke bg-white p-6 shadow-default dark:border-strokedark dark:bg-boxdark"
+          (click)="$event.stopPropagation()"
+        >
+          <h4 class="text-base font-semibold text-black dark:text-white mb-2">Remove member</h4>
+          <p class="text-sm text-bodydark2 mb-4">
+            Remove <span class="font-medium text-black dark:text-white">{{ pendingKickMember.firstName }} {{ pendingKickMember.lastName }}</span> from this channel?
+          </p>
+          <div class="flex items-center justify-end gap-3">
+            <button (click)="cancelKick()" class="rounded border border-stroke px-4 py-2 text-sm">Cancel</button>
+            <button (click)="confirmKick()" class="rounded bg-red-600 px-4 py-2 text-sm text-white">Remove</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="recordingError" class="mt-4 rounded border border-danger bg-red-50 px-4 py-3 text-sm text-danger dark:bg-meta-4 text-center">
+      {{ recordingError }}
+    </div>
+
+    <div class="mt-8 flex flex-col items-center gap-3">
+      <div class="relative flex items-center justify-center">
+        <span *ngIf="isRecording"
+          class="absolute inline-flex h-20 w-20 animate-ping rounded-full bg-danger opacity-30"></span>
+        <button
+          (click)="toggleRecording()"
+          [class.bg-danger]="isRecording"
+          [class.bg-primary]="!isRecording"
+          class="relative flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition hover:opacity-90 active:scale-95"
+          [title]="isRecording ? 'Stop transmitting' : 'Start transmitting'"
+        >
+          <span>{{ isRecording ? 'Stop' : 'Mic' }}</span>
+        </button>
+      </div>
+
+      <p class="text-sm font-medium" [class.text-danger]="isRecording" [class.text-bodydark2]="!isRecording">
+        {{ isRecording ? 'Transmitting live...' : 'Tap mic to start talking' }}
+      </p>
+
+      <div *ngIf="isRecording" class="flex items-center gap-1.5 rounded-full bg-meta-3/10 px-3 py-1">
+        <span class="inline-block h-2 w-2 animate-ping rounded-full bg-meta-3 opacity-75"></span>
+        <span class="text-xs font-medium text-meta-3">
+          {{ listenerCount === 0 ? 'No one is listening yet' : listenerCount + ' listener' + (listenerCount > 1 ? 's' : '') + ' connected' }}
+        </span>
+      </div>
+
+      <div *ngIf="!isRecording && voiceService.currentSpeakers.length > 0"
+        class="flex items-center gap-2 rounded-full bg-meta-3/10 px-4 py-1.5">
+        <span class="inline-block h-2 w-2 animate-ping rounded-full bg-meta-3 opacity-75"></span>
+        <span class="text-xs font-medium text-meta-3">
+          <span *ngFor="let name of voiceService.currentSpeakers; let last = last">
+            {{ name }}<span *ngIf="!last">, </span>
+          </span>
+          {{ voiceService.currentSpeakers.length === 1 ? 'is' : 'are' }} talking
+        </span>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="view === 'create'">
+    <div class="mb-6 flex items-center gap-3">
+      <button
+        (click)="goBack()"
+        class="flex h-9 w-9 items-center justify-center rounded-md border border-stroke text-bodydark2 transition hover:bg-gray-2 dark:border-strokedark dark:hover:bg-meta-4"
+      >
+        <span>&larr;</span>
+      </button>
+      <h2 class="text-title-md2 font-semibold text-black dark:text-white">Create an Instant Voice Channel</h2>
+    </div>
+
+    <div class="mx-auto max-w-xl rounded-sm border border-stroke bg-white p-8 shadow-default dark:border-strokedark dark:bg-boxdark">
+      <div *ngIf="error" class="mb-4 rounded border border-danger bg-red-50 px-4 py-3 text-sm text-danger dark:bg-meta-4">
+        {{ error }}
+      </div>
+
+      <div class="mb-5">
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">
+          Channel Name <span class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          [(ngModel)]="newChannelName"
+          placeholder="Enter channel name..."
+          class="w-full rounded border border-stroke bg-transparent px-4 py-3 text-black outline-none transition focus:border-primary dark:border-strokedark dark:text-white dark:focus:border-primary"
+        />
+      </div>
+
+      <div class="mb-5">
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Privacy</label>
+        <label class="flex cursor-pointer items-center gap-3">
+          <input type="checkbox" [(ngModel)]="newChannelPrivate" (change)="onPrivacyChange()" />
+          <span class="text-sm text-body dark:text-bodydark">
+            {{ newChannelPrivate ? 'Private — only invited members can join' : 'Public — anyone in the organisation can join' }}
+          </span>
+        </label>
+      </div>
+
+      <div class="mb-5" *ngIf="newChannelPrivate">
+        <label class="mb-2 block text-sm font-medium text-black dark:text-white">Assign Members</label>
+        <p class="mb-2 text-xs text-bodydark2">You are automatically added. Select additional members who can see this channel.</p>
+
+        <div *ngIf="usersLoading" class="text-xs text-bodydark2">Loading members...</div>
+        <div *ngIf="!usersLoading && allUsers.length === 0" class="text-xs text-bodydark2 italic">No other members found.</div>
+
+        <div *ngIf="!usersLoading && allUsers.length > 0"
+          class="max-h-48 overflow-y-auto rounded border border-stroke divide-y divide-stroke dark:border-strokedark dark:divide-strokedark">
+          <label
+            *ngFor="let user of allUsers"
+            class="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition hover:bg-gray-2 dark:hover:bg-meta-4"
+          >
+            <input
+              type="checkbox"
+              [checked]="isMemberSelected(user.id)"
+              (change)="toggleMember(user.id)"
+              class="h-4 w-4 rounded border-stroke accent-primary dark:border-strokedark"
+            />
+            <div class="flex-1">
+              <p class="text-sm font-medium text-black dark:text-white">{{ user.firstName }} {{ user.lastName }}</p>
+              <p class="text-xs text-bodydark2">{{ user.role }}</p>
+            </div>
+          </label>
+        </div>
+
+        <div *ngIf="selectedMemberIds.length > 0" class="mt-2 flex flex-wrap gap-1.5">
+          <span
+            *ngFor="let user of selectedUsers"
+            class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+          >
+            {{ user.firstName }} {{ user.lastName }}
+            <button type="button" (click)="toggleMember(user.id)" class="ml-0.5 hover:text-danger">×</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <button
+          (click)="goBack()"
+          class="rounded border border-danger px-5 py-2.5 text-sm font-medium text-danger transition hover:bg-danger hover:text-white"
+        >
+          Cancel
+        </button>
+        <button
+          (click)="createChannel()"
+          [disabled]="!newChannelName.trim()"
+          class="inline-flex items-center gap-2 rounded-full bg-[#3C50E0] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Create Channel
+        </button>
+      </div>
+    </div>
+  </ng-container>
+</div>

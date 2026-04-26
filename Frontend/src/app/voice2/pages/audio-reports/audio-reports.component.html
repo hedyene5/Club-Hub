@@ -1,0 +1,51 @@
+<div class="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+  <div class="mb-6">
+    <h2 class="text-title-md2 font-semibold text-black dark:text-white">Audio Reports</h2>
+    <p class="text-sm text-body dark:text-bodydark">Moderation queue for reported voice messages</p>
+  </div>
+
+  <div *ngIf="error" class="mb-4 rounded border border-danger bg-red-50 px-4 py-3 text-sm text-danger dark:bg-meta-4">
+    {{ error }}
+  </div>
+
+  <div class="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+    <div *ngIf="loading" class="flex items-center justify-center py-12 text-sm text-bodydark2">Loading reports...</div>
+
+    <div *ngIf="!loading && reports.length === 0" class="px-6 py-12 text-center text-sm text-bodydark2">
+      No reports found.
+    </div>
+
+    <div *ngIf="!loading && reports.length > 0" class="max-w-full overflow-x-auto">
+      <table class="w-full table-auto">
+        <thead>
+          <tr class="border-b border-stroke dark:border-strokedark">
+            <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-bodydark2">Reporter</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-bodydark2">Reported user</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-bodydark2">Reason</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-bodydark2">Status</th>
+            <th class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-bodydark2">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of reports" class="border-b border-stroke/60 dark:border-strokedark/60">
+            <td class="px-6 py-4 text-sm text-black dark:text-white">{{ r.reportedByUserName }}</td>
+            <td class="px-6 py-4 text-sm text-black dark:text-white">{{ r.reportedUserName }}</td>
+            <td class="px-6 py-4 text-sm text-bodydark2">{{ r.reason }}</td>
+            <td class="px-6 py-4 text-sm">
+              <span class="rounded-full px-2.5 py-1 text-xs font-medium"
+                    [class.bg-warning/20]="r.status === 'PENDING'"
+                    [class.text-warning]="r.status === 'PENDING'"
+                    [class.bg-meta-3/20]="r.status === 'REVIEWED'"
+                    [class.text-meta-3]="r.status === 'REVIEWED'"
+                    [class.bg-red-100]="r.status === 'DISMISSED'"
+                    [class.text-red-700]="r.status === 'DISMISSED'">
+                {{ r.status }}
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm text-bodydark2">{{ r.createdAt | date:'short' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
