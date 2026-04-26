@@ -5,12 +5,10 @@ import { ThemeToggleTwoComponent } from '../../components/common/theme-toggle-tw
 
 @Component({
   selector: 'app-auth-page-layout',
-  standalone: true,
   imports: [
     GridShapeComponent,
     RouterModule,
     ThemeToggleTwoComponent,
-
   ],
   templateUrl: './auth-page-layout.component.html',
   styles: ``

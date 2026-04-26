@@ -1,11 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { ModalService } from '../../../services/modal.service';
 
 import { InputFieldComponent } from '../../form/input/input-field.component';
 import { ButtonComponent } from '../../ui/button/button.component';
 import { LabelComponent } from '../../form/label/label.component';
 import { ModalComponent } from '../../ui/modal/modal.component';
-import { AuthService } from '../../../../services/User/auth.service';
 
 @Component({
   selector: 'app-user-info-card',
@@ -14,51 +13,34 @@ import { AuthService } from '../../../../services/User/auth.service';
     ButtonComponent,
     LabelComponent,
     ModalComponent
-  ],
+],
   templateUrl: './user-info-card.component.html',
   styles: ``
 })
-export class UserInfoCardComponent implements OnInit {
+export class UserInfoCardComponent {
 
-  constructor(public modal: ModalService, private authService: AuthService) {
-    const session = this.authService.getCurrentUser();
-    if (session) {
-      this.user.firstName = session.firstName;
-      this.user.lastName = session.lastName;
-      this.user.email = session.email;
-      this.user.phone = session.phoneNumber ?? '';
-      this.user.role = session.role;
-      this.user.bio = `Member of Club Hub with the role of ${session.role.replace(/_/g, ' ').toLowerCase()}.`;
-    }
-  }
-
-  ngOnInit() {
-    this.authService.getMe().subscribe({
-      next: (data) => { this.user.phone = data.phoneNumber ?? ''; },
-      error: () => {}
-    });
-  }
+  constructor(public modal: ModalService) {}
 
   isOpen = false;
   openModal() { this.isOpen = true; }
   closeModal() { this.isOpen = false; }
 
   user = {
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    role: '',
-    bio: '',
+    firstName: 'Musharof',
+    lastName: 'Chowdhury',
+    email: 'randomuser@pimjo.com',
+    phone: '+09 363 398 46',
+    bio: 'Team Manager',
     social: {
-      facebook: '',
-      x: '',
-      linkedin: '',
-      instagram: '',
+      facebook: 'https://www.facebook.com/PimjoHQ',
+      x: 'https://x.com/PimjoHQ',
+      linkedin: 'https://www.linkedin.com/company/pimjo',
+      instagram: 'https://instagram.com/PimjoHQ',
     },
   };
 
   handleSave() {
+    // Handle save logic here
     console.log('Saving changes...');
     this.modal.closeModal();
   }

@@ -5,22 +5,28 @@ export interface ReactionDTO {
     emoji: 'LIKE' | 'LOVE' | 'HAHA' | 'NOTBAD' | 'GREATJOB';
 }
 
+export interface MessageReceiptDTO {
+    userId: string;
+    readAt: string;
+}
 
-// src/app/models/message.model.ts
 export interface MessageDTO {
     id: string;
     conversationId: string;
     senderId: string;
-    senderName?: string;           // ← optional
+    senderName?: string;
     content: string;
-    type?: string;
+    type?: 'TEXT' | 'IMAGE' | 'FILE';
     parentMessageId?: string;
-    createdAt: string;             // backend uses createdAt
+    createdAt: string;
     edited?: boolean;
     deleted?: boolean;
     parentMessageContent?: string;
     reactions?: ReactionDTO[];
+    receipts?: MessageReceiptDTO[];
+    // local-only fields for optimistic UI before upload completes
+    _localPreviewUrl?: string;
+    _localFileName?: string;
 }
 
-// Keep alias for compatibility
 export type ChatMessage = MessageDTO;

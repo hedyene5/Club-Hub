@@ -13,6 +13,7 @@ import {
 import {CommonModule} from '@angular/common';
 import {ConversationDTO} from "../../models/conversation.model";
 import {MessageDTO} from "../../models/message.model";
+import {MessagePayload} from "../message-input/message-input.component";
 import {MessageService} from "../../services/Messaging/message.service";
 import {MessageInputComponent} from "../message-input/message-input.component";
 import {ParticipantsPanelComponent} from "../ participants-panel/participants-panel.component";
@@ -50,6 +51,8 @@ export class ChatWindowComponent implements OnInit ,OnChanges, OnDestroy {
     showReactionsModal = false;
     modalMessage: MessageDTO | null = null;
     activeReactionFilter: string | null = null;
+
+    fullscreenImageUrl: string | null = null;
 
     private reactionSubs: StompSubscription[] = [];
     showEmojiPickerForId: string | null = null;
@@ -106,8 +109,10 @@ export class ChatWindowComponent implements OnInit ,OnChanges, OnDestroy {
 
 
     ngOnChanges(changes: SimpleChanges) {
-        if (changes['conversation'] && this.conversation && this.conversation?.theme) {
-            this.themeService.applyTheme(this.conversation.theme);
+        if (changes['conversation'] && this.conversation) {
+            if (this.conversation.theme) {
+                this.themeService.applyTheme(this.conversation.theme);
+            }
             if (this.wsSub) this.wsSub.unsubscribe();
 
             // FIX: unsubscribe old game event subscription before creating new one
@@ -176,6 +181,15 @@ export class ChatWindowComponent implements OnInit ,OnChanges, OnDestroy {
                     setTimeout(() => this.scrollToBottom(), 50);
                     this.loadReactionsForMessage(msg.id);
                     this.subscribeToSingleReaction(msg.id);
+                    // Auto-mark as read since the window is open
+                    this.messageService.markAsRead(conversationId, msg.id, this.currentUserId)
+                        .subscribe({
+                            next: (updated) => {
+                                const idx = this.messages.findIndex(m => m.id === updated.id);
+                                if (idx !== -1) this.messages[idx] = { ...this.messages[idx], receipts: updated.receipts };
+                            },
+                            error: () => {}
+                        });
                 }
             }
         });
@@ -194,6 +208,7 @@ export class ChatWindowComponent implements OnInit ,OnChanges, OnDestroy {
                         this.loadAllReactions();
                         this.subscribeToReactions();
                         this.forceScrollToBottom();
+                        this.markVisibleMessagesAsRead();
                     }, 0);
                 },
                 error: (err) => {
@@ -203,10 +218,114 @@ export class ChatWindowComponent implements OnInit ,OnChanges, OnDestroy {
             });
     }
 
-    onSendMessage(content: string) {
-        if (!this.conversation || !content.trim()) return;
+    /**
+     * Mark all messages in this conversation as read by the current user.
+     * We only call this for messages we did NOT send ourselves.
+     */
+    private markVisibleMessagesAsRead(): void {
+        if (!this.conversation?.id || !this.currentUserId) return;
+        const toMark = this.messages.filter(
+            m => m.senderId !== this.currentUserId && !m.deleted && !m.id.startsWith('temp-')
+        );
+        toMark.forEach(msg => {
+            this.messageService.markAsRead(this.conversation!.id, msg.id, this.currentUserId)
+                .subscribe({
+                    next: (updated) => {
+                        const idx = this.messages.findIndex(m => m.id === updated.id);
+                        if (idx !== -1) this.messages[idx] = { ...this.messages[idx], receipts: updated.receipts };
+                    },
+                    error: () => {} // non-critical, silent fail
+                });
+        });
+    }
+
+    /**
+     * Returns how many OTHER participants have read a given message.
+     * Used to show ✓ / ✓✓ on the sender's own messages.
+     */
+    getReadCount(msg: MessageDTO): number {
+        if (!msg.receipts) return 0;
+        return msg.receipts.filter(r => r.userId !== this.currentUserId).length;
+    }
+
+    onSendMessage(payload: MessagePayload) {
+        if (!this.conversation) return;
+        const { text, file, fileType } = payload;
+        if (!text && !file) return;
 
         const parentId = this.replyingTo?.id ?? null;
+
+        // ── Text-only fast path ────────────────────────────────────────────
+        if (!file) {
+            this.sendTextMessage(text, parentId);
+            return;
+        }
+
+        // ── File / Image path — optimistic placeholder then upload ─────────
+        const tempId = 'temp-' + Date.now();
+        const optimisticMsg: MessageDTO = {
+            id: tempId,
+            content: text || (fileType === 'IMAGE' ? '📷 Image' : '📎 ' + file.name),
+            senderId: this.currentUserId,
+            senderName: 'You',
+            createdAt: new Date().toISOString(),
+            conversationId: this.conversation.id,
+            type: fileType,
+            parentMessageId: parentId ?? undefined,
+            parentMessageContent: this.replyingTo?.content,
+            // local preview fields — only used before upload completes
+            _localPreviewUrl: fileType === 'IMAGE' ? URL.createObjectURL(file) : undefined,
+            _localFileName: file.name
+        };
+
+        this.messages.push(optimisticMsg);
+        this.forceScrollToBottom();
+        this.replyingTo = null;
+
+        this.messageService.uploadMedia(file).subscribe({
+            next: (mediaUrl: string) => {
+                // mediaUrl is the full URL returned by the backend
+                const fullUrl = mediaUrl.startsWith('http')
+                    ? mediaUrl
+                    : `http://localhost:8081${mediaUrl}`;
+
+                this.messageService.sendMessage(
+                    this.conversation!.id,
+                    this.currentUserId,
+                    fullUrl,
+                    parentId,
+                    fileType ?? 'FILE'
+                ).subscribe({
+                    next: (realMsg) => {
+                        const idx = this.messages.findIndex(m => m.id === tempId);
+                        if (idx !== -1) this.messages[idx] = realMsg;
+                        this.loadReactionsForMessage(realMsg.id);
+                        this.subscribeToSingleReaction(realMsg.id);
+                        // Release the blob URL we created for the preview
+                        if (optimisticMsg._localPreviewUrl) {
+                            URL.revokeObjectURL(optimisticMsg._localPreviewUrl);
+                        }
+                    },
+                    error: (err) => {
+                        console.error('Failed to send media message', err);
+                        this.messages = this.messages.filter(m => m.id !== tempId);
+                    }
+                });
+            },
+            error: (err) => {
+                console.error('Failed to upload media', err);
+                this.messages = this.messages.filter(m => m.id !== tempId);
+            }
+        });
+
+        // Also send caption as a separate text message if there is one
+        if (text.trim()) {
+            setTimeout(() => this.sendTextMessage(text, parentId), 200);
+        }
+    }
+
+    private sendTextMessage(content: string, parentId: string | null) {
+        if (!this.conversation || !content.trim()) return;
 
         const optimisticMsg: MessageDTO = {
             id: 'temp-' + Date.now(),
@@ -215,29 +334,30 @@ export class ChatWindowComponent implements OnInit ,OnChanges, OnDestroy {
             senderName: 'You',
             createdAt: new Date().toISOString(),
             conversationId: this.conversation.id,
+            type: 'TEXT',
             parentMessageId: parentId ?? undefined,
             parentMessageContent: this.replyingTo?.content
         };
 
         this.messages.push(optimisticMsg);
         this.forceScrollToBottom();
-        this.replyingTo = null;
 
         this.messageService.sendMessage(
             this.conversation.id,
             this.currentUserId,
             content,
-            parentId
+            parentId,
+            'TEXT'
         ).subscribe({
             next: (realMsg) => {
-                const index = this.messages.findIndex(m => m.id.startsWith('temp-'));
+                const index = this.messages.findIndex(m => m.id === optimisticMsg.id);
                 if (index !== -1) this.messages[index] = realMsg;
                 this.loadReactionsForMessage(realMsg.id);
                 this.subscribeToSingleReaction(realMsg.id);
             },
             error: (err) => {
                 console.error('Failed to send message', err);
-                this.messages = this.messages.filter(m => !m.id.startsWith('temp-'));
+                this.messages = this.messages.filter(m => m.id !== optimisticMsg.id);
             }
         });
     }
@@ -545,8 +665,16 @@ export class ChatWindowComponent implements OnInit ,OnChanges, OnDestroy {
 
     onGroupPhotoChanged(photoUrl: string): void {
         if (this.conversation) {
-            this.conversation.photoUrl = photoUrl;  // mutate in place, no new reference
+            this.conversation.photoUrl = photoUrl;
         }
+    }
+
+    openImageFullscreen(url: string) {
+        this.fullscreenImageUrl = url;
+    }
+
+    closeImageFullscreen() {
+        this.fullscreenImageUrl = null;
     }
     onImageError(event: any) {
         console.warn('Image failed to load:', event.target.src);

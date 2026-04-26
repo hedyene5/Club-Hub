@@ -61,17 +61,34 @@ export class ConversationListComponent implements OnInit, OnDestroy {
   // ← Updates last message preview in real time
   private listenForNewMessages(): void {
     this.wsSub = this.webSocketService.message$.subscribe((msg: any) => {
-      const conv = this.conversations.find(c => c.id === msg.conversationId);
-      if (conv) {
-        conv.lastMessageContent = msg.content;
-        conv.lastMessageAt = msg.createdAt;
+      const convIndex = this.conversations.findIndex(c => c.id === msg.conversationId);
+      if (convIndex === -1) return; // conversation not in list
 
-        // Move conversation to top of list
-        this.conversations = [
-          conv,
-          ...this.conversations.filter(c => c.id !== conv.id)
-        ];
+      const conv = this.conversations[convIndex];
+
+      // Update last message preview (you already do this well)
+      if (msg.type === 'IMAGE') {
+        conv.lastMessageContent = 'someone sent a photo';
+      } else if (msg.type === 'FILE') {
+        conv.lastMessageContent = 'someone sent a file';
+      } else {
+        conv.lastMessageContent = msg.content;
       }
+      conv.lastMessageAt = msg.createdAt;
+      conv.lastMessageSender = msg.senderId; // good to keep this too
+
+      // === KEY PART: Update unread count ===
+      // Only increment if the message is NOT from the current user
+      if (msg.senderId !== this.currentUserId) {
+        conv.unreadCount = (conv.unreadCount || 0) + 1;
+      }
+
+      // Move conversation to top
+      this.conversations.splice(convIndex, 1);
+      this.conversations.unshift(conv); // or use spread like you did before
+
+      // Trigger change detection (usually not needed in modern Angular, but safe)
+      this.conversations = [...this.conversations];
     });
   }
 

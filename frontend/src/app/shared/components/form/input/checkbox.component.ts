@@ -4,7 +4,6 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 @Component({
   selector: 'app-checkbox',
   imports: [CommonModule],
-  standalone : true,
   template: `
   <label
   class="flex items-center space-x-3 group cursor-pointer"

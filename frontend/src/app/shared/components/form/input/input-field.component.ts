@@ -4,7 +4,6 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 @Component({
   selector: 'app-input-field',
   imports: [CommonModule],
-  standalone: true,
   template: `
     <div class="relative">
       <input

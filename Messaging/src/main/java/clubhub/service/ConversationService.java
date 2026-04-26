@@ -150,7 +150,16 @@ public class ConversationService {
 
             if (!visibleMessages.isEmpty()) {
                 Message last = visibleMessages.get(visibleMessages.size() - 1);
-                lastContent = last.getContent();
+                // Show a human-readable preview instead of raw URLs
+                String rawContent = last.getContent();
+                Message.TypeMessage type = last.getType();
+                if (type == Message.TypeMessage.IMAGE) {
+                    lastContent = "someone sent a photo";
+                } else if (type == Message.TypeMessage.FILE) {
+                    lastContent = "someone sent a file";
+                } else {
+                    lastContent = rawContent;
+                }
                 lastSenderId = last.getSenderId();
                 lastAt = last.getCreatedAt() != null ? last.getCreatedAt().toString() : null;
             }

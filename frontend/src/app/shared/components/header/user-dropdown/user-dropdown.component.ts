@@ -1,9 +1,8 @@
 import { Component } from '@angular/core';
 import { DropdownComponent } from '../../ui/dropdown/dropdown.component';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { DropdownItemTwoComponent } from '../../ui/dropdown/dropdown-item/dropdown-item.component-two';
-import { AuthService, AuthResponse } from '../../../../services/User/auth.service';
 
 @Component({
   selector: 'app-user-dropdown',
@@ -12,11 +11,6 @@ import { AuthService, AuthResponse } from '../../../../services/User/auth.servic
 })
 export class UserDropdownComponent {
   isOpen = false;
-  currentUser: AuthResponse | null;
-
-  constructor(private authService: AuthService, private router: Router) {
-    this.currentUser = this.authService.getCurrentUser();
-  }
 
   toggleDropdown() {
     this.isOpen = !this.isOpen;
@@ -24,10 +18,5 @@ export class UserDropdownComponent {
 
   closeDropdown() {
     this.isOpen = false;
-  }
-
-  signOut() {
-    this.authService.logout();
-    this.router.navigate(['/signin']);
   }
 }
