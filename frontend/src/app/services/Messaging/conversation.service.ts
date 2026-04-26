@@ -112,4 +112,13 @@ export class ConversationService {
             }
         );
     }
+    // conversation.service.ts
+    // conversation.service.ts  ← Replace the markAsRead method with this corrected version
+    markAsRead(conversationId: string, userId: string): Observable<any> {
+        return this.http.put(
+            `${this.url}/${conversationId}/read`,
+            { userId },
+            { withCredentials: true }
+        );
+    }
 }

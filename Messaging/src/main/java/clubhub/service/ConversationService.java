@@ -267,4 +267,43 @@ public class ConversationService {
             return conversationRepository.save(conv);
         });
     }
+    /**
+     * Mark all visible messages as read for the user by updating lastReadMessageId
+     */
+    public boolean markAsRead(String conversationId, String userId) {
+        Optional<ConversationParticipant> participantOpt =
+                participantRepository.findByConversationIdAndUserId(conversationId, userId);
+
+        if (participantOpt.isEmpty()) {
+            return false;
+        }
+
+        ConversationParticipant participant = participantOpt.get();
+
+        // Get all visible messages for this user (respecting hidden messages)
+        List<Message> allMessages = messageRepository
+                .findByConversationIdOrderByCreatedAtAsc(conversationId);
+
+        boolean messagesHidden = participant.isMessagesHidden();
+        LocalDateTime hiddenAt = messagesHidden ? participant.getMessagesHiddenAt() : null;
+
+        List<Message> visibleMessages = allMessages.stream()
+                .filter(m -> !m.isDeleted())
+                .filter(m -> {
+                    if (!messagesHidden) return true;
+                    return m.getCreatedAt() != null && m.getCreatedAt().isAfter(hiddenAt);
+                })
+                .collect(Collectors.toList());
+
+        // Set lastReadMessageId to the most recent visible message (or null if none)
+        String lastReadMessageId = visibleMessages.isEmpty()
+                ? null
+                : visibleMessages.get(visibleMessages.size() - 1).getId();
+
+        participant.setLastReadMessageId(lastReadMessageId);
+        participantRepository.save(participant);
+
+        return true;
+    }
+
 }

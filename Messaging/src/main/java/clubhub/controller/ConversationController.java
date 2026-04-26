@@ -120,6 +120,19 @@ public class ConversationController {
         }
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
+    @PutMapping("/{conversationId}/read")
+    public ResponseEntity<Void> markAsRead(
+            @PathVariable String conversationId,
+            @RequestBody Map<String, String> request) {
+
+        String userId = request.get("userId");
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        boolean success = conversationService.markAsRead(conversationId, userId);
+        return success ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
+    }
 
 
 }

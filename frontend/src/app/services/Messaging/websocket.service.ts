@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { Subject, BehaviorSubject } from 'rxjs';
+import {Subject, BehaviorSubject, ReplaySubject} from 'rxjs';
 import { ChatMessage } from '../../models/message.model';
 import { Theme } from '../../models/theme.model';
 
@@ -15,7 +15,7 @@ export class WebSocketService {
   private pendingSubscriptions: Set<string> = new Set();
   private isConnected = new BehaviorSubject<boolean>(false);
 
-  private messageSubject = new Subject<ChatMessage>();
+  private messageSubject = new ReplaySubject<ChatMessage>(10); // keeps last 10 messages
   message$ = this.messageSubject.asObservable();
 
   // Queue for subscribeToTopic calls that arrive before connection is ready
