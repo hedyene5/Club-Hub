@@ -288,6 +288,29 @@ public class DemoDataController {
         return ResponseEntity.ok(anomalyService.detectAnomalies(1L));
     }
 
+    // Solde net (calcul rapide pour verif sans auth)
+    @GetMapping("/balance")
+    public ResponseEntity<Map<String, Object>> balance() {
+        BigDecimal totalCollected = paymentRepo.findByClubIdOrderByCreatedAtDesc(1L).stream()
+                .filter(p -> p.getStatus() == Payment.PaymentStatus.PAID)
+                .map(Payment::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalApproved = expenseRepo.findByClubIdOrderByCreatedAtDesc(1L).stream()
+                .filter(e -> e.getStatus() == Expense.ExpenseStatus.APPROVED)
+                .map(Expense::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        long approvedCount = expenseRepo.findByClubIdOrderByCreatedAtDesc(1L).stream()
+                .filter(e -> e.getStatus() == Expense.ExpenseStatus.APPROVED).count();
+        long paidCount = paymentRepo.findByClubIdOrderByCreatedAtDesc(1L).stream()
+                .filter(p -> p.getStatus() == Payment.PaymentStatus.PAID).count();
+
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("totalCollected_TND", totalCollected);
+        response.put("paidPaymentsCount", paidCount);
+        response.put("totalExpensesApproved_TND", totalApproved);
+        response.put("approvedExpensesCount", approvedCount);
+        response.put("soldeNet_TND", totalCollected.subtract(totalApproved));
+        return ResponseEntity.ok(response);
+    }
+
     // ==================== GENERATION DONNEES ML ====================
     // Distribution realiste par categorie (moyenne, ecart-type en TND)
     private static final Map<Expense.ExpenseCategory, double[]> CATEGORY_STATS = Map.of(
@@ -315,9 +338,19 @@ public class DemoDataController {
     private void generateBulkExpenses(List<User> members, User tresorier, User president, int count) {
         Random rnd = new Random(42L);  // Seed fixe pour reproductibilite
         Expense.ExpenseCategory[] categories = Expense.ExpenseCategory.values();
+        // Distribution statuts realiste club mi-exercice :
+        // 15% APPROVED (deja payees), 30% VALIDATED (en attente president),
+        // 30% SUBMITTED (en attente tresorier), 25% REJECTED.
+        // -> Solde ~-2000 TND : deficit defendable "milieu d'exercice, evenements Q1 engages,
+        //    cotisations annuelles pas toutes rentrees"
         Expense.ExpenseStatus[] statuses = {
                 Expense.ExpenseStatus.APPROVED, Expense.ExpenseStatus.APPROVED, Expense.ExpenseStatus.APPROVED,
-                Expense.ExpenseStatus.VALIDATED, Expense.ExpenseStatus.SUBMITTED, Expense.ExpenseStatus.REJECTED
+                Expense.ExpenseStatus.VALIDATED, Expense.ExpenseStatus.VALIDATED, Expense.ExpenseStatus.VALIDATED,
+                Expense.ExpenseStatus.VALIDATED, Expense.ExpenseStatus.VALIDATED, Expense.ExpenseStatus.VALIDATED,
+                Expense.ExpenseStatus.SUBMITTED, Expense.ExpenseStatus.SUBMITTED, Expense.ExpenseStatus.SUBMITTED,
+                Expense.ExpenseStatus.SUBMITTED, Expense.ExpenseStatus.SUBMITTED, Expense.ExpenseStatus.SUBMITTED,
+                Expense.ExpenseStatus.REJECTED, Expense.ExpenseStatus.REJECTED, Expense.ExpenseStatus.REJECTED,
+                Expense.ExpenseStatus.REJECTED, Expense.ExpenseStatus.REJECTED
         };
 
         for (int i = 0; i < count; i++) {
