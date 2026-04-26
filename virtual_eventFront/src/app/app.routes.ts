@@ -56,7 +56,11 @@ export const routes: Routes = [
       { path: 'events', loadComponent: () => import('./pages/events/events.component').then(m => m.EventsComponent), title: 'CLUB HUB Events' },
       { path: 'meeting/:id', loadComponent: () => import('./pages/meeting-room/meeting-room.component').then(m => m.MeetingRoomComponent), title: 'CLUB HUB Meeting Room' },
       { path: 'virtual-room', loadComponent: () => import('./pages/virtual-room/virtual-room.component').then(m => m.VirtualRoomComponent), title: 'CLUB HUB Virtual Room' },
-      { path: 'lobby', loadComponent: () => import('./pages/lobby/lobby.component').then(m => m.LobbyComponent), title: 'CLUB HUB Lobby' },
+      {
+  path: 'lobby/:roomId',
+  loadComponent: () =>
+    import('./pages/lobby/lobby.component').then(m => m.LobbyComponent)
+},
       { path: 'pages/management', component: ManagementComponent },
       { path: 'pages/analytics', component: AnalyticsComponent },
     ]

@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 
 import { VirtualEventService } from '../../services/virtual-event.service';
 import { EmailService, EmailPayload } from '../../services/email.service';
+import { EventReviewService, EventReview, ReviewSummary } from '../../services/event-review.service';
 import { VirtualEvent } from '../../models/virtual-event';
 
 @Component({
@@ -34,9 +35,16 @@ export class EventsComponent implements OnInit, OnDestroy {
   successMsg = '';
   errorMsg = '';
 
+  // Reviews
+  reviews: EventReview[] = [];
+  reviewSummary: ReviewSummary = { averageRating: 0, totalReviews: 0 };
+  selectedRating = 0;
+  reviewComment = '';
+
   constructor(
     private virtualEventService: VirtualEventService,
     private emailService: EmailService,
+    private eventReviewService: EventReviewService,
     private datePipe: DatePipe,
     private router: Router
   ) {}
@@ -66,8 +74,6 @@ export class EventsComponent implements OnInit, OnDestroy {
 
     try {
       const parsed = JSON.parse(rawUser);
-
-      // Supporte plusieurs formats possibles
       const nestedUser = parsed.user ?? parsed;
 
       this.currentUser = {
@@ -191,6 +197,13 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.isModalOpen = true;
     this.successMsg = '';
     this.errorMsg = '';
+
+    this.selectedRating = 0;
+    this.reviewComment = '';
+
+    if (event.id) {
+      this.loadReviews(event.id);
+    }
   }
 
   closeModal() {
@@ -199,6 +212,10 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.loading = false;
     this.successMsg = '';
     this.errorMsg = '';
+    this.selectedRating = 0;
+    this.reviewComment = '';
+    this.reviews = [];
+    this.reviewSummary = { averageRating: 0, totalReviews: 0 };
   }
 
   registerToEvent(event: VirtualEvent) {
@@ -224,10 +241,8 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.successMsg = '';
     this.errorMsg = '';
 
-    // 1) inscription backend
     this.virtualEventService.register(event.id, this.userId).subscribe({
       next: () => {
-        // 2) envoi email avec EmailService existant
         const payload: EmailPayload = {
           to: this.currentUser.email,
           userName:
@@ -318,5 +333,85 @@ export class EventsComponent implements OnInit, OnDestroy {
 
   formatDate(dateStr: string): string {
     return this.datePipe.transform(dateStr, 'EEEE dd MMMM yyyy à HH:mm') || '';
+  }
+
+  // ================= REVIEWS =================
+
+  setRating(star: number) {
+    this.selectedRating = star;
+  }
+
+  loadReviews(eventId: string) {
+    this.eventReviewService.getReviews(eventId).subscribe({
+      next: (data) => {
+        this.reviews = data;
+      },
+      error: (err) => {
+        console.error('Error loading reviews:', err);
+      }
+    });
+
+    this.eventReviewService.getSummary(eventId).subscribe({
+      next: (data) => {
+        this.reviewSummary = data;
+      },
+      error: (err) => {
+        console.error('Error loading review summary:', err);
+      }
+    });
+  }
+
+  submitReview() {
+    if (!this.selectedEvent?.id) {
+      this.errorMsg = 'Invalid event';
+      this.clearMessages();
+      return;
+    }
+
+    if (!this.userId) {
+      this.errorMsg = 'User not found';
+      this.clearMessages();
+      return;
+    }
+
+    if (this.selectedRating < 1 || this.selectedRating > 5) {
+      this.errorMsg = 'Please select a rating';
+      this.clearMessages();
+      return;
+    }
+
+    if (!this.reviewComment.trim()) {
+      this.errorMsg = 'Please write a comment';
+      this.clearMessages();
+      return;
+    }
+
+    const userName =
+      `${this.currentUser?.firstName || ''} ${this.currentUser?.lastName || ''}`.trim()
+      || this.currentUser?.name
+      || 'User';
+
+    const payload: EventReview = {
+      eventId: this.selectedEvent.id,
+      userId: this.userId,
+      userName,
+      rating: this.selectedRating,
+      comment: this.reviewComment.trim()
+    };
+
+    this.eventReviewService.addReview(payload).subscribe({
+      next: () => {
+        this.successMsg = 'Review submitted successfully';
+        this.selectedRating = 0;
+        this.reviewComment = '';
+        this.loadReviews(this.selectedEvent!.id!);
+        this.clearMessages();
+      },
+      error: (err) => {
+        console.error('Review error:', err);
+        this.errorMsg = err?.error || 'Comment rejected by moderation';
+        this.clearMessages();
+      }
+    });
   }
 }
