@@ -2,6 +2,7 @@ package com.clubhub.treasury.controller;
 
 import com.clubhub.treasury.entity.*;
 import com.clubhub.treasury.repository.*;
+import com.clubhub.treasury.service.AnomalyDetectionService;
 import com.clubhub.treasury.service.LatePaymentPredictionService;
 import com.clubhub.treasury.service.MlAnomalyDetectionService;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,7 @@ public class DemoDataController {
     private final UserRepository userRepo;
     private final MlAnomalyDetectionService mlAnomalyService;
     private final LatePaymentPredictionService latePaymentPredictor;
+    private final AnomalyDetectionService anomalyService;
 
     public DemoDataController(CotisationRuleRepository cotisationRuleRepo,
                                PaymentRepository paymentRepo,
@@ -38,7 +40,8 @@ public class DemoDataController {
                                AuditLogRepository auditLogRepo,
                                UserRepository userRepo,
                                MlAnomalyDetectionService mlAnomalyService,
-                               LatePaymentPredictionService latePaymentPredictor) {
+                               LatePaymentPredictionService latePaymentPredictor,
+                               AnomalyDetectionService anomalyService) {
         this.cotisationRuleRepo = cotisationRuleRepo;
         this.paymentRepo = paymentRepo;
         this.expenseRepo = expenseRepo;
@@ -47,6 +50,7 @@ public class DemoDataController {
         this.userRepo = userRepo;
         this.mlAnomalyService = mlAnomalyService;
         this.latePaymentPredictor = latePaymentPredictor;
+        this.anomalyService = anomalyService;
     }
 
     @PostMapping("/seed")
@@ -276,6 +280,12 @@ public class DemoDataController {
     @GetMapping("/late-payment/predictions")
     public ResponseEntity<?> latePaymentPredictions() {
         return ResponseEntity.ok(latePaymentPredictor.predictForAllMembers(1L));
+    }
+
+    // Toutes les anomalies (paiements + depenses ML + doublons) pour le club 1
+    @GetMapping("/anomalies/all")
+    public ResponseEntity<?> allAnomalies() {
+        return ResponseEntity.ok(anomalyService.detectAnomalies(1L));
     }
 
     // ==================== GENERATION DONNEES ML ====================
