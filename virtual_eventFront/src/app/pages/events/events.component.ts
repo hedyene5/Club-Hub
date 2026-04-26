@@ -35,7 +35,6 @@ export class EventsComponent implements OnInit, OnDestroy {
   successMsg = '';
   errorMsg = '';
 
-  // Reviews
   reviews: EventReview[] = [];
   reviewSummary: ReviewSummary = { averageRating: 0, totalReviews: 0 };
   selectedRating = 0;
@@ -67,10 +66,7 @@ export class EventsComponent implements OnInit, OnDestroy {
       localStorage.getItem('currentUser') ||
       localStorage.getItem('user');
 
-    if (!rawUser) {
-      console.warn('No user found in localStorage');
-      return;
-    }
+    if (!rawUser) return;
 
     try {
       const parsed = JSON.parse(rawUser);
@@ -85,8 +81,6 @@ export class EventsComponent implements OnInit, OnDestroy {
       };
 
       this.userId = this.currentUser.userId;
-
-      console.log('Loaded currentUser:', this.currentUser);
     } catch (error) {
       console.error('Error parsing user from localStorage:', error);
     }
@@ -124,8 +118,7 @@ export class EventsComponent implements OnInit, OnDestroy {
         next: (res) => {
           this.joinAccess[event.id!] = res;
         },
-        error: (err) => {
-          console.error(`canJoin error for event ${event.id}:`, err);
+        error: () => {
           this.joinAccess[event.id!] = false;
         }
       });
@@ -138,8 +131,13 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.events.forEach(event => {
       if (!event.id) return;
 
-      const eventTime = new Date(event.scheduledAt).getTime();
-      const diff = eventTime - now;
+      const startTime = new Date(event.scheduledAt).getTime();
+      const diff = startTime - now;
+
+      if (this.isEventFinished(event)) {
+        this.countdowns[event.id] = '✅ FINISHED';
+        return;
+      }
 
       if (diff <= 0) {
         this.countdowns[event.id] = '🔴 LIVE';
@@ -156,6 +154,8 @@ export class EventsComponent implements OnInit, OnDestroy {
   canUserJoin(event: VirtualEvent): boolean {
     if (!event.id) return false;
 
+    if (this.isEventFinished(event)) return false;
+
     const now = new Date().getTime();
     const eventTime = new Date(event.scheduledAt).getTime();
     const fiveMinBefore = eventTime - (5 * 60 * 1000);
@@ -164,13 +164,41 @@ export class EventsComponent implements OnInit, OnDestroy {
   }
 
   isLive(event: VirtualEvent): boolean {
+    if (this.isEventFinished(event)) return false;
+
     const now = new Date().getTime();
-    const eventTime = new Date(event.scheduledAt).getTime();
-    return now >= eventTime;
+    const startTime = new Date(event.scheduledAt).getTime();
+
+    if (event.endAt) {
+      const endTime = new Date(event.endAt).getTime();
+      return now >= startTime && now < endTime;
+    }
+
+    return now >= startTime;
+  }
+
+  isEventFinished(event: VirtualEvent | null): boolean {
+    if (!event?.scheduledAt) return false;
+
+    const now = new Date().getTime();
+
+    if (event.endAt) {
+      return now >= new Date(event.endAt).getTime();
+    }
+
+    const startTime = new Date(event.scheduledAt).getTime();
+
+    // fallback: si tu n’as pas endAt, on considère fini après 2 heures
+    const defaultDurationMs = 2 * 60 * 60 * 1000;
+    return now >= startTime + defaultDurationMs;
   }
 
   getJoinMessage(event: VirtualEvent): string {
     if (!event.id) return 'Error';
+
+    if (this.isEventFinished(event)) {
+      return '✅ Event finished — you can leave a review';
+    }
 
     const now = new Date().getTime();
     const eventTime = new Date(event.scheduledAt).getTime();
@@ -197,7 +225,6 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.isModalOpen = true;
     this.successMsg = '';
     this.errorMsg = '';
-
     this.selectedRating = 0;
     this.reviewComment = '';
 
@@ -259,9 +286,8 @@ export class EventsComponent implements OnInit, OnDestroy {
             this.loadEvents();
             this.clearMessages();
           },
-          error: (mailErr) => {
+          error: () => {
             this.loading = false;
-            console.error('Mail error:', mailErr);
             this.successMsg = `Registered for ${event.title}, but email was not sent.`;
             this.loadEvents();
             this.clearMessages();
@@ -297,7 +323,6 @@ export class EventsComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.loading = false;
-        console.error('Payment error:', err);
         this.errorMsg = err?.error || 'Payment failed';
         this.clearMessages();
       }
@@ -328,6 +353,7 @@ export class EventsComponent implements OnInit, OnDestroy {
       color: this.selectedColor,
       type: this.selectedType
     };
+
     localStorage.setItem('avatar', JSON.stringify(avatar));
   }
 
@@ -335,9 +361,10 @@ export class EventsComponent implements OnInit, OnDestroy {
     return this.datePipe.transform(dateStr, 'EEEE dd MMMM yyyy à HH:mm') || '';
   }
 
-  // ================= REVIEWS =================
+  // REVIEWS
 
   setRating(star: number) {
+    if (!this.isEventFinished(this.selectedEvent)) return;
     this.selectedRating = star;
   }
 
@@ -364,6 +391,12 @@ export class EventsComponent implements OnInit, OnDestroy {
   submitReview() {
     if (!this.selectedEvent?.id) {
       this.errorMsg = 'Invalid event';
+      this.clearMessages();
+      return;
+    }
+
+    if (!this.isEventFinished(this.selectedEvent)) {
+      this.errorMsg = 'You can review this event only after it ends';
       this.clearMessages();
       return;
     }
