@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 
 import { VirtualEventService } from '../../services/virtual-event.service';
 import { EmailService, EmailPayload } from '../../services/email.service';
+import { EventReviewService, EventReview, ReviewSummary } from '../../services/EventReview.service';
 import { VirtualEvent } from '../../models/virtual-event';
 import { AuthService } from '../../../shared/services/auth.service';
 import { CommitteeResponsableService } from '../../../shared/services/committee-responsable.service';
@@ -37,13 +38,20 @@ export class EventsComponent implements OnInit, OnDestroy {
   errorMsg = '';
   initialized = false;
 
+  // Review fields
+  reviews: EventReview[] = [];
+  reviewSummary: ReviewSummary = { averageRating: 0, totalReviews: 0 };
+  selectedRating = 0;
+  reviewComment = '';
+
   constructor(
-    private virtualEventService: VirtualEventService,
-    private emailService: EmailService,
-    private datePipe: DatePipe,
-    private router: Router,
-    public authService: AuthService,
-    public committeeResponsableService: CommitteeResponsableService
+      private virtualEventService: VirtualEventService,
+      private emailService: EmailService,
+      private datePipe: DatePipe,
+      private router: Router,
+      public authService: AuthService,
+      public committeeResponsableService: CommitteeResponsableService,
+      private eventReviewService: EventReviewService
   ) {}
 
   ngOnInit(): void {
@@ -86,8 +94,8 @@ export class EventsComponent implements OnInit, OnDestroy {
 
   loadCurrentUser(): void {
     const rawUser =
-      localStorage.getItem('currentUser') ||
-      localStorage.getItem('user');
+        localStorage.getItem('currentUser') ||
+        localStorage.getItem('user');
 
     if (!rawUser) {
       console.warn('No user found in localStorage');
@@ -151,6 +159,11 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.events.forEach(event => {
       if (!event.id || !event.scheduledAt) return;
 
+      if (this.isEventFinished(event)) {
+        this.countdowns[event.id] = '✅ FINISHED';
+        return;
+      }
+
       const eventTime = new Date(event.scheduledAt).getTime();
       const diff = eventTime - now;
 
@@ -166,6 +179,7 @@ export class EventsComponent implements OnInit, OnDestroy {
     });
   }
 
+  // IMPORTANT: No blocking of join based on isEventFinished
   canUserJoin(event: VirtualEvent): boolean {
     if (!event?.id || !event.scheduledAt) return false;
 
@@ -183,6 +197,22 @@ export class EventsComponent implements OnInit, OnDestroy {
     const eventTime = new Date(event.scheduledAt).getTime();
 
     return now >= eventTime;
+  }
+
+  // Used only for review display, NOT for blocking join/register/pay
+  isEventFinished(event: VirtualEvent | null): boolean {
+    if (!event?.scheduledAt) return false;
+
+    const now = new Date().getTime();
+
+    if (event.endAt) {
+      return now >= new Date(event.endAt).getTime();
+    }
+
+    // fallback: if no endAt, assume finished after 2 hours
+    const startTime = new Date(event.scheduledAt).getTime();
+    const defaultDurationMs = 2 * 60 * 60 * 1000;
+    return now >= startTime + defaultDurationMs;
   }
 
   getJoinMessage(event: VirtualEvent): string {
@@ -213,6 +243,18 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.isModalOpen = true;
     this.successMsg = '';
     this.errorMsg = '';
+    this.selectedRating = 0;
+    this.reviewComment = '';
+
+    if (event.id) {
+      this.loadReviews(event.id);
+    }
+    if (this.userId && event.id) {
+      this.virtualEventService.canJoin(event.id, this.userId).subscribe({
+        next: (res) => (this.joinAccess[event.id!] = res === true),
+        error: () => (this.joinAccess[event.id!] = false),
+      });
+    }
   }
 
   closeModal(): void {
@@ -221,6 +263,10 @@ export class EventsComponent implements OnInit, OnDestroy {
     this.loading = false;
     this.successMsg = '';
     this.errorMsg = '';
+    this.selectedRating = 0;
+    this.reviewComment = '';
+    this.reviews = [];
+    this.reviewSummary = { averageRating: 0, totalReviews: 0 };
   }
 
   registerToEvent(event: VirtualEvent): void {
@@ -251,7 +297,7 @@ export class EventsComponent implements OnInit, OnDestroy {
         const payload: EmailPayload = {
           to: this.currentUser.email,
           userName:
-            `${this.currentUser.firstName || ''} ${this.currentUser.lastName || ''}`.trim() || 'Participant',
+              `${this.currentUser.firstName || ''} ${this.currentUser.lastName || ''}`.trim() || 'Participant',
           eventTitle: event.title || 'Event',
           eventDate: this.formatDate(event.scheduledAt),
           meetingLink: event.meetingLink || 'https://meet.jit.si/default-room'
@@ -340,7 +386,6 @@ export class EventsComponent implements OnInit, OnDestroy {
       color: this.selectedColor,
       type: this.selectedType
     };
-
     localStorage.setItem('avatar', JSON.stringify(avatar));
   }
 
@@ -358,4 +403,88 @@ export class EventsComponent implements OnInit, OnDestroy {
       this.errorMsg = '';
     }, 3000);
   }
+
+  // ----------- Review methods -----------
+  setRating(star: number): void {
+    if (!this.isEventFinished(this.selectedEvent)) return;
+    this.selectedRating = star;
+  }
+
+  loadReviews(eventId: string): void {
+    this.eventReviewService.getReviews(eventId).subscribe({
+      next: (data) => (this.reviews = data),
+      error: (err) => console.error('Error loading reviews:', err)
+    });
+
+    this.eventReviewService.getSummary(eventId).subscribe({
+      next: (data) => (this.reviewSummary = data),
+      error: (err) => console.error('Error loading review summary:', err)
+    });
+  }
+  submitReview(): void {
+    if (!this.selectedEvent?.id) {
+      this.errorMsg = 'Invalid event';
+      this.clearMessages();
+      return;
+    }
+
+    if (!this.isEventFinished(this.selectedEvent)) {
+      this.errorMsg = 'You can review this event only after it ends';
+      this.clearMessages();
+      return;
+    }
+
+    if (!this.userId) {
+      this.errorMsg = 'User not found';
+      this.clearMessages();
+      return;
+    }
+
+    if (this.selectedRating < 1 || this.selectedRating > 5) {
+      this.errorMsg = 'Please select a rating';
+      this.clearMessages();
+      return;
+    }
+
+    if (!this.reviewComment.trim()) {
+      this.errorMsg = 'Please write a comment';
+      this.clearMessages();
+      return;
+    }
+
+    const userName =
+        `${this.currentUser?.firstName || ''} ${this.currentUser?.lastName || ''}`.trim()
+        || this.currentUser?.name
+        || 'User';
+
+    const payload: EventReview = {
+      eventId: this.selectedEvent.id,
+      userId: this.userId,
+      userName,
+      rating: this.selectedRating,
+      comment: this.reviewComment.trim()
+    };
+
+    this.eventReviewService.addReview(payload).subscribe({
+      next: (review) => {
+        // ** NEW: handle flagged reviews **
+        if (review.flagged) {
+          this.successMsg = 'Review submitted but flagged for moderation: ' + (review.reason || 'inappropriate content');
+        } else {
+          this.successMsg = 'Review submitted successfully';
+        }
+        this.selectedRating = 0;
+        this.reviewComment = '';
+        this.loadReviews(this.selectedEvent!.id!);
+        this.clearMessages();
+      },
+      error: (err) => {
+        console.error('Review error:', err);
+        this.errorMsg = err?.error || 'Failed to submit review';
+        this.clearMessages();
+      }
+    });
+  }
+
+
 }

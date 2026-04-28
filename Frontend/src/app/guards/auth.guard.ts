@@ -31,9 +31,10 @@ export const guestGuard: CanActivateFn = () => {
   if (authService.isLoggedIn()) {
     const clubId = authService.getCurrentClubId();
     if (clubId) {
-      router.navigate(['/clubs', clubId]);
+      // Redirect to the backoffice dashboard (or their club page)
+      router.navigate(['/app/dashboard']);
     } else {
-      router.navigate(['/setup-club']);
+      router.navigate(['/app/setup-club']);
     }
     return false;
   }
@@ -47,20 +48,12 @@ export const guestGuard: CanActivateFn = () => {
  * - Connecté sans club    → /setup-club
  */
 export const homeGuard: CanActivateFn = () => {
-  const authService = inject(AuthService);
+  const auth = inject(AuthService);
   const router = inject(Router);
-
-  if (authService.isLoggedIn()) {
-    const clubId = authService.getCurrentClubId();
-    if (clubId) {
-      router.navigate(['/clubs', clubId]);
-    } else {
-      router.navigate(['/setup-club']);
-    }
-  } else {
-    router.navigate(['/signin']);
-  }
-  return false;
+  const user = auth.getCurrentUser();
+  if (!user) return router.createUrlTree(['/signin']);
+  if (!user.clubId) return router.createUrlTree(['/app/setup-club']);
+  return router.createUrlTree(['/app/dashboard']);
 };
 
 /** Réservé au PRESIDENT / RH / SECRETAIRE_GENERALE. */

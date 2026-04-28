@@ -1,6 +1,8 @@
 import { Component, ViewChild, AfterViewInit, HostListener, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+
 import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
 import { EventInput, CalendarOptions, DateSelectArg, EventClickArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -26,6 +28,8 @@ import { SuggestedTiming, EventRecommendationService } from '../../shared/servic
 import { AiFeedbackSummaryModalComponent } from '../../shared/components/ai-feedback-summary-modal/ai-feedback-summary-modal.component';
 import { FeedbackSentimentModalComponent } from '../../shared/components/feedback-sentiment-modal/feedback-sentiment-modal.component';
 import * as L from 'leaflet';
+import { apiUrl } from '../../../environments/environment';
+import { format } from 'date-fns';
 
 // Fix Leaflet icon issue
 const iconDefault = L.icon({
@@ -35,10 +39,26 @@ const iconDefault = L.icon({
 });
 L.Marker.prototype.options.icon = iconDefault;
 
+/** Chat message interface – used by the chatbot panel */
+interface ChatMessage {
+  role: 'user' | 'bot';
+  text: string;
+  parsedEvent?: any;
+}
+
 @Component({
   selector: 'app-calender',
   standalone: true,
-  imports: [CommonModule, FormsModule, FullCalendarModule, ModalComponent, EventRecommendationsWidgetComponent, AiFeedbackSummaryModalComponent, FeedbackSentimentModalComponent, RouterModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    FullCalendarModule,
+    ModalComponent,
+    EventRecommendationsWidgetComponent,
+    AiFeedbackSummaryModalComponent,
+    FeedbackSentimentModalComponent,
+    RouterModule
+  ],
   templateUrl: './calender.component.html',
   styles: [`
     .map-container { height: 240px; width: 100%; border-radius: 10px; position: relative; z-index: 1; }
@@ -75,8 +95,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
   searchResults: any[] = [];
   showSearchResults = false;
   isSearching = false;
-  /** Stream of raw keystrokes — debounced before hitting Nominatim to avoid
-   * 429 throttling (Nominatim public API allows ~1 req/sec). */
   private searchInput$ = new Subject<string>();
   private searchSub: Subscription | null = null;
 
@@ -93,24 +111,18 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
   eventStatus = 'published';
   staffList: EventStaffMember[] = [];
   newStaffName = '';
-  /** Free-text role (datalist suggests common roles); must be unique among staff. */
   newStaffRoleText = 'formateur';
-  /** Optional planned budget (TND) for this staff line — shown in borrowed-items when event is selected. */
   newStaffBudget: number | null = null;
   staffAddError = '';
-  /** Shown on member-facing views (e.g. RSVP) */
   memberInfoForPublic = '';
   private eventCache: BackendEvent[] = [];
-  /** Last loaded virtual events — used to block overlapping time slots. */
   private virtualEventCache: VirtualEvent[] = [];
 
-  /** Event format (workshop, conference, …) + optional custom label when "other". */
   eventFormat = '';
   eventFormatCustom = '';
   readonly eventFormatOptions = EVENT_FORMAT_OPTIONS;
 
-  // ── Virtual-event-only form fields (used when createEventType === 'virtual') ──
-  /** 'VIRTUAL' = classic Jitsi/meeting link, 'ROOM' = 3D room experience. */
+  // ── Virtual-event-only form fields ──
   virtualType: 'VIRTUAL' | 'ROOM' = 'VIRTUAL';
   virtualRoomId = '';
   virtualMeetingLink = '';
@@ -120,8 +132,21 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
   virtualImageUrl = '';
   virtualCategory = '';
 
-  /** Datalist options for staff role (same list as borrowed-items needs). */
   readonly staffRoleHints = STAFF_ROLE_HINTS;
+
+  // ── Chatbot properties ──
+  isChatOpen = false;
+  chatInput = '';
+  chatLoading = false;
+  chatMessages: ChatMessage[] = [
+    {
+      role: 'bot',
+      text: 'Bonjour ! Je peux t\'aider de deux façons :\n• Décris un événement → je remplis le formulaire\n• Écris "propose-moi des formations" → je génère des idées'
+    }
+  ];
+  // Gateway-friendly API base URLs
+  private readonly virtualEventsApi = apiUrl('/api/virtual-events');
+  private readonly aiParseApi = apiUrl('/api/ai/parse');
 
   statusConfig: Record<string, { color: string; label: string }> = {
     published: { color: '#6366f1', label: 'Published' },
@@ -138,8 +163,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
   get startDateError() { return this.submitted && !this.eventStartDate ? 'Start date required' : ''; }
   get endDateError() {
     if (!this.submitted) return '';
-    // Virtual events: end date is optional on the VEM API (LocalDateTime endAt
-    // can be null). Physical events still require a strict end > start.
     if (this.createEventType === 'virtual') {
       if (!this.eventEndDate) return '';
       if (!this.eventStartDate) return '';
@@ -157,7 +180,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     if (e <= s) return 'End date and time must be after the start';
     return '';
   }
-  /** At least one staff member is required, with any role. */
   get formateurError() {
     if (!this.submitted) return '';
     return this.staffList.length > 0 ? '' : 'Add at least one staff member (any role).';
@@ -178,24 +200,21 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     return '';
   }
   get isFormValid() {
-    // Virtual events don't require a location, staff, or the "one event per
-    // calendar day" rule (several virtual sessions can legitimately happen
-    // on the same day across different clubs).
     if (this.createEventType === 'virtual') {
       return (
-        !this.titleError &&
-        !this.startDateError &&
-        !this.endDateError
+          !this.titleError &&
+          !this.startDateError &&
+          !this.endDateError
       );
     }
     return (
-      !this.titleError &&
-      !this.startDateError &&
-      !this.endDateError &&
-      !this.capacityError &&
-      !this.eventFormatError &&
-      !this.formateurError &&
-      !this.duplicateDayError
+        !this.titleError &&
+        !this.startDateError &&
+        !this.endDateError &&
+        !this.capacityError &&
+        !this.eventFormatError &&
+        !this.formateurError &&
+        !this.duplicateDayError
     );
   }
 
@@ -218,7 +237,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     return `${y}-${m}-${day}`;
   }
 
-  /** Same local calendar day as start (ignores cancelled). */
   hasDuplicateStartDay(startIso: string, excludeId?: string): boolean {
     const key = this.localDayKey(startIso);
     if (!key) return false;
@@ -230,7 +248,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     });
   }
 
-  /** True if the local calendar day of this instant is strictly before today. */
   private isStrictlyBeforeToday(iso: string): boolean {
     const d = this.parseInputAsLocalDate(iso);
     if (Number.isNaN(d.getTime())) return false;
@@ -274,7 +291,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
           }
           this.resetModalFields();
           this.createEventType = 'physical';
-          this.createEventType = 'physical';
           this.applyDefaultEventWindow();
           this.openModal();
         },
@@ -283,19 +299,18 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     eventContent: (arg) => this.renderEventContent(arg),
   };
 
-  /** True while we're fetching an AI-drafted event description. */
   drafting = false;
-  /** Inline error / hint shown beneath the description textarea. */
   draftError = '';
 
   constructor(
-    private eventService: EventService,
-    private locationService: LocationService,
-    private recoService: EventRecommendationService,
-    private virtualEventService: VirtualEventService,
-    private authService: AuthService,
-    private committeeResponsableService: CommitteeResponsableService,
-    private router: Router
+      private eventService: EventService,
+      private locationService: LocationService,
+      private recoService: EventRecommendationService,
+      private virtualEventService: VirtualEventService,
+      private authService: AuthService,
+      private committeeResponsableService: CommitteeResponsableService,
+      private router: Router,
+      private http: HttpClient
   ) {}
 
   canAccess(): boolean {
@@ -309,42 +324,27 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     return this.canAccess();
   }
 
-  // ── Virtual-events integration (additive) ────────────────────────────
-  //
-  // The shared calendar pulls virtual events from the VEM microservice and
-  // renders them in a distinct violet tone with an "ONLINE" badge.
-  // Create / edit flow: the same modal is re-used — a "Physical | Virtual"
-  // toggle at the top of the modal swaps between two sub-forms so each
-  // event kind posts to its own microservice (EventService vs
-  // VirtualEventService) without tangled shared state.
-  //
-  // Colour used for virtual events on the month grid. Kept outside the
-  // `statusConfig` map so the existing logic that keys off `status`
-  // (getColorFromStatus) continues to behave exactly as before.
   private readonly virtualEventColor = '#8b5cf6';
-  /** When false, virtual events are hidden from the calendar surface. */
   showVirtualEvents = true;
 
   ngOnInit() {
     this.searchSub = this.searchInput$.pipe(
-      debounceTime(350),
-      distinctUntilChanged(),
-      switchMap(q => {
-        if (q.length <= 2) {
-          this.searchResults = [];
-          this.showSearchResults = false;
-          this.isSearching = false;
-          return of(null);
-        }
-        return this.locationService.geocodeAddress(q).pipe(
-          catchError(err => {
-            // Log the real error so "No address found" never silently masks
-            // a CORS/network/4xx issue. Visible in the browser console.
-            console.error('[Nominatim] geocode failed for "%s":', q, err);
-            return of([]);
-          })
-        );
-      })
+        debounceTime(350),
+        distinctUntilChanged(),
+        switchMap(q => {
+          if (q.length <= 2) {
+            this.searchResults = [];
+            this.showSearchResults = false;
+            this.isSearching = false;
+            return of(null);
+          }
+          return this.locationService.geocodeAddress(q).pipe(
+              catchError(err => {
+                console.error('[Nominatim] geocode failed for "%s":', q, err);
+                return of([]);
+              })
+          );
+        })
     ).subscribe(results => {
       this.isSearching = false;
       if (results === null) return;
@@ -361,7 +361,7 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
 
   ngAfterViewInit() {
     this.committeeResponsableService.responsableStatus$.subscribe(status => {
-      if (status === null) return; // Still loading
+      if (status === null) return;
 
       if (!this.canAccess()) {
         console.warn("Accès refusé au calendrier");
@@ -384,16 +384,11 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   loadEvents(): void {
-    // Load physical events (EventService) and virtual events (VEM) in
-    // parallel. `VirtualEventService.getAllEvents()` already swallows
-    // its own errors (returns `[]`), but we wrap the physical call too
-    // so a virtual-events outage can never hide the physical ones, and
-    // vice-versa.
     forkJoin({
       physical: this.eventService.getEvents().pipe(catchError(() => of<BackendEvent[]>([]))),
       virtual:  this.showVirtualEvents
-        ? this.virtualEventService.getAllEvents()
-        : of<VirtualEvent[]>([]),
+          ? this.virtualEventService.getAllEvents()
+          : of<VirtualEvent[]>([]),
     }).subscribe({
       next: ({ physical, virtual }) => {
         this.eventCache = physical || [];
@@ -411,21 +406,19 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
         }));
 
         const virtualCal: EventInput[] = (virtual || [])
-          .filter(ev => !!ev.scheduledAt)
-          .map(ev => ({
-            id: `v-${ev.id}`,       // namespaced to avoid colliding with physical ids
-            title: ev.title,
-            start: ev.scheduledAt,
-            end: ev.endAt,
-            backgroundColor: this.virtualEventColor,
-            borderColor: 'transparent',
-            textColor: '#fff',
-            // Virtual events are informational on this calendar —
-            // Inscription / rejoindre / payer : page `/ameni/events` (VEM).
-            editable: false,
-            durationEditable: false,
-            extendedProps: { virtualEvent: ev, eventKind: 'virtual' }
-          }));
+            .filter(ev => !!ev.scheduledAt)
+            .map(ev => ({
+              id: `v-${ev.id}`,
+              title: ev.title,
+              start: ev.scheduledAt,
+              end: ev.endAt,
+              backgroundColor: this.virtualEventColor,
+              borderColor: 'transparent',
+              textColor: '#fff',
+              editable: false,
+              durationEditable: false,
+              extendedProps: { virtualEvent: ev, eventKind: 'virtual' }
+            }));
 
         this.updateCalendarEvents([...physicalCal, ...virtualCal]);
       },
@@ -512,9 +505,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
     this.resetModalFields();
-    // Opening from a date-range selection always starts in physical mode —
-    // the user explicitly switches to 'virtual' via the toggle at the top
-    // of the modal if they want a virtual-event instead.
     this.createEventType = 'physical';
     const toLocal = (str: string, fallbackTime: string) => (str.includes('T') ? str.substring(0, 16) : str + fallbackTime);
     this.eventStartDate = toLocal(info.startStr, 'T08:00');
@@ -522,12 +512,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.openModal();
   }
 
-  /**
-   * Load an existing virtual event into the shared modal so the user can
-   * edit it directly from the calendar (same UX as clicking a physical
-   * event). Keeps all other state in sync so validation + submit branch
-   * correctly to the VEM backend.
-   */
   private loadVirtualEventIntoModal(ev: VirtualEvent): void {
     this.resetModalFields();
     this.createEventType = 'virtual';
@@ -536,8 +520,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     this.eventTitle = ev.title || '';
     this.eventDescription = ev.description || '';
-    // scheduledAt / endAt arrive as ISO strings — trim to the 16-char form
-    // that <input type="datetime-local"> expects.
     this.eventStartDate = (ev.scheduledAt || '').substring(0, 16);
     this.eventEndDate   = (ev.endAt || '').substring(0, 16);
     this.eventCapacity  = ev.maxParticipants ?? null;
@@ -554,27 +536,12 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.openModal();
   }
 
-  /**
-   * Toggle the create/edit modal between physical and virtual mode.
-   * Called by the segmented switch at the top of the modal.
-   * Blocked when editing an existing event — you can't change the kind
-   * of a saved event after creation.
-   */
-  /**
-   * Returns an error message if the proposed [start,end] overlaps any
-   * non-finished event (physical or virtual) in the caches.
-   */
-  private getEventTimeOverlapMessage(
-    kind: 'physical' | 'virtual',
-  ): string | null {
+  private getEventTimeOverlapMessage(kind: 'physical' | 'virtual'): string | null {
     const startStr = this.eventStartDate?.trim();
-    if (!startStr) {
-      return null;
-    }
+    if (!startStr) return null;
     const sNew = new Date(startStr + ':00').getTime();
-    if (Number.isNaN(sNew)) {
-      return null;
-    }
+    if (Number.isNaN(sNew)) return null;
+
     let eNew: number;
     if (this.eventEndDate?.trim()) {
       eNew = new Date(this.eventEndDate + ':00').getTime();
@@ -589,109 +556,60 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
 
     const exPhys = this.selectedEvent?.id;
     const exVirt = this.selectedVirtualEvent?.id;
-
-    const rangeOverlap = (a0: number, a1: number, b0: number, b1: number) =>
-      a0 < b1 && b0 < a1;
+    const rangeOverlap = (a0: number, a1: number, b0: number, b1: number) => a0 < b1 && b0 < a1;
 
     for (const ev of this.eventCache) {
-      if (exPhys && ev.id === exPhys) {
-        continue;
-      }
-      if ((ev.status || '').toLowerCase() === 'cancelled') {
-        continue;
-      }
-      if (!ev.startDate) {
-        continue;
-      }
-      const a0 = new Date(
-        this.normalizeDateTimeString(ev.startDate),
-      ).getTime();
-      const a1 = new Date(
-        this.normalizeDateTimeString(ev.endDate || ev.startDate),
-      ).getTime();
-      if (Number.isNaN(a0) || Number.isNaN(a1) || a1 <= a0) {
-        continue;
-      }
-      if (rangeOverlap(sNew, eNew, a0, a1)) {
-        return 'Another in-person event is already running in this time window.';
-      }
+      if (exPhys && ev.id === exPhys) continue;
+      if ((ev.status || '').toLowerCase() === 'cancelled') continue;
+      if (!ev.startDate) continue;
+      const a0 = new Date(this.normalizeDateTimeString(ev.startDate)).getTime();
+      const a1 = new Date(this.normalizeDateTimeString(ev.endDate || ev.startDate)).getTime();
+      if (Number.isNaN(a0) || Number.isNaN(a1) || a1 <= a0) continue;
+      if (rangeOverlap(sNew, eNew, a0, a1)) return 'Another in-person event is already running in this time window.';
     }
 
     for (const ve of this.virtualEventCache) {
-      if (exVirt && ve.id === exVirt) {
-        continue;
-      }
+      if (exVirt && ve.id === exVirt) continue;
       const st = (ve.status || '').toUpperCase();
-      if (st === 'CANCELLED' || st === 'FINISHED') {
-        continue;
-      }
-      if (!ve.scheduledAt) {
-        continue;
-      }
-      const a0 = new Date(
-        this.normalizeDateTimeString(ve.scheduledAt),
-      ).getTime();
+      if (st === 'CANCELLED' || st === 'FINISHED') continue;
+      if (!ve.scheduledAt) continue;
+      const a0 = new Date(this.normalizeDateTimeString(ve.scheduledAt)).getTime();
       const endSrc = ve.endAt || ve.scheduledAt;
       const a1 = new Date(this.normalizeDateTimeString(endSrc)).getTime();
-      if (Number.isNaN(a0) || Number.isNaN(a1) || a1 <= a0) {
-        continue;
-      }
-      if (rangeOverlap(sNew, eNew, a0, a1)) {
-        return 'A virtual event is already running in this time window.';
-      }
+      if (Number.isNaN(a0) || Number.isNaN(a1) || a1 <= a0) continue;
+      if (rangeOverlap(sNew, eNew, a0, a1)) return 'A virtual event is already running in this time window.';
     }
 
     return null;
   }
 
-  /** Normalise backend ISO to a string Date can parse (trim ms / TZ if needed). */
   private normalizeDateTimeString(v: string): string {
-    if (!v) {
-      return v;
-    }
+    if (!v) return v;
     const t = v.includes('T') ? v : v.replace(' ', 'T');
-    if (/[Z+-]\d{2}:\d{2}$|Z$/.test(t)) {
-      return t;
-    }
-    if (t.length === 16) {
-      return t + ':00';
-    }
-    if (t.length === 10) {
-      return t + 'T00:00:00';
-    }
+    if (/[Z+-]\d{2}:\d{2}$|Z$/.test(t)) return t;
+    if (t.length === 16) return t + ':00';
+    if (t.length === 10) return t + 'T00:00:00';
     return t;
   }
 
   setCreateEventType(kind: 'physical' | 'virtual'): void {
-    if (this.selectedEvent || this.selectedVirtualEvent) return; // edit mode → locked
+    if (this.selectedEvent || this.selectedVirtualEvent) return;
     this.createEventType = kind;
-    // Reset the submit state so validation errors from the previous mode
-    // don't flash in red on the freshly-switched form.
     this.submitted = false;
-    // If the user opened the modal without dates, pre-fill a sensible window
-    // so virtual mode can submit with only title + start (end optional).
     if (kind === 'virtual' && !this.eventStartDate?.trim()) {
       this.applyDefaultEventWindow();
     }
-    // When switching to virtual, ensure the Leaflet map — which was lazily
-    // initialised when the modal opened in physical mode — doesn't keep
-    // the tile grid stale behind the hidden section.
     if (kind === 'virtual' && this.formMap) {
       this.formMap.remove();
       this.formMap = null;
       this.formMarker = null;
     }
-    // When switching back to physical, re-init the map (the element was
-    // removed from the DOM by *ngIf, so we have to mount a fresh one).
     if (kind === 'physical') {
       setTimeout(() => this.initFormMap(), 300);
     }
   }
 
   handleEventClick(info: EventClickArg) {
-    // Virtual event → open the SAME modal but switched to the virtual
-    // sub-form so the user can edit meeting type / price / recording /
-    // etc. without leaving the calendar.
     const virtual = info.event.extendedProps['virtualEvent'] as VirtualEvent | undefined;
     if (virtual) {
       this.loadVirtualEventIntoModal(virtual);
@@ -715,12 +633,12 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.eventCapacity = ev.capacity ?? null;
     this.eventStatus = ev.status || 'published';
     this.staffList = Array.isArray(ev.staff)
-      ? ev.staff.map((s) => ({
+        ? ev.staff.map((s) => ({
           name: (s.name || '').trim(),
           role: (s.role || '').trim(),
           budget: this.parseStaffBudget(s.budget),
         }))
-      : [];
+        : [];
     this.memberInfoForPublic = ev.shortDescription || '';
     this.eventFormat = ev.eventFormat || '';
     this.eventFormatCustom = ev.eventFormatCustom || '';
@@ -732,7 +650,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.submitted = true;
     if (!this.isFormValid) return;
 
-    // Virtual sub-flow: different payload shape + different microservice.
     if (this.createEventType === 'virtual') {
       this.handleAddOrUpdateVirtualEvent();
       return;
@@ -767,8 +684,7 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
       status: this.eventStatus,
       staff: staffPayload,
       eventFormat: this.eventFormat || undefined,
-      eventFormatCustom:
-        this.eventFormat === 'other' ? (this.eventFormatCustom.trim() || undefined) : undefined,
+      eventFormatCustom: this.eventFormat === 'other' ? (this.eventFormatCustom.trim() || undefined) : undefined,
     };
 
     this.clearMessages();
@@ -778,35 +694,26 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
         error: (err) => { this.errorMessage = 'Failed to update event: ' + (err.error?.error || 'Unknown error'); }
       });
     } else {
-      // Don't send a placeholder — the backend resolves `createdBy` from
-      // the JWT in SessionService. If no session is found it returns 401
-      // instead of writing "current-user-id" into the DB (legacy bug).
       this.eventService.createEvent(payload).subscribe({
         next: () => { this.loadEvents(); this.closeModal(); this.successMessage = 'Event created successfully.'; },
         error: (err) => {
-          // Same auto-diagnostic pattern as in rsvp.component — on a 401,
-          // immediately call /api/rsvp/_debug (which echoes back what the
-          // backend saw) so the user gets the actionable verdict in the
-          // alert instead of having to dig through DevTools.
           if (err.status === 401) {
             console.error('Event creation 401', err);
-            // Inline diagnostic — read what the JwtInterceptor would see
-            // and tell the user whether the local token even exists.
             let token: string | null = null;
             try {
               const raw = localStorage.getItem('currentUser');
               token = raw ? (JSON.parse(raw)?.token ?? null) : null;
             } catch { /* ignore */ }
             const msg = 'Backend rejected the event creation:\n  '
-              + (err.error?.error || err.error?.message || 'Not signed in.')
-              + '\n\nLocal session diagnostic:\n'
-              + '  localStorage.currentUser.token: '
-              + (token ? token.substring(0, 24) + '... (present)' : '<MISSING>')
-              + '\n\n' + (token
-                ? 'Token IS present locally but backend says no Bearer header arrived.\n'
-                  + 'Open DevTools > Network > the failed POST /api/events request,\n'
-                  + 'then look at Request Headers — Authorization should be there.'
-                : 'No token in localStorage — sign out and sign in again.');
+                + (err.error?.error || err.error?.message || 'Not signed in.')
+                + '\n\nLocal session diagnostic:\n'
+                + '  localStorage.currentUser.token: '
+                + (token ? token.substring(0, 24) + '... (present)' : '<MISSING>')
+                + '\n\n' + (token
+                    ? 'Token IS present locally but backend says no Bearer header arrived.\n'
+                    + 'Open DevTools > Network > the failed POST /api/events request,\n'
+                    + 'then look at Request Headers — Authorization should be there.'
+                    : 'No token in localStorage — sign out and sign in again.');
             alert(msg);
             return;
           }
@@ -817,7 +724,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   deleteEvent() {
-    // Virtual event being edited → use VEM delete endpoint.
     if (this.createEventType === 'virtual') {
       if (!this.selectedVirtualEvent?.id || !confirm('Delete this virtual event?')) return;
       this.virtualEventService.deleteEvent(this.selectedVirtualEvent.id).subscribe({
@@ -833,12 +739,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Build a VirtualEvent DTO from the virtual-form fields and send it to
-   * the VEM microservice (create vs update depending on
-   * `selectedVirtualEvent`). Kept separate from the physical flow so the
-   * two payloads can evolve independently without tangled branching.
-   */
   private handleAddOrUpdateVirtualEvent(): void {
     const overlap = this.getEventTimeOverlapMessage('virtual');
     if (overlap) {
@@ -846,7 +746,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
       return;
     }
 
-    // `datetime-local` → ISO LocalDateTime for Jackson (VEM)
     const scheduledAt = this.eventStartDate ? this.eventStartDate + ':00' : '';
     const endAt       = this.eventEndDate   ? this.eventEndDate   + ':00' : undefined;
     if (!scheduledAt) {
@@ -873,25 +772,18 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.clearMessages();
     const existing = this.selectedVirtualEvent;
     const obs = existing?.id
-      ? this.virtualEventService.updateEvent(existing.id, { ...existing, ...payload })
-      : this.virtualEventService.createEvent(payload);
+        ? this.virtualEventService.updateEvent(existing.id, { ...existing, ...payload })
+        : this.virtualEventService.createEvent(payload);
 
     obs.subscribe({
       next: () => {
         this.loadEvents();
         this.closeModal();
-        this.successMessage = existing?.id
-          ? 'Virtual event updated successfully.'
-          : 'Virtual event created successfully.';
+        this.successMessage = existing?.id ? 'Virtual event updated successfully.' : 'Virtual event created successfully.';
       },
       error: (err) => {
         const body = err.error;
-        const msg =
-          (typeof body === 'string' ? body : null) ||
-          body?.message ||
-          body?.error ||
-          err?.message ||
-          'HTTP ' + (err.status ?? '') + ' — check that Gateway :8084 and VEM are running.';
+        const msg = (typeof body === 'string' ? body : null) || body?.message || body?.error || err?.message || 'HTTP ' + (err.status ?? '') + ' — check that Gateway :8084 and VEM are running.';
         this.errorMessage = 'Failed to save virtual event: ' + msg;
         console.error('Virtual event save failed', err);
       }
@@ -902,26 +794,15 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.staffAddError = '';
     const name = this.newStaffName.trim();
     const role = (this.newStaffRoleText || '').trim();
-    if (!name) {
-      this.staffAddError = 'Name is required.';
-      return;
-    }
-    if (!role) {
-      this.staffAddError = 'Role is required.';
-      return;
-    }
-    // Unique constraint: the exact pair (name + role) cannot repeat.
-    // Different people can share a role; same person can have several roles.
+    if (!name) { this.staffAddError = 'Name is required.'; return; }
+    if (!role) { this.staffAddError = 'Role is required.'; return; }
     const nameKey = name.toLowerCase();
     const roleKey = this.normalizeRole(role);
     if (this.staffList.some((s) => s.name.trim().toLowerCase() === nameKey && this.normalizeRole(s.role) === roleKey)) {
       this.staffAddError = `${name} is already listed as ${role}.`;
       return;
     }
-    const budget =
-      this.newStaffBudget != null && !Number.isNaN(Number(this.newStaffBudget))
-        ? Number(this.newStaffBudget)
-        : undefined;
+    const budget = this.newStaffBudget != null && !Number.isNaN(Number(this.newStaffBudget)) ? Number(this.newStaffBudget) : undefined;
     this.staffList = [...this.staffList, { name, role, budget }];
     this.newStaffName = '';
     this.newStaffBudget = null;
@@ -939,9 +820,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
 
   onSearchInput() {
     if (this.searchQuery.length > 2) {
-      // Show the dropdown immediately with a loading state so the user has
-      // visible feedback during the debounce window — otherwise typing feels
-      // broken until the request comes back.
       this.isSearching = true;
       this.showSearchResults = true;
     } else {
@@ -957,9 +835,7 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.eventLat = lat;
     this.eventLng = lng;
     this.eventLocationAddress = result.display_name;
-    if (!this.eventLocationName) {
-      this.eventLocationName = result.display_name.split(',')[0].trim();
-    }
+    if (!this.eventLocationName) this.eventLocationName = result.display_name.split(',')[0].trim();
     this.searchQuery = result.display_name.split(',')[0].trim();
     this.showSearchResults = false;
 
@@ -967,8 +843,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
       this.formMap.setView([lat, lng], 15);
       this.formMarker.setLatLng([lat, lng]);
     } else {
-      // Map not initialised yet (e.g. user picked a result before the modal
-      // finished rendering). Build it now using the freshly-set coordinates.
       this.initFormMap();
     }
   }
@@ -978,31 +852,23 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
       const el = document.getElementById('formMap');
       if (!el) return;
       if (this.formMap) { this.formMap.remove(); this.formMap = null; }
-      
       const lat = this.eventLat || 33.8869;
       const lng = this.eventLng || 9.5375;
-      
       this.formMap = L.map('formMap').setView([lat, lng], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-      }).addTo(this.formMap);
-      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(this.formMap);
       this.formMarker = L.marker([lat, lng], { draggable: true }).addTo(this.formMap);
-      
       this.formMarker.on('dragend', () => {
         const pos = this.formMarker!.getLatLng();
         this.eventLat = pos.lat;
         this.eventLng = pos.lng;
         this.reverseGeocode(pos.lat, pos.lng);
       });
-      
       this.formMap.on('click', (e: L.LeafletMouseEvent) => {
         this.eventLat = e.latlng.lat;
         this.eventLng = e.latlng.lng;
         this.formMarker?.setLatLng([this.eventLat, this.eventLng]);
         this.reverseGeocode(this.eventLat, this.eventLng);
       });
-      
       this.formMap.invalidateSize();
     }, 400);
   }
@@ -1012,28 +878,17 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
       next: (result) => {
         if (result?.display_name) {
           this.eventLocationAddress = result.display_name;
-          if (!this.eventLocationName) {
-            this.eventLocationName = result.display_name.split(',')[0].trim();
-          }
+          if (!this.eventLocationName) this.eventLocationName = result.display_name.split(',')[0].trim();
         }
       }
     });
   }
 
-  clearMessages() {
-    this.errorMessage = '';
-    this.successMessage = '';
-  }
+  clearMessages() { this.errorMessage = ''; this.successMessage = ''; }
 
-  /**
-   * Fills start/end with "now" and "now + 2h" so a fresh "+ Add Event" (or
-   * a switch to virtual) always has valid physical validation if the user
-   * changes nothing — and virtual creation no longer requires typing both.
-   */
   private applyDefaultEventWindow(): void {
     const pad = (n: number) => (n < 10 ? '0' + n : String(n));
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     const start = new Date();
     const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
     this.eventStartDate = fmt(start);
@@ -1066,7 +921,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.searchQuery = '';
     this.searchResults = [];
     this.showSearchResults = false;
-    // Virtual-specific fields — reset so the form is pristine between opens.
     this.virtualType = 'VIRTUAL';
     this.virtualRoomId = '';
     this.virtualMeetingLink = '';
@@ -1079,9 +933,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
 
   openModal() {
     this.isOpen = true;
-    // Only the physical sub-form uses the Leaflet map — initialising it
-    // in virtual mode would target a non-existent DOM node (wrapped in
-    // *ngIf) and throw.
     if (this.createEventType === 'physical') {
       setTimeout(() => this.initFormMap(), 400);
     }
@@ -1096,18 +947,11 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     }
   }
 
-  // ── AI feedback summary (organisers) ──────────────────────────────────
+  // ── AI feedback summary ──────────────────────────────────────
   aiSummaryOpen = false;
   aiSummaryEventId: string | null = null;
   aiSummaryEventTitle = '';
 
-  /**
-   * Show the "AI summary" button only when:
-   *   - we're editing an existing event (selectedEvent set)
-   *   - the event is over (status completed OR endDate in the past)
-   * The backend handles the empty / disabled cases gracefully so we don't
-   * need to know in advance whether feedbacks exist or the LLM is wired up.
-   */
   canViewAiSummary(): boolean {
     if (!this.selectedEvent?.id) return false;
     const status = (this.selectedEvent.status || '').toLowerCase();
@@ -1132,15 +976,12 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.aiSummaryEventTitle = '';
   }
 
-  // ── Custom-ML feedback sentiment (organisers, on past events only) ────
+  // ── Custom-ML feedback sentiment ─────────────────────────────
   sentimentOpen = false;
   sentimentEventId: string | null = null;
   sentimentEventTitle = '';
 
-  /** Same gating rule as the AI summary button — only past/completed events. */
-  canViewSentiment(): boolean {
-    return this.canViewAiSummary();
-  }
+  canViewSentiment(): boolean { return this.canViewAiSummary(); }
 
   openSentiment(): void {
     if (!this.selectedEvent?.id) return;
@@ -1155,11 +996,6 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     this.sentimentEventTitle = '';
   }
 
-  /**
-   * The user clicked a "smart suggestion" format chip.
-   * Map it to one of the canonical EVENT_FORMAT_OPTIONS, falling back to the
-   * "other" bucket with a free-text label when no canonical match exists.
-   */
   onSuggestedFormat(format: string) {
     const canonical = this.eventFormatOptions.find(o => o.id === format);
     if (canonical) {
@@ -1173,34 +1009,15 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     setTimeout(() => { if (this.successMessage.startsWith('Format set')) this.successMessage = ''; }, 4000);
   }
 
-  /**
-   * The user clicked a suggested staff member.
-   * Pre-fill the inline "add staff" inputs so they can confirm/adjust before
-   * actually adding the line — never silently mutate the staff list.
-   */
   onSuggestedStaff(s: StaffRecommendation) {
     this.newStaffName = s.name;
     this.newStaffRoleText = s.role || this.newStaffRoleText;
     this.staffAddError = '';
   }
 
-  /**
-   * The user clicked the "Recommended date / time" pill.
-   *
-   * The recommendation can come from two sources:
-   *   - the deterministic recommender → always returns a clean ISO datetime
-   *   - the LLM → may return a date-only string ("2026-04-25"), a date with
-   *     a wrong time, or — rarely — a malformed value
-   * So we parse defensively, fall back to "next occurrence of dayOfWeek at
-   * typicalHour" when the date is missing/invalid, and FORCE the typical
-   * hour on top of the parsed date so the UX is consistent.
-   *
-   * Datetime-local inputs need a "YYYY-MM-DDTHH:mm" string (no TZ, no s).
-   */
   onSuggestedTiming(t: SuggestedTiming) {
     console.log('[Calendar] applyTiming clicked:', t);
     if (!t) return;
-
     let start: Date | null = null;
     if (t.suggestedDate) {
       const candidate = new Date(t.suggestedDate);
@@ -1214,36 +1031,19 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
       setTimeout(() => { this.successMessage = ''; }, 3000);
       return;
     }
-
-    // Force the typical hour even if suggestedDate had an unexpected time.
     const hour = Math.max(8, Math.min(22, t.typicalHour ?? start.getHours() ?? 18));
     start.setHours(hour, 0, 0, 0);
     const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-
     const fmt = (d: Date) => {
       const pad = (n: number) => (n < 10 ? '0' + n : '' + n);
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     };
-
     this.eventStartDate = fmt(start);
     this.eventEndDate   = fmt(end);
-
-    // Visual confirmation so the user knows the click registered even if
-    // they don't immediately see the date pickers update (they're often
-    // below the AI widget on small screens).
     this.successMessage = `📅 Date pre-filled : ${t.dayOfWeek} ${t.timeOfDay} → ${this.eventStartDate.replace('T', ' ')}`;
-    setTimeout(() => {
-      if (this.successMessage.startsWith('📅 Date pre-filled')) this.successMessage = '';
-    }, 4000);
+    setTimeout(() => { if (this.successMessage.startsWith('📅 Date pre-filled')) this.successMessage = ''; }, 4000);
   }
 
-  /**
-   * Calls the backend "/api/recommendations/event-description" endpoint
-   * and drops the AI draft into the description textarea. The user can
-   * still edit it freely afterwards. We never overwrite an existing
-   * description without confirmation: if the textarea is non-empty we
-   * append a newline + the draft so nothing the user already typed is lost.
-   */
   suggestDescription(): void {
     if (!this.eventTitle?.trim() || this.drafting) return;
     this.drafting = true;
@@ -1257,29 +1057,23 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
           return;
         }
         this.eventDescription = this.eventDescription?.trim()
-          ? `${this.eventDescription.trim()}\n\n${res.description}`
-          : res.description;
+            ? `${this.eventDescription.trim()}\n\n${res.description}`
+            : res.description;
       },
       error: (err) => {
         this.drafting = false;
         const status = err?.status ?? 0;
         this.draftError = status === 0
-          ? 'Backend unreachable. Is the gateway running?'
-          : `AI draft failed (HTTP ${status}). Write the description manually.`;
+            ? 'Backend unreachable. Is the gateway running?'
+            : `AI draft failed (HTTP ${status}). Write the description manually.`;
         console.warn('[Calendar] description draft failed:', err);
       }
     });
   }
 
-  /**
-   * Returns the next occurrence of the given day-of-week (e.g. "SATURDAY"
-   * or "Sunday") at the requested hour. Falls back to today + 7 days if
-   * the input is unparseable.
-   */
   private nextOccurrenceOfDay(dayName: string, hour: number): Date {
     const map: Record<string, number> = {
-      sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
-      thursday: 4, friday: 5, saturday: 6,
+      sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
     };
     const target = map[(dayName ?? '').toLowerCase().trim()];
     const today = new Date();
@@ -1288,7 +1082,7 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
       today.setHours(hour, 0, 0, 0);
       return today;
     }
-    const diff = (target - today.getDay() + 7) % 7 || 7; // never today
+    const diff = (target - today.getDay() + 7) % 7 || 7;
     const next = new Date(today);
     next.setDate(today.getDate() + diff);
     next.setHours(hour, 0, 0, 0);
@@ -1299,10 +1093,7 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     const color = arg.event.backgroundColor;
     const time = arg.timeText ? `<span style="font-size:10px;opacity:.8;">${arg.timeText}</span>` : '';
     const virtual = arg.event.extendedProps?.['virtualEvent'] as VirtualEvent | undefined;
-
     if (virtual) {
-      // Virtual events get a distinct "🌐 online" badge so organisers can
-      // see at a glance which items on the day are in-person vs online.
       return {
         html: `<div style="background:${color};border-radius:5px;padding:3px 6px;">
                  ${time}
@@ -1313,12 +1104,9 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
                </div>`
       };
     }
-
     const be = arg.event.extendedProps?.['backendEvent'] as BackendEvent | undefined;
     const fmt = be ? eventFormatShort(be.eventFormat, be.eventFormatCustom) : '';
-    const fmtHtml = fmt
-      ? `<div style="font-size:9px;opacity:.88;margin-top:1px;line-height:1.1;">${fmt.replace(/</g, '&lt;')}</div>`
-      : '';
+    const fmtHtml = fmt ? `<div style="font-size:9px;opacity:.88;margin-top:1px;line-height:1.1;">${fmt.replace(/</g, '&lt;')}</div>` : '';
     return {
       html: `<div style="background:${color};border-radius:5px;padding:3px 6px;">
                ${time}
@@ -1328,9 +1116,169 @@ export class CalenderComponent implements AfterViewInit, OnInit, OnDestroy {
     };
   }
 
-  /** Toggle the visibility of virtual events on the shared calendar. */
   toggleVirtualEvents(): void {
     this.showVirtualEvents = !this.showVirtualEvents;
     this.loadEvents();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Chatbot methods (virtual event creation assistant)
+  // ═══════════════════════════════════════════════════════════
+
+  toggleChat() {
+    this.isChatOpen = !this.isChatOpen;
+  }
+
+  sendChatMessage() {
+    const text = this.chatInput.trim();
+    if (!text || this.chatLoading) return;
+
+    this.chatMessages.push({ role: 'user', text });
+    this.chatInput = '';
+    this.chatLoading = true;
+
+    const systemPrompt = `Tu es un assistant expert en formation professionnelle.
+
+Tu as DEUX modes selon le message de l'utilisateur:
+
+MODE 1 - EXTRACTION: Si l'utilisateur décrit un événement ou une formation, extrais les informations et retourne UNIQUEMENT ce JSON:
+{
+  "mode": "extract",
+  "title": "string (si manquant, invente un titre pertinent basé sur le thème)",
+  "description": "string détaillée ou null",
+  "category": "string (Tech/Business/Design/Marketing/RH/Finance/Jeux/Loisirs/Autre) ou null",
+  "scheduledAt": "ISO 8601 ex: 2026-06-15T14:00:00 (si non précisé, utilise le prochain samedi à 10h)",
+  "endAt": "ISO 8601 ou null (ajoute 2h par défaut si durée non précisée)",
+  "isRecording": true,
+  "price": number (0 si gratuit),
+  "isPaid": true ou false (si gratuit, mets false),
+  "maxParticipants": number (estime si non fourni),
+  "imageUrl": "une URL Unsplash pertinente ou null",
+  "status": "UPCOMING",
+  "type": "VIRTUAL" ou "ROOM",
+  "roomId": null
+}
+
+MODE 2 - SUGGESTION: Si l'utilisateur demande des idées, propositions ou exemples, retourne UNIQUEMENT ce JSON:
+{
+  "mode": "suggest",
+  "suggestions": [
+    {
+      "title": "string",
+      "description": "string courte",
+      "category": "string",
+      "scheduledAt": "ISO 8601 dans les 30 prochains jours",
+      "endAt": "ISO 8601",
+      "price": number,
+      "isPaid": true/false,
+      "maxParticipants": number,
+      "imageUrl": "URL Unsplash pertinente",
+      "isRecording": true,
+      "status": "UPCOMING",
+      "type": "VIRTUAL",
+      "roomId": null
+    }
+  ]
+}
+Génère 3 suggestions variées et pertinentes.
+
+RÈGLE ABSOLUE: Retourne UNIQUEMENT le JSON, rien d'autre, pas de markdown. Même si la demande est vague (ex: "Je veux créer un événement de jeu"), invente des détails raisonnables et renvoie le JSON d'extraction.`;
+    this.http.post(
+        this.aiParseApi,
+        `${systemPrompt}\n\nMessage: ${text}`,
+        { responseType: 'text' }
+    ).subscribe({
+      next: (response: string) => {
+        try {
+          const cleaned = response.replace(/```json|```/g, '').trim();
+          const parsed = JSON.parse(cleaned);
+
+          if (parsed.mode === 'suggest') {
+            this.chatMessages.push({
+              role: 'bot',
+              text: `Voici ${parsed.suggestions.length} formations que je te propose 👇`
+            });
+            parsed.suggestions.forEach((s: any) => {
+              this.chatMessages.push({
+                role: 'bot',
+                text: `📚 ${s.title}\n${s.description}\n💰 ${s.isPaid ? s.price + ' TND' : 'Gratuit'} · 👥 Max ${s.maxParticipants} participants`,
+                parsedEvent: s
+              });
+            });
+          } else {
+            this.chatMessages.push({
+              role: 'bot',
+              text: `✅ J'ai extrait toutes les informations ! Clique sur le bouton pour remplir le formulaire.`,
+              parsedEvent: parsed
+            });
+          }
+        } catch {
+          this.chatMessages.push({
+            role: 'bot',
+            text: 'Je n\'ai pas compris. Essaie:\n• "Propose-moi des formations"\n• "Conférence AI le 15 juin à 14h, payante 80 TND"'
+          });
+        }
+        this.chatLoading = false;
+      },
+      error: () => {
+        this.chatMessages.push({ role: 'bot', text: 'Erreur de connexion au serveur AI.' });
+        this.chatLoading = false;
+      }
+    });
+  }
+
+  injectIntoForm(parsed: any) {
+    const toLocalFormat = (iso: string | null) => {
+      if (!iso) return '';
+      try { return format(new Date(iso), "yyyy-MM-dd'T'HH:mm"); }
+      catch { return ''; }
+    };
+
+    this.eventTitle = parsed.title || '';
+    this.eventDescription = parsed.description || '';
+    this.eventStartDate = toLocalFormat(parsed.scheduledAt);
+    this.eventEndDate = toLocalFormat(parsed.endAt);
+    this.eventCapacity = parsed.maxParticipants ?? null;
+    this.virtualPrice = parsed.price ?? null;
+    this.virtualIsPaid = parsed.isPaid ?? false;
+    this.virtualIsRecording = parsed.isRecording ?? true;
+    this.virtualImageUrl = parsed.imageUrl || '';
+    this.virtualCategory = parsed.category || '';
+    this.virtualType = parsed.type || 'VIRTUAL';
+    this.virtualRoomId = parsed.roomId || '';
+
+    this.createEventType = (parsed.type === 'ROOM' || parsed.type === 'VIRTUAL') ? 'virtual' : 'physical';
+
+    if (!this.isOpen) {
+      this.resetModalFields();
+      setTimeout(() => {
+        this.eventTitle = parsed.title || '';
+        this.eventDescription = parsed.description || '';
+        this.eventStartDate = toLocalFormat(parsed.scheduledAt);
+        this.eventEndDate = toLocalFormat(parsed.endAt);
+        this.eventCapacity = parsed.maxParticipants ?? null;
+        this.virtualPrice = parsed.price ?? null;
+        this.virtualIsPaid = parsed.isPaid ?? false;
+        this.virtualIsRecording = parsed.isRecording ?? true;
+        this.virtualImageUrl = parsed.imageUrl || '';
+        this.virtualCategory = parsed.category || '';
+        this.virtualType = parsed.type || 'VIRTUAL';
+        this.virtualRoomId = parsed.roomId || '';
+        this.createEventType = (parsed.type === 'ROOM' || parsed.type === 'VIRTUAL') ? 'virtual' : 'physical';
+      });
+      this.openModal();
+    }
+
+    this.chatMessages.push({
+      role: 'bot',
+      text: '✓ Formulaire rempli avec tous les champs ! Vérifie et soumets.'
+    });
+  }
+
+  onChatKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.sendChatMessage();
+    }
   }
 }

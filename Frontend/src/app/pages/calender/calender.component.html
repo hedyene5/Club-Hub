@@ -1,3 +1,216 @@
+<style>
+    /* ========== Existing calendar styles (unchanged) ========== */
+    .map-container { height: 240px; width: 100%; border-radius: 10px; position: relative; z-index: 1; }
+    :host ::ng-deep .modal-backdrop { z-index: 1200 !important; }
+    :host ::ng-deep .modal-panel { z-index: 1201 !important; }
+    .modal-scroll { overflow-y: auto; max-height: calc(100dvh - 130px); padding-right: 2px; }
+    :host ::ng-deep .fc-event { border: none !important; cursor: grab !important; }
+    :host ::ng-deep .fc-daygrid-event { margin-bottom: 2px !important; border-radius: 5px !important; }
+
+    /* ========== Chatbot floating button ========== */
+    .chat-fab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #7c3aed;
+        color: white;
+        border: none;
+        box-shadow: 0 8px 24px rgba(124,58,237,0.35);
+        cursor: pointer;
+        font-size: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+        transition: background 0.2s, transform 0.2s;
+    }
+    .chat-fab:hover { background: #6d28d9; transform: scale(1.05); }
+
+    /* ========== Chat panel (from the chatbot version) ========== */
+    .chat-panel {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 370px;
+        max-height: 560px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        overflow: hidden;
+        font-family: inherit;
+    }
+
+    .chat-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        background: #7c3aed;
+        color: white;
+    }
+
+    .chat-header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .chat-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #86efac;
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    .chat-header-title { font-size: 13px; font-weight: 600; }
+
+    .chat-close {
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.8);
+        font-size: 22px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0;
+    }
+    .chat-close:hover { color: white; }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 360px;
+        min-height: 0;
+        background: #f9fafb;
+    }
+
+    .chat-msg-user { display: flex; justify-content: flex-end; }
+
+    .chat-bubble-user {
+        background: #4f46e5;
+        color: white;
+        font-size: 13px;
+        padding: 10px 14px;
+        border-radius: 16px 16px 4px 16px;
+        max-width: 80%;
+        line-height: 1.5;
+    }
+
+    .chat-msg-bot { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
+    .chat-bubble-bot {
+        background: white;
+        color: #1f2937;
+        font-size: 13px;
+        padding: 10px 14px;
+        border-radius: 16px 16px 16px 4px;
+        max-width: 85%;
+        line-height: 1.5;
+        border: 1px solid #e5e7eb;
+    }
+
+    .btn-inject {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-inject:hover { background: #059669; }
+
+    .chat-typing {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        padding: 10px 14px;
+        border-radius: 16px 16px 16px 4px;
+        width: fit-content;
+    }
+
+    .typing-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #9ca3af;
+        animation: bounce 1.2s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+
+    .chat-input-area {
+        display: flex;
+        gap: 8px;
+        padding: 12px;
+        border-top: 1px solid #e5e7eb;
+        background: white;
+    }
+
+    .chat-textarea {
+        flex: 1;
+        resize: none;
+        font-size: 13px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        border: 1px solid #d1d5db;
+        background: #f9fafb;
+        color: #111827;
+        font-family: inherit;
+        line-height: 1.5;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .chat-textarea:focus { border-color: #7c3aed; background: white; }
+    .chat-textarea::placeholder { color: #9ca3af; }
+
+    .btn-send {
+        align-self: flex-end;
+        background: #7c3aed;
+        color: white;
+        border: none;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-send:hover { background: #6d28d9; }
+    .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+
 <!-- Error/Success Messages -->
 <div *ngIf="errorMessage" class="mb-4 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
   <span>{{ errorMessage }}</span>
@@ -446,3 +659,62 @@
   [eventId]="sentimentEventId"
   [eventTitle]="sentimentEventTitle"
   (close)="closeSentiment()"></app-feedback-sentiment-modal>
+<!-- ════════════════════════════════════════════════════════ -->
+<!--  Chatbot (virtual‑event assistant)                       -->
+<!-- ════════════════════════════════════════════════════════ -->
+
+<!-- Floating action button (visible when chat is closed) -->
+<button *ngIf="!isChatOpen" class="chat-fab" (click)="toggleChat()" title="Assistant IA">
+    💬
+</button>
+
+<!-- Chat panel (exactly as in your chatbot version) -->
+<div *ngIf="isChatOpen" class="chat-panel">
+    <div class="chat-header">
+        <div class="chat-header-left">
+            <div class="chat-dot"></div>
+            <span class="chat-header-title">Assistant Formation AI</span>
+        </div>
+        <button class="chat-close" (click)="toggleChat()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="chat-messages">
+        <ng-container *ngFor="let msg of chatMessages">
+            <div *ngIf="msg.role === 'user'" class="chat-msg-user">
+                <div class="chat-bubble-user">{{ msg.text }}</div>
+            </div>
+
+            <div *ngIf="msg.role === 'bot'" class="chat-msg-bot">
+                <div class="chat-bubble-bot">{{ msg.text }}</div>
+                <button *ngIf="msg.parsedEvent"
+                        class="btn-inject"
+                        (click)="injectIntoForm(msg.parsedEvent)">
+                    ✓ Insérer dans le formulaire
+                </button>
+            </div>
+        </ng-container>
+
+        <div *ngIf="chatLoading" class="chat-msg-bot">
+            <div class="chat-typing">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-input-area">
+    <textarea class="chat-textarea"
+              [(ngModel)]="chatInput"
+              (keydown)="onChatKeydown($event)"
+              rows="2"
+              placeholder='Ex: "Conférence AI le 15 juin à 10h, payante 80 TND"'>
+    </textarea>
+        <button class="btn-send"
+                (click)="sendChatMessage()"
+                [disabled]="chatLoading || !chatInput.trim()"
+                aria-label="Envoyer">
+            ➤
+        </button>
+    </div>
+</div>

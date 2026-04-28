@@ -9,6 +9,7 @@ import { VirtualEvent } from '../models/virtual-event';
 })
 export class VirtualEventService {
   private readonly apiBase = apiUrl('/api/virtual-events');
+  private readonly reviewsApiBase = apiUrl('/api/event-reviews');
 
   constructor(private http: HttpClient) {}
 
@@ -27,4 +28,5 @@ export class VirtualEventService {
   canJoin(eventId: string, userId: string): Observable<boolean> {
     return this.http.get<boolean>(`${this.apiBase}/${eventId}/can-join/${userId}`);
   }
+  
 }

@@ -27,7 +27,6 @@ export class SigninFormComponent {
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
   }
-
   onSignIn() {
     if (!this.email || !this.password) {
       this.error = 'Veuillez remplir tous les champs';
@@ -42,20 +41,23 @@ export class SigninFormComponent {
         console.log('✅ Login réussi:', response);
 
         if (response.clubId) {
-          this.router.navigate(['/clubs', response.clubId]);
+          // ✅ Le club existe, aller à la page du club dans le back-office
+          this.router.navigate(['/app/clubs', response.clubId]);
         } else if (response.role === 'PRESIDENT') {
-          this.router.navigate(['/setup-club']);
+          // Président sans club → création du club
+          this.router.navigate(['/app/setup-club']);
         } else {
           // Membre sans clubId dans la réponse — essayer via getMe()
           this.authService.getMe().subscribe({
             next: (me: any) => {
               if (me.clubId) {
-                this.router.navigate(['/clubs', me.clubId]);
+                this.router.navigate(['/app/clubs', me.clubId]);
               } else {
-                this.router.navigate(['/']);
+                // Aucun club → on redirige vers la page de setup (ou dashboard)
+                this.router.navigate(['/app/setup-club']);
               }
             },
-            error: () => this.router.navigate(['/'])
+            error: () => this.router.navigate(['/app/setup-club'])
           });
         }
       },

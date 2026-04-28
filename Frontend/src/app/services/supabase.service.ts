@@ -30,4 +30,25 @@ export class SupabaseService {
 
     return data.publicUrl;
   }
+  async uploadGroupPhoto(conversationId: string, file: File): Promise<string> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${conversationId}-${Date.now()}.${fileExt}`;
+
+    // Upload to Supabase Storage
+    const { data, error } = await this.supabase.storage
+        .from('group-photos')           // ← your bucket name
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+    if (error) throw error;
+
+    // Get public URL
+    const { data: { publicUrl } } = this.supabase.storage
+        .from('group-photos')
+        .getPublicUrl(fileName);
+
+    return publicUrl;   // ← e.g. https://your-project.supabase.co/storage/v1/object/public/group-photos/xxx.jpg
+  }
 }

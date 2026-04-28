@@ -38,41 +38,50 @@ export class SignupFormComponent {
       this.error = 'Veuillez accepter les conditions';
       return;
     }
-  
+
     this.loading = true;
     this.error = '';
-  
+
     const registerPayload = {
       firstName: this.fname,
       lastName: this.lname,
       phoneNumber: '00000000',
       email: this.email,
       password: this.password,
-      role: 'PRESIDENT', // ← CORRIGER ICI
+      role: 'PRESIDENT',
       clubId: '',
       profilePhoto: ''
     };
-  
+
     this.authService.register(registerPayload).subscribe({
       next: (response: any) => {
-        const pendingUser = {
-          id: response.userId,
-          userId: response.userId,
-          firstName: this.fname,
-          lastName: this.lname,
-          email: response.email,
-          role: 'PRESIDENT', // ← CORRIGER ICI AUSSI
-          token: response.token,
-          clubId: response.clubId
-        };
-  
-        localStorage.setItem('pendingUser', JSON.stringify(pendingUser));
-        if (response.token) {
-          localStorage.setItem('token', response.token);
-        }
-        
-        this.loading = false;
-        this.router.navigate(['/setup-club']);
+        // After successful registration, auto-login to properly set the session
+        this.authService.login({ email: this.email, password: this.password }).subscribe({
+          next: (loginResponse: any) => {
+            this.loading = false;
+            // Now the user is fully authenticated, navigate to club setup
+            this.router.navigate(['/app/setup-club']);
+          },
+          error: (loginErr: any) => {
+            this.loading = false;
+            // Fallback: try to navigate anyway with pendingUser
+            const pendingUser = {
+              id: response.userId,
+              userId: response.userId,
+              firstName: this.fname,
+              lastName: this.lname,
+              email: response.email,
+              role: 'PRESIDENT',
+              token: response.token,
+              clubId: response.clubId
+            };
+            localStorage.setItem('pendingUser', JSON.stringify(pendingUser));
+            if (response.token) {
+              localStorage.setItem('token', response.token);
+            }
+            this.router.navigate(['/app/setup-club']);
+          }
+        });
       },
       error: (err: any) => {
         this.loading = false;

@@ -2,9 +2,9 @@ import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { ChannelService, Channel, AudioMessage } from '../shared/services/channel.service';
+import { Voice2ChannelService , Voice2Channel, Voice2AudioMessage } from '../voice2/services/channel.service';
 import { AuthService } from '../shared/services/auth.service';
-import { VoiceSignalingService } from '../shared/services/voice-signaling.service';
+import { Voice2VoiceSignalingService } from '../voice2/services/voice-signaling.service';
 
 interface AppUser {
   id: string;
@@ -26,15 +26,15 @@ interface AppUser {
 export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   view: 'list' | 'detail' | 'create' = 'list';
-  channels: Channel[] = [];
-  selectedChannel: Channel | null = null;
+  channels:  Voice2Channel[] = [];
+  selectedChannel:  Voice2Channel | null = null;
 
   isRecording = false;
   isSaving = false;
   recordingError = '';
   loading = false;
   error = '';
-  pendingDeleteChannel: Channel | null = null;
+  pendingDeleteChannel:  Voice2Channel | null = null;
 
   newChannelName = '';
   newChannelPrivate = false;
@@ -45,7 +45,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   channelMembers: AppUser[] = [];
   membersLoading = false;
 
-  audioHistory: AudioMessage[] = [];
+  audioHistory: Voice2AudioMessage[] = [];
   audioLoading = false;
 
   playingId: string | null = null;
@@ -53,13 +53,13 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   private audioHistoryPoll: any = null;
 
   // Report
-  reportingAudio: AudioMessage | null = null;
+  reportingAudio: Voice2AudioMessage | null = null;
   reportReason = '';
   reportDetails = '';
   reportSubmitting = false;
   reportSuccess = false;
 
-  openReportModal(msg: AudioMessage) {
+  openReportModal(msg: Voice2AudioMessage) {
     this.reportingAudio = msg;
     this.reportReason = '';
     this.reportDetails = '';
@@ -148,10 +148,10 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   get listenerCount(): number { return this.voiceService.listenerCount; }
 
   constructor(
-    private channelService: ChannelService,
+    private channelService: Voice2ChannelService,
     private authService: AuthService,
     private http: HttpClient,
-    public voiceService: VoiceSignalingService,
+    public voiceService: Voice2VoiceSignalingService,
     private ngZone: NgZone
   ) {}
 
@@ -193,7 +193,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     });
   }
 
-  openChannel(channel: Channel) {
+  openChannel(channel: Voice2Channel) {
     sessionStorage.setItem('selectedChannelId', channel.id);
     this.selectedChannel = channel;
     this.view = 'detail';
@@ -232,14 +232,14 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   loadAudioHistory(channelId: string) {
     this.audioLoading = true;
     const url = `http://localhost:8082/api/channels/${channelId}/audio?role=${this.currentUserRole}`;
-    this.http.get<AudioMessage[]>(url).subscribe({
+    this.http.get<Voice2AudioMessage[]>(url).subscribe({
       next: (msgs) => { this.audioHistory = msgs; this.audioLoading = false; },
       error: () => { this.audioLoading = false; }
     });
     this.stopAudioHistoryPoll();
     this.ngZone.runOutsideAngular(() => {
       this.audioHistoryPoll = setInterval(() => {
-        this.http.get<AudioMessage[]>(url).subscribe({
+        this.http.get<Voice2AudioMessage[]>(url).subscribe({
           next: (msgs) => this.ngZone.run(() => { this.audioHistory = msgs; })
         });
       }, 10000);
@@ -253,7 +253,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     }
   }
 
-  playAudio(msg: AudioMessage) {
+  playAudio(msg: Voice2AudioMessage) {
     if (this.activeAudio) {
       this.activeAudio.pause();
       this.activeAudio = null;
@@ -270,7 +270,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     return new Date(iso).toLocaleString();
   }
 
-  requestDeleteChannel(channel: Channel, event: Event) {
+  requestDeleteChannel(channel: Voice2Channel, event: Event) {
     event.stopPropagation();
     this.pendingDeleteChannel = channel;
   }
@@ -455,7 +455,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = (reader.result as string).split(',')[1];
-        this.http.post<AudioMessage>(
+        this.http.post<Voice2AudioMessage>(
           `http://localhost:8082/api/channels/${this.selectedChannel!.id}/audio`,
           { userId: this.currentUserId, userName: this.currentUserName, audioData: base64, contentType: blob.type || 'audio/webm' }
         ).subscribe({
