@@ -1,22 +1,26 @@
+
 package tn.esprit.virtual_event_management.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 import tn.esprit.virtual_event_management.entity.EventReview;
+import tn.esprit.virtual_event_management.entity.VirtualEvent;
 import tn.esprit.virtual_event_management.repository.EventReviewRepository;
+import tn.esprit.virtual_event_management.repository.VirtualEventRepository;
+import tn.esprit.virtual_event_management.service.ProfanityCheckService;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/event-reviews")
 @RequiredArgsConstructor
 public class EventReviewController {
+
     private final EventReviewRepository reviewRepository;
-    private final RestTemplate restTemplate;
+    private final VirtualEventRepository eventRepository;
+    private final ProfanityCheckService profanityCheckService;
 
     @PostMapping
     public ResponseEntity<?> addReview(@RequestBody ReviewRequest request) {
@@ -29,10 +33,17 @@ public class EventReviewController {
             return ResponseEntity.badRequest().body("Comment is required");
         }
 
-        ModerationResponse moderation = moderateComment(request.comment());
+        VirtualEvent event = eventRepository.findById(request.eventId())
+                .orElseThrow(() -> new RuntimeException("Event not found"));
 
-        if (!moderation.allowed()) {
-            return ResponseEntity.badRequest().body("Comment rejected: " + moderation.reason());
+        if (!isEventFinished(event)) {
+            return ResponseEntity.badRequest().body("You can review this event only after it ends");
+        }
+
+        boolean hasBadWords = profanityCheckService.containsProfanity(request.comment());
+
+        if (hasBadWords) {
+            return ResponseEntity.badRequest().body("Comment rejected: bad words detected");
         }
 
         EventReview review = reviewRepository
@@ -69,38 +80,28 @@ public class EventReviewController {
             return ResponseEntity.ok(new ReviewSummary(0.0, 0));
         }
 
-        double avg = reviews.stream()
+        double average = reviews.stream()
                 .mapToInt(EventReview::getRating)
                 .average()
                 .orElse(0.0);
 
-        avg = Math.round(avg * 10.0) / 10.0;
+        average = Math.round(average * 10.0) / 10.0;
 
-        return ResponseEntity.ok(new ReviewSummary(avg, reviews.size()));
+        return ResponseEntity.ok(new ReviewSummary(average, reviews.size()));
     }
 
-    private ModerationResponse moderateComment(String comment) {
-        try {
-            String url = "http://localhost:9001/moderate";
+    private boolean isEventFinished(VirtualEvent event) {
+        LocalDateTime now = LocalDateTime.now();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<Map<String, String>> entity =
-                    new HttpEntity<>(Map.of("text", comment), headers);
-
-            ResponseEntity<ModerationResponse> response =
-                    restTemplate.postForEntity(url, entity, ModerationResponse.class);
-
-            if (response.getBody() != null) {
-                return response.getBody();
-            }
-
-        } catch (Exception e) {
-            System.out.println("⚠️ Local AI moderation unavailable: " + e.getMessage());
+        if (event.getEndAt() != null) {
+            return now.isAfter(event.getEndAt());
         }
 
-        return new ModerationResponse(true, false, "Allowed", 0.0);
+        if (event.getScheduledAt() == null) {
+            return false;
+        }
+
+        return now.isAfter(event.getScheduledAt().plusHours(2));
     }
 
     public record ReviewRequest(
@@ -115,12 +116,4 @@ public class EventReviewController {
             double averageRating,
             long totalReviews
     ) {}
-
-    public record ModerationResponse(
-            boolean allowed,
-            boolean flagged,
-            String reason,
-            double score
-    ) {}
-
 }

@@ -231,26 +231,41 @@
         </h3>
 
         <div class="space-y-3 max-h-64 overflow-y-auto">
-          <div
-            *ngFor="let review of reviews"
-            class="border rounded-xl p-3 bg-gray-50"
-          >
-            <div class="flex justify-between items-center mb-1">
-              <strong>{{ review.userName }}</strong>
+          <ng-container *ngFor="let review of reviews">
+            <div
+              [class.bg-yellow-50]="review.flagged"
+              [class.border-yellow-400]="review.flagged"
+              class="border rounded-xl p-3 bg-gray-50"
+            >
+              <div class="flex justify-between items-center mb-1">
+                <div class="flex items-center gap-2">
+                  <strong>{{ review.userName }}</strong>
+                  <span
+                    *ngIf="review.flagged"
+                    class="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full"
+                  >
+                    ⚠️ Flagged
+                  </span>
+                </div>
 
-              <span class="text-yellow-500">
-                {{ '★'.repeat(review.rating) }}{{ '☆'.repeat(5 - review.rating) }}
-              </span>
+                <span class="text-yellow-500">
+                  {{ '★'.repeat(review.rating) }}{{ '☆'.repeat(5 - review.rating) }}
+                </span>
+              </div>
+
+              <p class="text-sm text-gray-700">
+                {{ review.comment }}
+              </p>
+
+              <p *ngIf="review.flagged && review.reason" class="text-xs text-yellow-800 mt-1 font-medium">
+                Reason: {{ review.reason }}
+              </p>
+
+              <p class="text-xs text-gray-400 mt-1">
+                {{ review.createdAt }}
+              </p>
             </div>
-
-            <p class="text-sm text-gray-700">
-              {{ review.comment }}
-            </p>
-
-            <p class="text-xs text-gray-400 mt-1">
-              {{ review.createdAt }}
-            </p>
-          </div>
+          </ng-container>
 
           <div *ngIf="reviews.length === 0" class="text-sm text-gray-500">
             No reviews yet.

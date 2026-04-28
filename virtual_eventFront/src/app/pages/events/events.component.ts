@@ -433,8 +433,12 @@ export class EventsComponent implements OnInit, OnDestroy {
     };
 
     this.eventReviewService.addReview(payload).subscribe({
-      next: () => {
-        this.successMsg = 'Review submitted successfully';
+      next: (review) => {
+        if (review.flagged) {
+          this.successMsg = 'Review submitted but flagged for moderation: ' + (review.reason || 'inappropriate content');
+        } else {
+          this.successMsg = 'Review submitted successfully';
+        }
         this.selectedRating = 0;
         this.reviewComment = '';
         this.loadReviews(this.selectedEvent!.id!);
@@ -442,7 +446,7 @@ export class EventsComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Review error:', err);
-        this.errorMsg = err?.error || 'Comment rejected by moderation';
+        this.errorMsg = err?.error || 'Failed to submit review';
         this.clearMessages();
       }
     });
