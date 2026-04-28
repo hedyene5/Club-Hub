@@ -232,8 +232,7 @@ public class ClubController {
         try {
             Club club = clubService.getClubById(clubId)
                     .orElseThrow(() -> new RuntimeException("Club non trouvé"));
-            
-            // Chercher si userId est responsableId d'un comité
+
             for (SubGroup subGroup : club.getSubGroups()) {
                 if (userId.equals(subGroup.getResponsableId())) {
                     Map<String, Object> response = new java.util.HashMap<>();
@@ -243,11 +242,68 @@ public class ClubController {
                     return ResponseEntity.ok(response);
                 }
             }
-            
-            // Pas responsable
+
             Map<String, Object> response = new java.util.HashMap<>();
             response.put("isResponsable", false);
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // ✅ NOUVEAU: Endpoint pour récupérer tous les membres d'un comité par nom
+    @GetMapping("/{clubId}/committee/{committeeName}/members")
+    public ResponseEntity<Map<String, Object>> getCommitteeMembers(@PathVariable String clubId,
+                                                                    @PathVariable String committeeName) {
+        try {
+            Club club = clubService.getClubById(clubId)
+                    .orElseThrow(() -> new RuntimeException("Club non trouvé"));
+
+            SubGroup subGroup = club.getSubGroups().stream()
+                    .filter(sg -> committeeName.equalsIgnoreCase(sg.getName()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (subGroup == null) {
+                Map<String, Object> response = new java.util.HashMap<>();
+                response.put("error", "Comité '" + committeeName + "' non trouvé");
+                return ResponseEntity.status(404).body(response);
+            }
+
+            // Build member list with name + email from club.members
+            java.util.List<Map<String, Object>> memberList = new java.util.ArrayList<>();
+            Map<String, Object> responsableInfo = null;
+
+            for (String memberId : subGroup.getMemberIds()) {
+                Member m = club.getMembers().stream()
+                        .filter(cm -> cm.getUserId().equals(memberId))
+                        .findFirst()
+                        .orElse(null);
+
+                Map<String, Object> memberInfo = new java.util.HashMap<>();
+                memberInfo.put("userId", memberId);
+                memberInfo.put("name", m != null ? m.getName() : memberId);
+                memberInfo.put("email", m != null ? m.getEmail() : "");
+                String committeeRole = subGroup.getMemberRoles() != null
+                        ? subGroup.getMemberRoles().getOrDefault(memberId, "MEMBRE_COMITE")
+                        : "MEMBRE_COMITE";
+                memberInfo.put("committeeRole", committeeRole);
+
+                if (memberId.equals(subGroup.getResponsableId())) {
+                    responsableInfo = memberInfo;
+                } else {
+                    memberList.add(memberInfo);
+                }
+            }
+
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("committeeName", subGroup.getName());
+            response.put("subGroupId", subGroup.getId());
+            response.put("responsable", responsableInfo);
+            response.put("members", memberList);
+            response.put("totalCount", subGroup.getMemberIds().size());
+            return ResponseEntity.ok(response);
+
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }

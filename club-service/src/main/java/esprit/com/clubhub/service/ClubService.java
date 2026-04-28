@@ -190,7 +190,21 @@ public class ClubService {
                     System.out.println("Rôle changé de " + oldRole + " à " + newRole);
                 });
 
-        return clubRepository.save(club);
+        Club saved = clubRepository.save(club);
+
+        // Sync role to user-service so permission checks work correctly
+        try {
+            String url = userServiceUrl + "/" + userId + "/role";
+            Map<String, String> roleUpdate = new HashMap<>();
+            roleUpdate.put("role", newRole);
+            HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
+            restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+            System.out.println("✅ Rôle synchronisé dans user-service: " + newRole);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur synchronisation rôle user-service: " + e.getMessage());
+        }
+
+        return saved;
     }
 
     // ========== GESTION DES SOUS-GROUPES ==========
@@ -308,85 +322,60 @@ public class ClubService {
         
         System.out.println("📋 Sous-groupe trouvé: " + subGroup.getName());
 
-        // ✅ Mettre à jour le membre dans le club
+        // Mettre à jour le membre dans le club
         club.getMembers().stream()
                 .filter(m -> m.getUserId().equals(userId))
                 .findFirst()
                 .ifPresent(m -> {
                     System.out.println("👤 Membre trouvé: " + m.getName() + " (rôle actuel: " + m.getRole() + ")");
-                    
-                    // ✅ Sauvegarder le rôle initial si c'est la première fois qu'on l'assigne comme responsable
-                    if (subGroupRole.equals("RESPONSABLE") && m.getInitialRole() == null) {
+
+                    // Premier comité : sauvegarder le rôle initial et passer à COMMITTEE_MEMBER
+                    if (!"COMMITTEE_MEMBER".equals(m.getRole()) && m.getInitialRole() == null) {
                         m.setInitialRole(m.getRole());
                         System.out.println("📝 Rôle initial sauvegardé: " + m.getRole());
                     }
-                    
+                    m.setRole("COMMITTEE_MEMBER");
+
                     m.setSubGroupId(subGroupId);
                     m.setSubGroupRole(subGroupRole);
                     System.out.println("✅ Membre " + userId + " assigné avec rôle comité: " + subGroupRole);
                 });
 
-        // ✅ Mettre à jour le sous-groupe
+        // Mettre à jour le sous-groupe
         club.getSubGroups().stream()
                 .filter(sg -> sg.getId().equals(subGroupId))
                 .findFirst()
                 .ifPresent(sg -> {
-                    // Ajouter à la liste des membres si pas déjà présent
                     if (!sg.getMemberIds().contains(userId)) {
                         sg.getMemberIds().add(userId);
                         System.out.println("✅ Membre ajouté à la liste du sous-groupe");
                     }
-                    
-                    // ✅ Mettre à jour le rôle dans memberRoles
+
                     if (sg.getMemberRoles() == null) {
                         sg.setMemberRoles(new HashMap<>());
                     }
                     sg.getMemberRoles().put(userId, subGroupRole);
                     System.out.println("✅ Rôle du membre mis à jour dans memberRoles: " + subGroupRole);
-                    
-                    // ✅ Si RESPONSABLE, mettre à jour responsableId
+
                     if (subGroupRole.equals("RESPONSABLE")) {
                         sg.setResponsableId(userId);
                         System.out.println("✅ ResponsableId mis à jour: " + userId);
+                    } else if (userId.equals(sg.getResponsableId())) {
+                        sg.setResponsableId(null);
+                        System.out.println("🔄 ResponsableId effacé (rétrogradation de " + userId + ")");
                     }
                 });
 
-        // ✅ Si RESPONSABLE, mettre à jour aussi dans le service User via REST API
-        if (subGroupRole.equals("RESPONSABLE")) {
-            System.out.println("🔍 Appel du service User pour mettre à jour le rôle...");
-            System.out.println("📋 SubGroupRole reçu: '" + subGroupRole + "'");
-            System.out.println("📋 Comparaison: subGroupRole.equals(\"RESPONSABLE\") = " + subGroupRole.equals("RESPONSABLE"));
-            
-            try {
-                String newRole = "Responsable " + subGroup.getName();
-                String url = userServiceUrl + "/" + userId + "/role";
-                
-                System.out.println("📡 URL complète: " + url);
-                System.out.println("📦 Nouveau rôle: " + newRole);
-                System.out.println("📦 UserId: " + userId);
-                
-                Map<String, String> roleUpdate = new HashMap<>();
-                roleUpdate.put("role", newRole);
-                
-                System.out.println("📤 Envoi de la requête PUT...");
-                
-                HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
-                ResponseEntity<String> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.PUT,
-                    request,
-                    String.class
-                );
-                
-                System.out.println("✅ Rôle mis à jour dans le service User: " + newRole);
-                System.out.println("📡 Réponse: " + response.getStatusCode());
-                System.out.println("📄 Body: " + response.getBody());
-            } catch (Exception e) {
-                System.err.println("❌ Erreur lors de la mise à jour du rôle dans User service: " + e.getMessage());
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("⚠️ SubGroupRole n'est PAS 'RESPONSABLE', c'est: '" + subGroupRole + "'");
+        // Synchroniser COMMITTEE_MEMBER dans le user-service
+        try {
+            String url = userServiceUrl + "/" + userId + "/role";
+            Map<String, String> roleUpdate = new HashMap<>();
+            roleUpdate.put("role", "COMMITTEE_MEMBER");
+            HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
+            restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
+            System.out.println("✅ Rôle COMMITTEE_MEMBER synchronisé dans user-service");
+        } catch (Exception e) {
+            System.err.println("❌ Erreur synchronisation user-service: " + e.getMessage());
         }
 
         Club savedClub = clubRepository.save(club);
@@ -403,6 +392,7 @@ public class ClubService {
         Club club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new RuntimeException("Club non trouvé"));
         final String[] committeeNameHolder = {null};
+        final boolean[] wasResponsableHolder = {false};
 
         // Retirer l'userId de la liste memberIds du sous-groupe
         club.getSubGroups().stream()
@@ -411,38 +401,54 @@ public class ClubService {
                 .ifPresent(sg -> {
                     committeeNameHolder[0] = sg.getName();
                     sg.getMemberIds().remove(userId);
+                    // Determine RESPONSABLE status from the subgroup itself (not from member.subGroupId)
+                    if (userId.equals(sg.getResponsableId())) {
+                        wasResponsableHolder[0] = true;
+                        sg.setResponsableId(null);
+                    }
+                    if (sg.getMemberRoles() != null) {
+                        sg.getMemberRoles().remove(userId);
+                    }
                 });
 
-        // ✅ Mettre à jour subGroupId ET subGroupRole du membre + restaurer le rôle initial
+        // Check if member still belongs to any other subgroup after this removal
+        // (subGroup memberIds already updated above, so this reflects the new state)
+        final boolean stillInOtherCommittee = club.getSubGroups().stream()
+                .anyMatch(sg -> !sg.getId().equals(subGroupId) && sg.getMemberIds().contains(userId));
+
+        System.out.println("🔍 Encore dans d'autres comités après retrait: " + stillInOtherCommittee);
+
         club.getMembers().stream()
-                .filter(m -> m.getUserId().equals(userId) && subGroupId.equals(m.getSubGroupId()))
+                .filter(m -> m.getUserId().equals(userId))
                 .findFirst()
                 .ifPresent(m -> {
-                    boolean wasResponsable = "RESPONSABLE".equals(m.getSubGroupRole());
                     String initialRole = m.getInitialRole();
-                    
-                    m.setSubGroupId(null);
-                    m.setSubGroupRole(null);
-                    
-                    // ✅ Si c'était un responsable, restaurer son rôle initial via REST API
-                    if (wasResponsable && initialRole != null) {
-                        System.out.println("🔄 Restauration du rôle initial: " + initialRole);
-                        m.setRole(initialRole);
+
+                    // Clear primary subgroup pointer if it pointed to this subgroup
+                    if (subGroupId.equals(m.getSubGroupId())) {
+                        m.setSubGroupId(null);
+                        m.setSubGroupRole(null);
+                    }
+
+                    if (stillInOtherCommittee) {
+                        // Member still belongs to other committees — keep COMMITTEE_MEMBER
+                        System.out.println("✅ Membre encore dans d'autres comités, rôle COMMITTEE_MEMBER conservé");
+                    } else {
+                        // Last committee removed — restore initial role
+                        String roleToRestore = (initialRole != null) ? initialRole : "MEMBRE_SIMPLE";
+                        System.out.println("🔄 Restauration du rôle initial: " + roleToRestore);
+                        m.setRole(roleToRestore);
                         m.setInitialRole(null);
-                        
-                        // ✅ Mettre à jour aussi dans le service User via REST API
+
                         try {
                             String url = userServiceUrl + "/" + userId + "/role";
-                            
                             Map<String, String> roleUpdate = new HashMap<>();
-                            roleUpdate.put("role", initialRole);
-                            
+                            roleUpdate.put("role", roleToRestore);
                             HttpEntity<Map<String, String>> request = new HttpEntity<>(roleUpdate);
                             restTemplate.exchange(url, HttpMethod.PUT, request, String.class);
-                            
-                            System.out.println("✅ Rôle restauré dans le service User");
+                            System.out.println("✅ Rôle restauré dans user-service: " + roleToRestore);
                         } catch (Exception e) {
-                            System.err.println("❌ Erreur lors de la restauration du rôle: " + e.getMessage());
+                            System.err.println("❌ Erreur restauration rôle user-service: " + e.getMessage());
                         }
                     }
                 });

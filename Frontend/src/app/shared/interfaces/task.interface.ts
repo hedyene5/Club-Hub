@@ -18,6 +18,7 @@ export interface Task {
   priority: 'urgent' | 'high' | 'normal';
   status: 'todo' | 'in_progress' | 'done';
   dueDate?: string;
+  dueTime?: string; // Temporary field for UI date/time picker (not stored in backend)
   createdBy?: string;
   createdAt?: string;
 

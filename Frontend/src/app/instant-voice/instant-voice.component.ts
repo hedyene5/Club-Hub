@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { ChannelService, Channel, AudioMessage } from '../shared/services/channel.service';
 import { AuthService } from '../shared/services/auth.service';
 import { VoiceSignalingService } from '../shared/services/voice-signaling.service';
+import { getGatewayBase } from '../environments/environment';
 
 interface AppUser {
   id: string;
@@ -73,7 +74,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
   submitReport() {
     if (!this.reportReason || !this.reportingAudio) return;
     this.reportSubmitting = true;
-    this.http.post('http://localhost:8080/api/reports', {
+    this.http.post(`${getGatewayBase()}/api/reports`, {
       audioMessageId: this.reportingAudio.id,
       channelId: this.selectedChannel!.id,
       channelName: this.selectedChannel!.name,
@@ -205,7 +206,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
     this.addableUsers = [];
     this.pendingKickMember = null;
 
-    this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
+    this.http.get<AppUser[]>(`${getGatewayBase()}/api/users`).subscribe({
       next: (users) => {
         if (!channel.isPrivate) {
           this.channelMembers = this.sortMembers(users);
@@ -231,7 +232,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   loadAudioHistory(channelId: string) {
     this.audioLoading = true;
-    const url = `http://localhost:8082/api/channels/${channelId}/audio?role=${this.currentUserRole}`;
+    const url = `${getGatewayBase()}/api/voice2/channels/${channelId}/audio?role=${this.currentUserRole}`;
     this.http.get<AudioMessage[]>(url).subscribe({
       next: (msgs) => { this.audioHistory = msgs; this.audioLoading = false; },
       error: () => { this.audioLoading = false; }
@@ -298,7 +299,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
 
   goToCreate() {
     this.usersLoading = true;
-    this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
+    this.http.get<AppUser[]>(`${getGatewayBase()}/api/users`).subscribe({
       next: (users) => { this.allUsers = users.filter(u => u.id !== this.currentUserId); this.usersLoading = false; },
       error: () => { this.usersLoading = false; }
     });
@@ -365,7 +366,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
       return;
     }
     this.addableLoading = true;
-    this.http.get<AppUser[]>('http://localhost:8081/api/users').subscribe({
+    this.http.get<AppUser[]>(`${getGatewayBase()}/api/users`).subscribe({
       next: (users) => {
         const inChannel = new Set(this.selectedChannel?.memberIds ?? []);
         const kickedIds = new Set(this.selectedChannel?.kickedMemberIds ?? []);
@@ -456,7 +457,7 @@ export class InstantVoiceComponent implements OnInit, OnDestroy {
       reader.onloadend = () => {
         const base64 = (reader.result as string).split(',')[1];
         this.http.post<AudioMessage>(
-          `http://localhost:8082/api/channels/${this.selectedChannel!.id}/audio`,
+          `${getGatewayBase()}/api/voice2/channels/${this.selectedChannel!.id}/audio`,
           { userId: this.currentUserId, userName: this.currentUserName, audioData: base64, contentType: blob.type || 'audio/webm' }
         ).subscribe({
           next: (saved) => { this.audioHistory.unshift(saved); resolve(); },

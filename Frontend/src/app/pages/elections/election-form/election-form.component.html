@@ -53,24 +53,34 @@
     <!-- SECTION BUREAU : Comités -->
     <div *ngIf="electionForm.get('electionType')?.value === 'BUREAU'" class="space-y-4">
 
-      <!-- Options globales de vote -->
-      <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
-        <h4 class="font-medium text-blue-800">⚙️ Règles de vote globales</h4>
+      <!-- Mode de vote -->
+      <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <h4 class="font-medium text-blue-800 mb-3">⚙️ Mode de vote</h4>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Qui peut voter ?</label>
-          <select formControlName="voteScope" class="w-full rounded-lg border px-3 py-2">
-            <option value="OWN_SUBGROUP">Seulement les membres du comité concerné</option>
-            <option value="ALL_SUBGROUPS">Tous les membres du club</option>
-          </select>
-        </div>
+        <div class="space-y-3">
+          <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-white transition"
+                 [ngClass]="electionForm.get('votingMode')?.value === 'COMMITTEE_MEMBERS_ONLY' ? 'border-blue-500 bg-white shadow-sm' : 'border-gray-200'">
+            <input type="radio" formControlName="votingMode" value="COMMITTEE_MEMBERS_ONLY" class="mt-1">
+            <div>
+              <span class="font-medium text-gray-800">👥 Membres du comité uniquement</span>
+              <p class="text-xs text-gray-600 mt-1">
+                Seuls les membres du comité concerné peuvent voter pour leur comité.
+                Un membre de plusieurs comités peut voter pour chacun.
+              </p>
+            </div>
+          </label>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Limite de vote</label>
-          <select formControlName="voteLimit" class="w-full rounded-lg border px-3 py-2">
-            <option value="ONCE">Une seule fois (pour tous les comités)</option>
-            <option value="PER_SUBGROUP">Une fois par comité</option>
-          </select>
+          <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-white transition"
+                 [ngClass]="electionForm.get('votingMode')?.value === 'ALL_CLUB_MEMBERS' ? 'border-blue-500 bg-white shadow-sm' : 'border-gray-200'">
+            <input type="radio" formControlName="votingMode" value="ALL_CLUB_MEMBERS" class="mt-1">
+            <div>
+              <span class="font-medium text-gray-800">🌐 Tous les membres du club</span>
+              <p class="text-xs text-gray-600 mt-1">
+                Tous les membres du club peuvent voter pour tous les comités.
+                Un vote par comité maximum.
+              </p>
+            </div>
+          </label>
         </div>
       </div>
 
@@ -93,7 +103,6 @@
 
             <div class="flex items-start justify-between">
               <div class="flex items-center gap-3 flex-1">
-                <!-- Toggle inclus/exclus -->
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" formControlName="included" class="w-4 h-4 rounded">
                   <span class="font-medium text-gray-800">{{ ctrl.get('subGroupName')?.value }}</span>
@@ -101,7 +110,6 @@
               </div>
             </div>
 
-            <!-- Détails du comité (si inclus) -->
             <div *ngIf="ctrl.get('included')?.value" class="mt-3 grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs text-gray-600 mb-1">Poste élu</label>
@@ -113,13 +121,6 @@
                 <label class="block text-xs text-gray-600 mb-1">Nb max candidats</label>
                 <input type="number" formControlName="maxCandidates" min="1" max="20"
                        class="w-full rounded-lg border px-3 py-1.5 text-sm">
-              </div>
-              <div class="col-span-2">
-                <label class="block text-xs text-gray-600 mb-1">Qui vote pour ce comité ?</label>
-                <select formControlName="voteScope" class="w-full rounded-lg border px-3 py-1.5 text-sm">
-                  <option value="OWN_SUBGROUP">Membres du comité {{ ctrl.get('subGroupName')?.value }} uniquement</option>
-                  <option value="ALL_SUBGROUPS">Tous les membres du club</option>
-                </select>
               </div>
             </div>
 
@@ -135,6 +136,15 @@
         <option value="VIRTUAL">Virtuelle (en ligne)</option>
         <option value="IN_PERSON">Présentiel</option>
       </select>
+    </div>
+
+    <!-- Localisation (seulement pour élections présentielles) -->
+    <div *ngIf="electionForm.get('type')?.value === 'IN_PERSON'" class="border-t border-gray-200 pt-6">
+      <h4 class="text-lg font-medium text-gray-800 mb-4">📍 Localisation de l'élection</h4>
+      <app-location-map
+        [initialLocation]="selectedLocation"
+        (locationSelected)="onLocationSelected($event)">
+      </app-location-map>
     </div>
 
     <!-- Dates -->
@@ -158,20 +168,15 @@
     </label>
 
     <!-- Boutons -->
-    <div class="flex justify-end items-end space-x-3">
+    <div class="flex justify-end space-x-3">
       <button type="button" [routerLink]="['/clubs', clubId]"
               class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
         Annuler
       </button>
-      <div class="flex flex-col items-end">
-        <button type="submit" [disabled]="loading || electionForm.invalid"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-          {{ loading ? 'Chargement...' : (isEditMode ? 'Mettre à jour' : 'Créer') }}
-        </button>
-        <p *ngIf="electionForm.invalid && !loading" class="text-xs text-gray-500 mt-1">
-          Remplis tous les champs obligatoires (titre, dates, type…) pour activer le bouton.
-        </p>
-      </div>
+      <button type="submit" [disabled]="loading || electionForm.invalid"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        {{ loading ? 'Chargement...' : (isEditMode ? 'Mettre à jour' : 'Créer') }}
+      </button>
     </div>
 
   </form>

@@ -6,11 +6,12 @@ import { ElectionService } from '../../../shared/services/election.service';
 import { AuthService } from '../../../shared/services/auth.service';
 import { ClubService } from '../../../services/club.service';
 import { SubGroup } from '../../../models/club.model';
+import { LocationMapComponent, LocationData } from '../../../components/location-map/location-map.component';
 
 @Component({
   selector: 'app-election-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, LocationMapComponent],
   templateUrl: './election-form.component.html',
   styleUrls: ['./election-form.component.css']
 })
@@ -22,7 +23,8 @@ export class ElectionFormComponent implements OnInit {
   clubName: string = '';
   loading = false;
   electionTypes = ['PRESIDENT', 'BUREAU'];
-  clubSubGroups: SubGroup[] = [];  // Comités du club
+  clubSubGroups: SubGroup[] = [];
+  selectedLocation?: LocationData;
 
   constructor(
     private fb: FormBuilder,
@@ -41,10 +43,8 @@ export class ElectionFormComponent implements OnInit {
       startDate: ['', Validators.required],
       endDate: ['', Validators.required],
       anonymous: [true],
-      // Options bureau
-      voteScope: ['OWN_SUBGROUP'],   // OWN_SUBGROUP | ALL_SUBGROUPS
-      voteLimit: ['ONCE'],           // ONCE | PER_SUBGROUP
-      committees: this.fb.array([])  // Comités inclus dans l'élection
+      votingMode: ['COMMITTEE_MEMBERS_ONLY'],
+      committees: this.fb.array([])
     });
   }
 
@@ -58,7 +58,6 @@ export class ElectionFormComponent implements OnInit {
         next: (club) => {
           this.clubName = club.name;
           this.clubSubGroups = club.subGroups || [];
-          // Si élection bureau déjà sélectionnée, charger les comités
           if (this.electionForm.get('electionType')?.value === 'BUREAU') {
             this.initCommittees();
           }
@@ -81,13 +80,6 @@ export class ElectionFormComponent implements OnInit {
         this.clearCommittees();
       }
     });
-
-    // Propager la règle globale voteScope vers tous les comités
-    this.electionForm.get('voteScope')?.valueChanges.subscribe(value => {
-      this.committeesArray.controls.forEach(ctrl => {
-        ctrl.get('voteScope')?.setValue(value, { emitEvent: false });
-      });
-    });
   }
 
   get committeesArray(): FormArray {
@@ -96,14 +88,12 @@ export class ElectionFormComponent implements OnInit {
 
   initCommittees(): void {
     this.clearCommittees();
-    const globalVoteScope = this.electionForm.get('voteScope')?.value || 'OWN_SUBGROUP';
     this.clubSubGroups.forEach(sg => {
       this.committeesArray.push(this.fb.group({
         subGroupId: [sg.id],
         subGroupName: [sg.name],
         included: [true],
-        maxCandidates: [5],
-        voteScope: [globalVoteScope]  // ← valeur globale par défaut
+        maxCandidates: [5]
       }));
     });
   }
@@ -126,11 +116,10 @@ export class ElectionFormComponent implements OnInit {
           startDate: election.startDate.toString().slice(0, 16),
           endDate: election.endDate.toString().slice(0, 16),
           anonymous: election.anonymous,
-          voteScope: (election as any).voteScope || 'OWN_SUBGROUP',
-          voteLimit: (election as any).voteLimit || 'ONCE'
+          votingMode: election.votingMode || 'COMMITTEE_MEMBERS_ONLY'
         });
       },
-      error: (err) => console.error('Erreur:', err)
+      error: (err: any) => console.error('Erreur:', err)
     });
   }
 
@@ -139,7 +128,6 @@ export class ElectionFormComponent implements OnInit {
     this.loading = true;
     const formValue = this.electionForm.value;
 
-    // Construire les positions depuis les comités inclus
     const positions = formValue.electionType === 'BUREAU'
       ? formValue.committees
           .filter((c: any) => c.included)
@@ -149,8 +137,7 @@ export class ElectionFormComponent implements OnInit {
             description: 'Responsable du comité ' + c.subGroupName,
             maxCandidates: c.maxCandidates,
             subGroupId: c.subGroupId,
-            subGroupName: c.subGroupName,
-            voteScope: c.voteScope
+            subGroupName: c.subGroupName
           }))
       : [];
 
@@ -159,7 +146,8 @@ export class ElectionFormComponent implements OnInit {
       startDate: new Date(formValue.startDate).toISOString(),
       endDate: new Date(formValue.endDate).toISOString(),
       positions,
-      committees: undefined // ne pas envoyer le FormArray brut
+      committees: undefined,
+      location: this.selectedLocation
     };
 
     const obs = this.isEditMode
@@ -168,7 +156,16 @@ export class ElectionFormComponent implements OnInit {
 
     obs.subscribe({
       next: () => this.router.navigate(['/clubs', this.clubId]),
-      error: (err) => { console.error(err); this.loading = false; }
+      error: (err: any) => { console.error(err); this.loading = false; }
     });
+  }
+
+  onLocationSelected(location: LocationData): void {
+    this.selectedLocation = location;
+    console.log('Localisation sélectionnée:', location);
+  }
+
+  isLocationRequired(): boolean {
+    return this.electionForm.get('type')?.value === 'IN_PERSON';
   }
 }

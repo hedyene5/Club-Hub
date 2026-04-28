@@ -24,7 +24,12 @@
                "polylabel",
                "@stomp/stompjs",
                "sockjs-client",
-               "leaflet"
+               "leaflet",
+               "@xenova/transformers"
+            ],
+            "externalDependencies": [
+               "onnxruntime-node",
+               "sharp"
             ],
             "tsConfig": "tsconfig.app.json",
             "assets": [
@@ -68,6 +73,10 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json",
+            "host": "0.0.0.0"
+          },
           "configurations": {
             "production": {
               "buildTarget": "ng-tailadmin:build:production"

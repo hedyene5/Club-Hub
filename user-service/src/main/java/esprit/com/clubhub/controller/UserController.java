@@ -3,6 +3,7 @@ package esprit.com.clubhub.controller;
 import esprit.com.clubhub.dto.AuthResponse;
 import esprit.com.clubhub.dto.RegisterRequest;
 import esprit.com.clubhub.entity.User;
+import esprit.com.clubhub.repository.CustomRoleRepo;
 import esprit.com.clubhub.security.JwtUtil;
 import esprit.com.clubhub.service.AuthService;
 import esprit.com.clubhub.service.UserService;
@@ -22,11 +23,13 @@ public class UserController {
     private final UserService userService;
     private final AuthService authService;
     private final JwtUtil jwtUtil;
+    private final CustomRoleRepo customRoleRepo;
 
-    public UserController(UserService userService, AuthService authService, JwtUtil jwtUtil) {
+    public UserController(UserService userService, AuthService authService, JwtUtil jwtUtil, CustomRoleRepo customRoleRepo) {
         this.userService = userService;
         this.authService = authService;
         this.jwtUtil = jwtUtil;
+        this.customRoleRepo = customRoleRepo;
     }
 
     // Helper : extrait le userId depuis le cookie JWT
@@ -161,21 +164,36 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    // ✅ NOUVEAU: Endpoint pour mettre à jour le rôle d'un utilisateur (appelé par Club Service)
+    // Endpoint pour mettre à jour le rôle d'un utilisateur (appelé par Club Service)
     @PutMapping("/{userId}/role")
     public ResponseEntity<User> updateUserRole(
             @PathVariable String userId,
             @RequestBody Map<String, String> roleUpdate) {
-        
+
         try {
             User user = userService.getUserById(userId);
-            
             String newRole = roleUpdate.get("role");
             System.out.println("🔄 Mise à jour du rôle: " + user.getRole() + " → " + newRole);
-            
+
             user.setRole(newRole);
+
+            // Résoudre le customRoleId si le nouveau rôle correspond à un rôle personnalisé
+            if (user.getClubId() != null) {
+                customRoleRepo.findByClubIdAndRoleName(user.getClubId(), newRole)
+                        .ifPresentOrElse(
+                                customRole -> {
+                                    user.setCustomRoleId(customRole.getId());
+                                    System.out.println("✅ customRoleId résolu: " + customRole.getId() + " (" + customRole.getRoleName() + ")");
+                                },
+                                () -> {
+                                    // Rôle système ou COMMITTEE_MEMBER → effacer le customRoleId
+                                    user.setCustomRoleId(null);
+                                    System.out.println("ℹ️ Rôle système/standard, customRoleId effacé");
+                                }
+                        );
+            }
+
             User savedUser = userService.updateUser(userId, user);
-            
             System.out.println("✅ Rôle mis à jour dans User service");
             return ResponseEntity.ok(savedUser);
         } catch (Exception e) {

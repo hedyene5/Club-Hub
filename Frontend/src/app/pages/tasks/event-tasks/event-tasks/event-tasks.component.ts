@@ -3,7 +3,6 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
 import { TaskService } from '../../../../shared/services/Task.service';
 import { EventService, BackendEvent } from '../../../../shared/services/event.service';
 import { Task, TaskStats, TaskCompletionOutcome } from '../../../../shared/interfaces/task.interface';
@@ -103,7 +102,27 @@ export class EventTasksComponent implements OnInit {
 
   members: Member[] = [];
 
-  newTask: Partial<Task> = this.emptyTask();
+  newTask: Partial<Task> & { dueTime?: string } = this.emptyTask();
+
+  // ── Date/Time handling ────────────────────────────────────────────────────
+  get minDate(): string {
+    // Minimum date is today
+    return new Date().toISOString().split('T')[0];
+  }
+
+  get dueDateError(): string {
+    if (!this.submitted || !this.newTask.dueDate) return '';
+    
+    const selectedDate = new Date(this.newTask.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      return 'Due date cannot be in the past';
+    }
+    
+    return '';
+  }
 
   // ── Bulk-selection state ──────────────────────────────────────────────────
   selectedTaskIds: Set<string> = new Set();
@@ -143,8 +162,7 @@ export class EventTasksComponent implements OnInit {
     public taskService: TaskService,
     private eventService: EventService,
     private authService: AuthService,
-    private clubService: ClubService,
-    private http: HttpClient
+    private clubService: ClubService
   ) {}
 
   ngOnInit() {
@@ -196,11 +214,12 @@ export class EventTasksComponent implements OnInit {
             sg.responsableId === userId || sg.memberRoles?.[userId] === 'RESPONSABLE'
           );
 
+        // ✅ CORRECTION: Exclure le responsable du comité Event
+        // Afficher UNIQUEMENT les membres simples du comité Event
         const assignable = (club.members ?? []).filter(m =>
-          m.role === 'MEMBRE_SIMPLE' &&
           (m.status === 'APPROVED' || m.status === 'ACTIVE' || !m.status) &&
           eventMemberIds.has(m.userId) &&
-          !isResponsableOfEvents(m.userId)
+          !isResponsableOfEvents(m.userId) // ← Exclure le responsable
         );
 
         this.members = assignable.map(m => ({
@@ -325,7 +344,9 @@ export class EventTasksComponent implements OnInit {
     if (!this.newTask.eventId) return 'Please select an event for this task.';
     return '';
   }
-  get isFormValid(): boolean { return !this.titleError && !this.assigneeError && !this.eventError; }
+  get isFormValid(): boolean { 
+    return !this.titleError && !this.assigneeError && !this.eventError && !this.dueDateError; 
+  }
 
   // ── Smart defaults ─────────────────────────────────────────────────────────
   onTitleInput() {
@@ -389,6 +410,13 @@ export class EventTasksComponent implements OnInit {
       this.editingTask = task;
       this.newTask = { ...task };
       this.selectedEventId = task.eventId;
+      
+      // Split existing dueDate into date and time if it exists
+      if (task.dueDate) {
+        const dueDateTime = new Date(task.dueDate);
+        this.newTask.dueDate = dueDateTime.toISOString().split('T')[0];
+        this.newTask.dueTime = dueDateTime.toTimeString().slice(0, 5); // HH:MM format
+      }
     } else {
       this.editingTask = null;
       this.newTask = this.emptyTask();
@@ -420,7 +448,24 @@ export class EventTasksComponent implements OnInit {
   saveTask() {
     this.submitted = true;
     if (!this.isFormValid) return;
-    const task: Task = { ...this.newTask as Task, createdBy: 'u1' };
+    
+    // Combine date and time into a single ISO string
+    let dueDateTimeISO: string | undefined = undefined;
+    if (this.newTask.dueDate) {
+      const dateStr = this.newTask.dueDate;
+      const timeStr = this.newTask.dueTime || '23:59'; // Default to end of day if no time specified
+      dueDateTimeISO = `${dateStr}T${timeStr}:00.000Z`;
+    }
+    
+    const task: Task = { 
+      ...this.newTask as Task, 
+      createdBy: 'u1',
+      dueDate: dueDateTimeISO // Store combined date+time
+    };
+    
+    // Remove the temporary dueTime field before saving
+    delete (task as any).dueTime;
+    
     if (this.editingTask?.id) {
       this.taskService.updateTask(this.editingTask.id, task).subscribe({
         next: () => { this.loadTasks(); this.closeForm(); },
@@ -702,11 +747,19 @@ export class EventTasksComponent implements OnInit {
 
   getDueDateLabel(task: Task): string {
     if (!task.dueDate) return '';
-    const diff = Math.round((new Date(task.dueDate).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / 86400000);
-    if (diff < 0)  return `Overdue by ${Math.abs(diff)}d`;
-    if (diff === 0) return 'Due today';
-    if (diff === 1) return 'Due tomorrow';
-    return `Due ${new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    
+    const dueDateTime = new Date(task.dueDate);
+    const now = new Date();
+    const diff = Math.round((dueDateTime.setHours(0,0,0,0) - now.setHours(0,0,0,0)) / 86400000);
+    
+    // Check if time is included
+    const hasTime = task.dueDate.includes('T') && !task.dueDate.endsWith('T00:00:00.000Z');
+    const timeStr = hasTime ? ` at ${new Date(task.dueDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}` : '';
+    
+    if (diff < 0)  return `Overdue by ${Math.abs(diff)}d${timeStr}`;
+    if (diff === 0) return `Due today${timeStr}`;
+    if (diff === 1) return `Due tomorrow${timeStr}`;
+    return `Due ${new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${timeStr}`;
   }
 
   getDueDateClass(task: Task): string {
@@ -722,11 +775,11 @@ export class EventTasksComponent implements OnInit {
     return event ? event.title : 'Unknown Event';
   }
 
-  private emptyTask(): Partial<Task> {
+  private emptyTask(): Partial<Task> & { dueTime?: string } {
     return {
       title: '', description: '', eventId: '',
       assignedTo: '', assigneeName: '', assigneeAvatar: '',
-      priority: 'normal', status: 'todo', dueDate: ''
+      priority: 'normal', status: 'todo', dueDate: '', dueTime: ''
     };
   }
 }

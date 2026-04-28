@@ -27,7 +27,7 @@ export class ElectionListComponent implements OnInit {
         this.elections = data;
         this.loading = false;
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Erreur:', err);
         this.loading = false;
       }
@@ -40,7 +40,7 @@ export class ElectionListComponent implements OnInit {
         next: () => {
           this.elections = this.elections.filter(e => e.id !== id);
         },
-        error: (err) => console.error('Erreur:', err)
+        error: (err: any) => console.error('Erreur:', err)
       });
     }
   }

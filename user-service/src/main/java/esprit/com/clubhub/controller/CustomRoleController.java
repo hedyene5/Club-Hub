@@ -2,6 +2,7 @@ package esprit.com.clubhub.controller;
 
 import esprit.com.clubhub.entity.CustomRole;
 import esprit.com.clubhub.service.CustomRoleService;
+import esprit.com.clubhub.service.PermissionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +13,11 @@ import java.util.List;
 public class CustomRoleController {
 
     private final CustomRoleService customRoleService;
+    private final PermissionService permissionService;
 
-    public CustomRoleController(CustomRoleService customRoleService) {
+    public CustomRoleController(CustomRoleService customRoleService, PermissionService permissionService) {
         this.customRoleService = customRoleService;
+        this.permissionService = permissionService;
     }
 
     // GET /api/roles/permissions - Liste toutes les permissions disponibles
@@ -57,5 +60,14 @@ public class CustomRoleController {
     public ResponseEntity<Void> deleteRole(@PathVariable String id) {
         customRoleService.deleteRole(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // GET /api/roles/club/{clubId}/users/{userId}/permissions
+    // Endpoint appelé par le frontend PermissionService pour charger les permissions
+    @GetMapping("/club/{clubId}/users/{userId}/permissions")
+    public ResponseEntity<List<String>> getUserPermissions(
+            @PathVariable String clubId,
+            @PathVariable String userId) {
+        return ResponseEntity.ok(permissionService.getUserPermissions(userId));
     }
 }

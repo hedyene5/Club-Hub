@@ -41,13 +41,21 @@ export interface ElectionResults {
   calculatedAt: Date;
 }
 
+export interface ElectionLocation {
+  address: string;
+  latitude: number;
+  longitude: number;
+  placeName?: string;
+}
+
 export interface Election {
   id?: string;
   clubId: string;
   title: string;
   description: string;
   type: string;
-  electionType: string;     // ← AJOUTER "PRESIDENT" ou "BUREAU"
+  electionType: string;
+  votingMode?: string;
   startDate: Date;
   endDate: Date;
   status: string;
@@ -55,7 +63,8 @@ export interface Election {
   candidates: Candidate[];
   votes: Vote[];
   results?: ElectionResults;
-  positions?: Position[];   // ← AJOUTER
+  positions?: Position[];
+  location?: ElectionLocation;
 }
 
 // NOUVELLES INTERFACES

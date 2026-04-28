@@ -80,57 +80,43 @@ public class PermissionService {
 
         List<String> permissions = new ArrayList<>();
 
-        // ✅ PRIORITÉ 1: Vérifier dynamiquement si c'est un responsable de comité
-        // Cela IGNORE complètement le champ user.role
+        // 1. Rôle système (PRESIDENT, RH, etc.)
+        if (user.isSystemRole()) {
+            System.out.println("✅ Rôle système: " + user.getSystemRole());
+            permissions.addAll(getSystemRolePermissions(user.getSystemRole()));
+        }
+
+        // 2. Responsable de comité détecté dynamiquement (s'ajoute aux autres permissions)
         if (user.getClubId() != null && !user.getClubId().isEmpty()) {
             boolean isResponsable = isCommitteeResponsable(userId, user.getClubId());
             if (isResponsable) {
-                System.out.println("✅ DÉTECTION DYNAMIQUE: Responsable de comité détecté");
+                System.out.println("✅ Responsable de comité détecté dynamiquement");
                 permissions.addAll(getCommitteeResponsablePermissions());
-                System.out.println("📋 Permissions finales: " + permissions);
-                System.out.println("========================");
-                return permissions;  // ✅ Retourner immédiatement les permissions de responsable
             }
         }
 
-        // ✅ PRIORITÉ 2: Permissions du rôle système
-        if (user.isSystemRole()) {
-            System.out.println("✅ Rôle système détecté: " + user.getSystemRole());
-            permissions.addAll(getSystemRolePermissions(user.getSystemRole()));
-        } 
-        // ✅ PRIORITÉ 3: Vérifier si le rôle commence par "Responsable " (fallback)
-        else if (user.getRole() != null && user.getRole().startsWith("Responsable ")) {
-            System.out.println("✅ Responsable de comité détecté via role string: " + user.getRole());
-            permissions.addAll(getCommitteeResponsablePermissions());
-        } 
-        else {
-            System.out.println("❌ Pas un rôle système ni responsable de comité");
-        }
-
-        // ✅ PRIORITÉ 4: Permissions du rôle personnalisé
+        // 3. Rôle personnalisé (customRoleId) — toujours vérifié, jamais court-circuité
         if (user.getCustomRoleId() != null && !user.getCustomRoleId().isEmpty()) {
-            System.out.println("✅ CustomRoleId trouvé: " + user.getCustomRoleId());
+            System.out.println("✅ CustomRoleId: " + user.getCustomRoleId());
             try {
                 CustomRole customRole = customRoleService.getRoleById(user.getCustomRoleId());
-                System.out.println("✅ Rôle personnalisé récupéré: " + customRole.getRoleName());
-                System.out.println("✅ Permissions du rôle: " + customRole.getPermissions());
                 if (customRole.isActive()) {
                     permissions.addAll(customRole.getPermissions());
-                    System.out.println("✅ Permissions ajoutées");
+                    System.out.println("✅ Permissions personnalisées ajoutées: " + customRole.getPermissions());
                 } else {
-                    System.out.println("❌ Rôle inactif");
+                    System.out.println("❌ Rôle personnalisé inactif");
                 }
             } catch (Exception e) {
-                System.out.println("❌ Erreur récupération rôle: " + e.getMessage());
+                System.out.println("❌ Erreur récupération rôle personnalisé: " + e.getMessage());
             }
-        } else {
-            System.out.println("❌ Pas de customRoleId");
         }
 
-        System.out.println("📋 Permissions finales: " + permissions);
+        // Dédupliquer
+        List<String> deduplicated = permissions.stream().distinct().collect(java.util.stream.Collectors.toList());
+        System.out.println("📋 Permissions finales: " + deduplicated);
         System.out.println("========================");
 
-        return permissions;
+        return deduplicated;
     }
 
     /**

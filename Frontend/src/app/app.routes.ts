@@ -3,6 +3,13 @@ import { EcommerceComponent } from './pages/dashboard/ecommerce/ecommerce.compon
 import { ProfileComponent } from './pages/profile/profile.component';
 import { AppLayoutComponent } from './shared/layout/app-layout/app-layout.component';
 
+// -------- Composants IA (intégration Souha) --------
+import { QrValidationComponent } from './components/moi/qr-validation/qr-validation.component';
+import { ScanSuccessComponent } from './components/moi/scan-success/scan-success.component';
+import { VoteWithTokenComponent } from './components/moi/vote-with-token/vote-with-token.component';
+import { QrScanInstructionsComponent } from './components/moi/qr-scan-instructions/qr-scan-instructions.component';
+import { SetupPasswordComponent } from './pages/moi/setup-password/setup-password.component';
+
 import { AllBorrowedComponent } from './pages/borrowed-items/all-borrowed/all-borrowed.component';
 import { LendersComponent } from './pages/borrowed-items/lenders/lenders.component';
 
@@ -202,6 +209,14 @@ export const routes: Routes = [
       },
     ],
   },
+
+  // -------- Routes QR / Vote / Invitation (Souha) — publiques, sans sidebar --------
+  // Ces routes doivent être AVANT le wildcard et HORS du AppLayout
+  { path: 'setup-password', component: SetupPasswordComponent, title: 'Créer votre mot de passe | ClubHub' },
+  { path: 'elections/scan/success', component: ScanSuccessComponent,      title: 'Validation Réussie | ClubHub' },
+  { path: 'elections/scan/:token',  component: QrValidationComponent,     canActivate: [authGuard], title: 'Validation QR Code | ClubHub' },
+  { path: 'elections/:id/vote',     component: VoteWithTokenComponent,    canActivate: [authGuard], title: 'Voter | ClubHub' },
+  { path: 'scan-instructions',      component: QrScanInstructionsComponent, title: 'Instructions Scan QR | ClubHub' },
 
   // 404 — wildcard MUST be last
   { path: '**', redirectTo: '' },

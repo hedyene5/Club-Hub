@@ -429,15 +429,36 @@
             </div>
           </div>
 
-          <!-- ── Due date ───────────────────────────────────────────────── -->
+          <!-- ── Due date + time ──────────────────────────────────────────── -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Due Date <span class="text-gray-400 text-xs font-normal">(optional)</span>
+              Due Date & Time <span class="text-gray-400 text-xs font-normal">(optional)</span>
             </label>
-            <input
-              type="date"
-              [(ngModel)]="newTask.dueDate"
-              class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 text-sm text-gray-800 dark:text-white dark:bg-gray-800 focus:border-brand-300 focus:outline-none">
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Date picker -->
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Date</label>
+                <input
+                  type="date"
+                  [(ngModel)]="newTask.dueDate"
+                  [min]="minDate"
+                  class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 text-sm text-gray-800 dark:text-white dark:bg-gray-800 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/10">
+              </div>
+              <!-- Time picker -->
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">Time</label>
+                <input
+                  type="time"
+                  [(ngModel)]="newTask.dueTime"
+                  class="h-11 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent px-4 text-sm text-gray-800 dark:text-white dark:bg-gray-800 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/10">
+              </div>
+            </div>
+            @if (newTask.dueDate && !newTask.dueTime) {
+              <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">💡 Add a time for better task scheduling</p>
+            }
+            @if (dueDateError) {
+              <p class="mt-1 text-xs text-red-500">{{ dueDateError }}</p>
+            }
           </div>
 
         </div>

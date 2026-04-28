@@ -6,6 +6,7 @@ import { Router, RouterModule } from '@angular/router';
 import { AppHeaderComponent } from '../app-header/app-header.component';
 import { AuthService } from '../../../shared/services/auth.service';
 import { MeetingPvService } from '../../services/meeting-pv.service';
+import { AiChatbotComponent } from '../../../components/moi/ai-chatbot/ai-chatbot.component';
 
 @Component({
   selector: 'app-layout',
@@ -15,6 +16,7 @@ import { MeetingPvService } from '../../services/meeting-pv.service';
     RouterModule,
     AppHeaderComponent,
     AppSidebarComponent,
+    AiChatbotComponent,
   ],
   templateUrl: './app-layout.component.html',
 })

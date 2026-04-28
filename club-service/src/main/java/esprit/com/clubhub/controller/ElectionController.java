@@ -1,25 +1,33 @@
 package esprit.com.clubhub.controller;
 
 import esprit.com.clubhub.dto.EligibilityResult;
-import esprit.com.clubhub.entity.Candidate;
-import esprit.com.clubhub.entity.Election;
-import esprit.com.clubhub.entity.ElectionResults;
-import esprit.com.clubhub.entity.Vote;
 import esprit.com.clubhub.entity.*;
 import esprit.com.clubhub.service.ElectionService;
+import esprit.com.clubhub.service.GmailEmailService;
+import esprit.com.clubhub.service.VotingCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/elections")
+@CrossOrigin(origins = "*")
 public class ElectionController {
 
     @Autowired
     private ElectionService electionService;
+
+    @Autowired
+    private VotingCodeService votingCodeService;
+
+    @Autowired
+    private GmailEmailService emailService;
 
     // ========== CRUD ==========
 
@@ -43,8 +51,7 @@ public class ElectionController {
     @PostMapping
     public ResponseEntity<Election> createElection(@RequestBody Election election) {
         try {
-            Election created = electionService.createElection(election);
-            return new ResponseEntity<>(created, HttpStatus.CREATED);
+            return new ResponseEntity<>(electionService.createElection(election), HttpStatus.CREATED);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }
@@ -53,15 +60,8 @@ public class ElectionController {
     @PutMapping("/{id}")
     public ResponseEntity<Election> updateElection(@PathVariable String id, @RequestBody Election election) {
         try {
-            System.out.println("=== PUT REÇU ===");
-            System.out.println("ID: " + id);
-            System.out.println("Candidates dans la requête: " +
-                    (election.getCandidates() != null ? election.getCandidates().size() : 0));
-
-            Election updated = electionService.updateElection(id, election);
-            return ResponseEntity.ok(updated);
+            return ResponseEntity.ok(electionService.updateElection(id, election));
         } catch (RuntimeException e) {
-            System.err.println("ERREUR PUT: " + e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
@@ -77,8 +77,7 @@ public class ElectionController {
     @PostMapping("/{id}/start")
     public ResponseEntity<Election> startElection(@PathVariable String id) {
         try {
-            Election election = electionService.startElection(id);
-            return ResponseEntity.ok(election);
+            return ResponseEntity.ok(electionService.startElection(id));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }
@@ -87,8 +86,7 @@ public class ElectionController {
     @PostMapping("/{id}/close")
     public ResponseEntity<Election> closeElection(@PathVariable String id) {
         try {
-            Election election = electionService.closeElection(id);
-            return ResponseEntity.ok(election);
+            return ResponseEntity.ok(electionService.closeElection(id));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }
@@ -97,8 +95,7 @@ public class ElectionController {
     @PostMapping("/{id}/votes")
     public ResponseEntity<Election> castVote(@PathVariable String id, @RequestBody Vote vote) {
         try {
-            Election election = electionService.castVote(id, vote);
-            return ResponseEntity.ok(election);
+            return ResponseEntity.ok(electionService.castVote(id, vote));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(null);
         }
@@ -114,8 +111,7 @@ public class ElectionController {
     @PutMapping("/{id}/candidates/{candidateId}/validate")
     public ResponseEntity<Election> validateCandidate(@PathVariable String id, @PathVariable String candidateId) {
         try {
-            Election election = electionService.validateCandidate(id, candidateId);
-            return ResponseEntity.ok(election);
+            return ResponseEntity.ok(electionService.validateCandidate(id, candidateId));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -124,34 +120,15 @@ public class ElectionController {
     // ========== Gestion des Candidats ==========
 
     @PostMapping("/{electionId}/candidates")
-    public ResponseEntity<Election> addCandidate(
-            @PathVariable String electionId,
-            @RequestBody Candidate candidate) {
+    public ResponseEntity<Election> addCandidate(@PathVariable String electionId, @RequestBody Candidate candidate) {
         try {
-            System.out.println("========================================");
-            System.out.println("➕ AJOUT CANDIDAT");
-            System.out.println("Election ID: " + electionId);
-            System.out.println("Candidat reçu: " + candidate.getUserId() + " - " + candidate.getName());
-
             Election election = electionService.getElectionById(electionId)
                     .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
-
-            System.out.println("Élection trouvée: " + election.getTitle());
-            System.out.println("Candidats avant ajout: " + election.getCandidates().size());
-
             candidate.setStatus("PENDING");
-            candidate.setApplicationDate(java.time.LocalDateTime.now());
+            candidate.setApplicationDate(LocalDateTime.now());
             election.getCandidates().add(candidate);
-
-            System.out.println("Candidats après ajout: " + election.getCandidates().size());
-
-            Election updated = electionService.updateElection(electionId, election);
-
-            System.out.println("✅ AJOUT RÉUSSI");
-            System.out.println("========================================");
-            return ResponseEntity.ok(updated);
+            return ResponseEntity.ok(electionService.updateElection(electionId, election));
         } catch (RuntimeException e) {
-            System.err.println("❌ ERREUR: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
@@ -166,17 +143,32 @@ public class ElectionController {
     @PutMapping("/{electionId}/candidates/{candidateId}/reject")
     public ResponseEntity<Election> rejectCandidate(
             @PathVariable String electionId,
-            @PathVariable String candidateId) {
+            @PathVariable String candidateId,
+            @RequestBody Map<String, String> request) {
         try {
+            String rejectionReason = request.get("rejectionReason");
+            if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(null);
+            }
+
             Election election = electionService.getElectionById(electionId)
                     .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
 
-            election.getCandidates().stream()
-                    .filter(c -> c.getUserId().equals(candidateId))
-                    .findFirst()
-                    .ifPresent(c -> c.setStatus("REJECTED"));
+            Candidate rejected = election.getCandidates().stream()
+                    .filter(c -> c.getUserId().equals(candidateId)).findFirst().orElse(null);
+            if (rejected == null) return ResponseEntity.notFound().build();
+
+            rejected.setStatus("REJECTED");
+            rejected.setRejectionReason(rejectionReason);
 
             Election updated = electionService.updateElection(electionId, election);
+
+            try {
+                emailService.sendCandidacyRejectionEmail(rejected.getEmail(), rejected.getName(), updated, rejectionReason);
+            } catch (Exception e) {
+                System.err.println("Erreur email rejet candidature: " + e.getMessage());
+            }
+
             return ResponseEntity.ok(updated);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -184,17 +176,12 @@ public class ElectionController {
     }
 
     @DeleteMapping("/{electionId}/candidates/{candidateId}")
-    public ResponseEntity<Election> removeCandidate(
-            @PathVariable String electionId,
-            @PathVariable String candidateId) {
+    public ResponseEntity<Election> removeCandidate(@PathVariable String electionId, @PathVariable String candidateId) {
         try {
             Election election = electionService.getElectionById(electionId)
                     .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
-
             election.getCandidates().removeIf(c -> c.getUserId().equals(candidateId));
-
-            Election updated = electionService.updateElection(electionId, election);
-            return ResponseEntity.ok(updated);
+            return ResponseEntity.ok(electionService.updateElection(electionId, election));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -225,21 +212,95 @@ public class ElectionController {
     @GetMapping("/{id}/eligibility-criteria")
     public ResponseEntity<?> getEligibilityCriteria(@PathVariable String id) {
         try {
-            Map<String, Object> criteria = electionService.getEligibilityCriteria(id);
-            return ResponseEntity.ok(criteria);
+            return ResponseEntity.ok(electionService.getEligibilityCriteria(id));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    // ✅ NOUVEAU: Obtenir les comités disponibles pour voter selon le mode
     @GetMapping("/{id}/available-committees/{userId}")
     public ResponseEntity<?> getAvailableCommittees(@PathVariable String id, @PathVariable String userId) {
         try {
-            Map<String, Object> result = electionService.getAvailableCommitteesForVoting(id, userId);
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(electionService.getAvailableCommitteesForVoting(id, userId));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/vote-with-code")
+    public ResponseEntity<?> voteWithCode(@PathVariable String id, @RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String code = request.get("code");
+            String candidateId = request.get("candidateId");
+
+            if (email == null || code == null || candidateId == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Email, code et candidateId requis"));
+            }
+
+            Election election = electionService.getElectionById(id)
+                    .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
+            if (!"IN_PERSON".equals(election.getType())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Cette élection n'est pas présentielle"));
+            }
+            if (!votingCodeService.validateVotingCode(election.getVotingCodes(), email, code)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Code invalide ou déjà utilisé"));
+            }
+
+            VotingCode votingCode = election.getVotingCodes().stream()
+                    .filter(vc -> vc.getEmail().equals(email) && vc.getCode().equals(code))
+                    .findFirst().orElseThrow(() -> new RuntimeException("Code non trouvé"));
+
+            Vote vote = new Vote();
+            vote.setVoterId(votingCode.getUserId());
+            vote.setCandidateId(candidateId);
+            votingCodeService.markCodeAsUsed(election.getVotingCodes(), email, code);
+
+            return ResponseEntity.ok(Map.of("message", "Vote enregistré", "election", electionService.castVote(id, vote)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/candidacy-status")
+    public ResponseEntity<Map<String, Object>> getCandidacyStatus(@PathVariable String id) {
+        try {
+            Election election = electionService.getElectionById(id)
+                    .orElseThrow(() -> new RuntimeException("Élection non trouvée"));
+            LocalDateTime now = LocalDateTime.now();
+            boolean isOpen = election.getCandidacyDeadline() == null || now.isBefore(election.getCandidacyDeadline());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("isOpen", isOpen);
+            response.put("candidacyDeadline", election.getCandidacyDeadline());
+            response.put("startDate", election.getStartDate());
+            response.put("message", isOpen ? "Candidatures ouvertes" : "Candidatures fermées");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/vote-with-token")
+    public ResponseEntity<?> voteWithToken(@PathVariable String id, @RequestBody Map<String, String> request) {
+        try {
+            String voterId = request.get("voterId");
+            String candidateId = request.get("candidateId");
+            String token = request.get("token");
+
+            if (voterId == null || candidateId == null || token == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "voterId, candidateId et token requis"));
+            }
+
+            Vote vote = new Vote();
+            vote.setVoterId(voterId);
+            vote.setCandidateId(candidateId);
+            if (request.get("subGroupId") != null) vote.setSubGroupId(request.get("subGroupId"));
+
+            Election updated = electionService.castVoteWithToken(id, vote, token);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Vote enregistré", "election", updated));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
     }
 }

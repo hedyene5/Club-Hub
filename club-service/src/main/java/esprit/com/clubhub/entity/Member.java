@@ -25,6 +25,10 @@ public class Member {
         this.role = "MEMBER";
     }
 
+    // Derived helpers for scheduler compatibility
+    public int getCommitteeCount() { return subGroupId != null ? 1 : 0; }
+    public java.util.List<CommitteeRole> getCommitteeRoles() { return null; }
+
     // Getters
     public String getUserId() { return userId; }
     public String getEmail() { return email; }
